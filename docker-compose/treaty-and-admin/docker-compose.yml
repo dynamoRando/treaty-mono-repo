@@ -1,0 +1,18 @@
+version: '3.2'
+
+services:
+  treaty:
+    container_name: treaty
+    image: treaty
+    ports:
+    - "50051:50051"
+    - "50052:50052"
+    - "50055:50055"
+
+  treaty-admin:
+    container_name: treaty-admin
+    image: treaty-admin
+    ports:
+    - "80:80"
+    depends_on:
+    - treaty

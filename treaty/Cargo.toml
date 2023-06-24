@@ -1,0 +1,76 @@
+[package]
+name = "treaty"
+version = "0.1.0-alpha"
+edition = "2021"
+authors = ["Randy Le <randyL04@hey.com>"]
+description = "A data sharing API"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rusqlite = { version = "0.29.0", features = [
+    "column_decltype",
+    "bundled",
+    "bundled-sqlcipher",
+] }
+treaty-http-endpoints = { path = "./treaty-http-endpoints" }
+treaty-types = { path = "./treaty-types" }
+thiserror = "1"
+serde = "1"
+serde_derive = "1"
+config = "0.13.1"
+num-derive = "0.3.3"
+num-traits = "0.2.15"
+num = "0.4.0"
+tracing = "0.1"
+chrono = "0.4.24"
+tonic = "0.8.1"
+prost = "0.11.0"
+guid-create = "0.3.1"
+substring = "1.4.5"
+stdext = "0.3.1"
+sodiumoxide = "0.2.7"
+hmac = "0.12.1"
+jwt = "0.16.0"
+sha2 = "0.10.6"
+antlr-rust = "0.3.0-beta"
+async-trait = "0.1.68"
+tokio = { version = "1.18.0", features = ["full"] }
+tonic-reflection = "0.6.0"
+serde_json = "1.0.96"
+endianness = "0.2.0"
+triggered = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+rocket = { version = "0.5.0-rc.2", features = ["json"] }
+lazy_static = "1.4.0"
+reqwest = { version = "0.11", features = ["json"] }
+local-ip-address = "0.5.3"
+cargo-smart-release = "0.19.0"
+
+[build-dependencies]
+tonic-build = "0.8.0"
+prost-build = { version = "0.11.0" }
+
+
+[workspace]
+members = [
+    # A proxy for multiple treaty instances on a single instance.
+    "treaty-proxy",
+    # A general client for user communications to a treaty instance.
+    "treaty-client",
+    # A WASM version for general user communications to a treaty instance (incomplete compared to treaty-client). 
+    "treaty-client-wasm",
+    # A singular lib for http endpoints.
+    "treaty-http-endpoints",
+    # A general catch-all lib for:
+    # - generating the proto file (this is for WASM compat; we cannot use prost for WASM)
+    # - formatting messages
+    # - standard enums used across all libs
+    "treaty-types",
+    # integration tests
+    "treaty-tests",
+    # this lib
+    ".",
+]
+exclude = ["demo", "proxy-demo"]

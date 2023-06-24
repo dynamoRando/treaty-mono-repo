@@ -1,0 +1,53 @@
+FROM rust as build
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive \
+    apt-get install --no-install-recommends --assume-yes \
+      protobuf-compiler libprotobuf-dev openssl
+
+# Create a new empty shell project
+RUN USER=root cargo new --bin treaty
+WORKDIR /treaty
+RUN useradd -ms /bin/bash treaty
+
+COPY ./Cargo.lock ./Cargo.lock
+COPY ./Cargo.toml ./Cargo.toml
+COPY ./src ./src
+COPY ./proto ./proto
+COPY ./Settings.toml ./Settings.toml
+COPY ./treaty-types ./treaty-types
+COPY ./treaty-http-endpoints ./treaty-http-endpoints
+COPY ./treaty-client ./treaty-client 
+COPY ./treaty-client-wasm ./treaty-client-wasm 
+COPY ./treaty-proxy ./treaty-proxy 
+COPY ./treaty-tests ./treaty-tests
+
+# Build for release.
+# RUN rm ./target/release/*
+RUN cargo build --release
+
+# The final base image
+FROM debian:stable-slim
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive \
+    apt-get install --no-install-recommends --assume-yes \
+    openssl libglib2.0-dev libgtk2.0-dev
+
+# Copy from the previous build
+RUN mkdir /usr/src/treaty
+WORKDIR /usr/src/treaty
+RUN useradd -ms /bin/bash treaty
+COPY --from=build /treaty/target/release/treaty /usr/src/treaty/treaty
+COPY --from=build /treaty/Settings.toml /usr/src/treaty/Settings.toml
+RUN chown -R treaty:treaty /usr/src/treaty
+RUN chmod 755 /usr/src/treaty
+USER treaty
+
+EXPOSE 50051/tcp
+EXPOSE 50052/tcp
+EXPOSE 50055/tcp
+
+# Run the binary
+CMD ["/usr/src/treaty/treaty"]
+
+# To build, run this
+# docker build -t treaty .

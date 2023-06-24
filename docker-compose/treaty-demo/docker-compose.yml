@@ -1,0 +1,32 @@
+version: '3.2'
+
+services:
+  treaty-host:
+    container_name: treaty-host
+    image: treaty
+    ports:
+    - "50051:50051"
+    - "50052:50052"
+    - "50055:50055"
+
+  treaty-participant-1:
+    container_name: treaty-part-1
+    image: treaty
+    ports:
+    - "50061:50051"
+    - "50062:50052"
+    - "50065:50055"
+
+  treaty-participant-2:
+    container_name: treaty-part-2
+    image: treaty
+    ports:
+    - "50071:50051"
+    - "50072:50052"
+    - "50075:50055"
+
+  treaty-admin:
+    container_name: treaty-admin
+    image: treaty-admin
+    ports:
+    - "80:80"

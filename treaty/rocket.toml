@@ -1,0 +1,22 @@
+## defaults for _all_ profiles
+[default]
+address = "0.0.0.0"
+limits = { form = "64 kB", json = "1 MiB" }
+cli_colors = false
+
+## set only when compiled in debug mode, i.e, `cargo build`
+[debug]
+port = 8000
+cli_colors = false
+## only the `json` key from `default` will be overridden; `form` will remain
+limits = { json = "10MiB" }
+
+## set only when the `nyc` profile is selected
+[nyc]
+port = 9001
+
+## set only when compiled in release mode, i.e, `cargo build --release`
+## don't use this secret_key! generate your own and keep it private!
+[release]
+port = 9999
+secret_key = "hPRYyVRiMyxpw5sBB1XeCMN1kFsDCqKvBi2QJxBVHQk="

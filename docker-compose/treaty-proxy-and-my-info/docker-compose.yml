@@ -1,0 +1,19 @@
+version: '3.2'
+
+services:
+  treaty-proxy:
+    container_name: treaty-proxy
+    image: treaty-proxy
+    ports:
+    - "50051:50051"
+    - "50052:50052"
+    - "50055:50055"
+    - "50040:50040"
+
+  treaty-my-info:
+    container_name: treaty-my-info
+    image: treaty-my-info
+    ports:
+    - "80:80"
+    depends_on:
+    - treaty-proxy

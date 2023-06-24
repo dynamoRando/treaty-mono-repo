@@ -1,0 +1,13 @@
+database_type = 1
+backing_database_name = "treaty.db"
+grpc_client_service_addr_port = "0.0.0.0:50051"
+grpc_data_service_addr_port = "0.0.0.0:50052"
+http_addr = "0.0.0.0"
+http_port = "50055"
+admin_un = "tester"
+admin_pw = "123456"
+client_grpc_timeout_in_seconds = 60
+data_grpc_timeout_in_seconds = 60
+use_grpc = true
+use_http = true
+override_ip_with_local = true
