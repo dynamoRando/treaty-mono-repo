@@ -1,4 +1,4 @@
-use treaty_types::types::treaty_proto::AuthRequest;
+use treaty_types::types::treaty_proto::AuthRequestWebToken;
 
 /// Represents a JWT granted from an Treaty or Treaty-PROXY instance
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -39,14 +39,9 @@ impl Token {
     }
 
     /// Returns an AuthRequest with this JWT as the authentication method
-    pub fn auth(&self) -> AuthRequest {
-        AuthRequest {
-            user_name: "".into(),
-            pw: "".into(),
-            pw_hash: Vec::new().into(),
-            token: Vec::new().into(),
-            jwt: self.jwt.clone().into(),
-            id: None,
+    pub fn auth(&self) -> AuthRequestWebToken {
+        AuthRequestWebToken {
+            jwt: self.jwt.clone(),
         }
     }
 }

@@ -34,9 +34,12 @@ https://github.com/pseudomuto/protoc-gen-doc
 syntax = "proto3";
 package treaty_proto;
 
+import "google/protobuf/empty.proto";
+
 /**
  * A service by which application developers can talk to a Treaty instance. 
  * Generally defaults to port 50051. See the "Settings.toml" file for configuration.
+ * 🔐 These calls require authentication. 
  */
 service UserService {
 	// Denotes if the instance is online.
@@ -46,8 +49,11 @@ service UserService {
 	// ℹ️ This will return an error if the database already exists.
 	rpc CreateUserDatabase(CreateUserDatabaseRequest) returns (CreateUserDatabaseReply);
 
-	// Deletes a database.
+	// Deletes a database in a cleanup oriented manner, cleaning up references, etc.
 	rpc DeleteUserDatabase(DeleteUserDatabaseRequest) returns (DeleteUserDatabaseReply);
+
+	// Deletes the database off of disk or drops the database forcefully, without removing references. This can cause un-intended consequences.
+	rpc DeleteUserDatabaseDestructively(DeleteUserDatabaseRequest) returns (DeleteUserDatabaseReply);
 
 	// Instructs Treaty to create needed meta-data tables.
 	rpc EnableCoooperativeFeatures(EnableCoooperativeFeaturesRequest) returns (EnableCoooperativeFeaturesReply);
@@ -88,7 +94,7 @@ service UserService {
 	rpc SendParticipantContract(SendParticipantContractRequest) returns (SendParticipantContractReply);
 
 	// Gets a list of pending contracts at our Treaty instance.
-	rpc ReviewPendingContracts(ViewPendingContractsRequest) returns (ViewPendingContractsReply);
+	rpc ReviewPendingContracts(google.protobuf.Empty) returns (ViewPendingContractsReply);
 
 	// Accepts the specified database contract. This creates the needed partial database and supporting database structures.
 	rpc AcceptPendingContract(AcceptPendingContractRequest) returns (AcceptPendingContractReply);
@@ -141,7 +147,7 @@ service UserService {
 	rpc AcceptPendingActionAtParticipant (AcceptPendingActionRequest) returns (AcceptPendingActionReply);
 
 	// Gets a list of databases at our Treaty instance.
-	rpc GetDatabases (GetDatabasesRequest) returns (GetDatabasesReply);
+	rpc GetDatabases (google.protobuf.Empty) returns (GetDatabasesReply);
 	
 	// Gets a list of Participants at our Treaty instance.
 	rpc GetParticipants(GetParticipantsRequest) returns (GetParticipantsReply);
@@ -150,16 +156,16 @@ service UserService {
 	rpc GetActiveContract(GetActiveContractRequest) returns (GetActiveContractReply);
 
 	// Requests Treaty to generate a Json Web Token for the credentials provided.
-	rpc AuthForToken (AuthRequest) returns (TokenReply);
+	rpc AuthForToken (AuthRequestBasic) returns (TokenReply);
 
 	// Requests Treaty to revoke the Json Web Token for the credentials provided.
-	rpc RevokeToken (AuthRequest) returns (RevokeReply);
+	rpc RevokeToken (AuthRequestWebToken) returns (RevokeReply);
 
 	// Gets our Host Information.
-	rpc GetHostInfo (AuthRequest) returns (HostInfoReply);
+	rpc GetHostInfo (google.protobuf.Empty) returns (HostInfoReply);
 
 	// Gets the versions of Treaty assemblies.
-	rpc GetVersions (AuthRequest) returns (VersionReply);
+	rpc GetVersions (google.protobuf.Empty) returns (VersionReply);
 
 	// Gets the current configured UpdatesFromHostBehavior.
 	rpc GetUpdatesFromHostBehavior (GetUpdatesFromHostBehaviorRequest) returns (GetUpdatesFromHostBehaviorReply);
@@ -174,13 +180,27 @@ service UserService {
 	rpc GetDeletesToHostBehavior (GetDeletesToHostBehaviorRequest) returns (GetDeletesToHostBehaviorReply);
 
 	// Gets a list of Hosts that we are cooperating with. These are all the Treaty instances that we have accepted contracts from. 
-	rpc GetCooperativeHosts (GetCooperativeHostsRequest) returns (GetCooperativeHostsReply);
+	rpc GetCooperativeHosts (google.protobuf.Empty) returns (GetCooperativeHostsReply);
 
 	// Gets the current configured settings from the Settings.toml file.
-	rpc GetSettings (GetSettingsRequest) returns (GetSettingsReply);
+	rpc GetSettings (google.protobuf.Empty) returns (GetSettingsReply);
 
 	// Gets the last X number of log entries.
 	rpc GetLogsByLastNumber (GetLogsByLastNumberRequest) returns (GetLogsByLastNumberReply);
+
+	// Gets the backing database technology used at this Treaty instance.
+	rpc GetBackingDatabaseConfig(google.protobuf.Empty) returns (GetBackingDatabaseConfigReply);
+}
+
+// Responds with information about the backing database technology used at this Treaty instance.
+message GetBackingDatabaseConfigReply {
+	// The backing database type. This corresponds to the DatabaseType enum.
+	uint32 database_type = 1;
+	// Specifies if the database technology is using a schema for Treaty settings instead of a 
+	// seperate database, if applicable. Default is false. 
+	bool use_schema = 2;
+	// An error if Treaty was unable to return the database information.
+	optional TreatyError error = 3;
 }
 
 // A message describing an error in the system. This usually refers to a SQL database error.
@@ -217,146 +237,108 @@ message TreatyLogEntry {
 
 // Requests Treaty to return the last X number of logs.
 message GetLogsByLastNumberRequest {
-	// Authentication.
-	AuthRequest authentication = 1;
 	// The last number of logs to fetch.
-	uint32 number_of_logs = 2;
+	uint32 number_of_logs = 1;
 }
 
 // Responds with the total requested number of logs.
 message GetLogsByLastNumberReply {
-	// The authentication result.
-	AuthResult authentication_result = 1;
 	// A list of log entries.
-	repeated TreatyLogEntry logs = 2;
+	repeated TreatyLogEntry logs = 1;
 	// An error if Treaty was unable to fetch logs.
-	optional TreatyError error = 3;
-}
-
-// Requests the current settings from Treaty. These are the values from the "Settings.toml" file.
-message GetSettingsRequest {
-	// Authentication. 
-	AuthRequest authentication = 1;
+	optional TreatyError error = 2;
 }
 
 // Responds with the current Settings. 
 message GetSettingsReply {
-	// The authentication result.
-	AuthResult authentication_result = 1;
 	// The settings in JSON format.
-	optional string settings_json = 2;
+	optional string settings_json = 1;
 	// An error if Treaty was unable to return the settings.
-	optional TreatyError error = 3;
-}
-
-// Requests a list of hosts that this Treaty instance is cooperating with.
-message GetCooperativeHostsRequest {
-	// The authentication request.
-	AuthRequest authentication = 1;
+	optional TreatyError error = 2;
 }
 
 // Responds with a list of hosts that this Treaty instance is cooperating with.
 message GetCooperativeHostsReply {
-	// The authentication result.
-	AuthResult authentication_result = 1;
 	// The list of hosts this Treaty instance is cooperating with.
-	repeated HostInfoStatus hosts = 2;
+	repeated HostInfoStatus hosts = 1;
 	// An error if Treaty was unable to return the list of Hosts.
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Requests the current "DeletesToHost" behavior for the specified database and table.
 message GetDeletesToHostBehaviorRequest {
-	// The authentication request.
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// The table name.
-	string table_name = 3;
+	string table_name = 2;
 }
 
 // Responds with the current "DeletesToHost" behavior.
 message GetDeletesToHostBehaviorReply {
-	// The authentication result.
-	AuthResult authentication_result = 1;
 	// The current behavior for the requested database and table.
 	// This value is defined in the /treaty/treaty-types/enums.rs file. 
-	optional uint32 behavior = 2;
+	optional uint32 behavior = 1;
 	// An error if Treaty was unable to return the current behavior.
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Requests the current "DeletesFromHost" behavior for the specified database and table. 
 message GetDeletesFromHostBehaviorRequest {
-	// The authentication request.
-	AuthRequest authentication = 1;
 	// The database name.
-	string database_name = 2;
+	string database_name = 1;
 	// The table name.
-	string table_name = 3;
+	string table_name = 2;
 }
 
 // Responds with the current "DeletesFromHost" behavior for the specified database and table.
 message GetDeletesFromHostBehaviorReply {
-	// The authentication result.
-	AuthResult authentication_result = 1;
 	// The current behavior for the requested database and table. 
 	// This value is defined in the /treaty/treaty-types/enum.rs file.
-	optional uint32 behavior = 2;
+	optional uint32 behavior = 1;
 	// An error if Treaty was unable to return the current behavior. 
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Requests the current "UpdatesToHost" behavior for the specified database and table. 
 message GetUpdatesToHostBehaviorRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// The table name. 
-	string table_name = 3;
+	string table_name = 2;
 }
 
 // Responds with the current "UpdatesToHost" behavior for the specified database and table.
 message GetUpdatesToHostBehaviorReply {
-	// The authentication result.
-	AuthResult authentication_result = 1;
 	// The current behavior for the for the requested database and table. 
 	// This value is defined in the /treaty/treaty-types/enum.rs file. 
-	optional uint32 behavior = 2;
+	optional uint32 behavior = 1;
 	// An error if Treaty was unable to return the current behavior. 
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Requests the current "UpdatesFromHost" behavior for the specified database and table.
 message GetUpdatesFromHostBehaviorRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// The table name. 
-	string table_name = 3;
+	string table_name = 2;
 }
 
 // Responds with the current "UpdatesFromHost" behavior for the specified database and table.
 message GetUpdatesFromHostBehaviorReply {
-	// The authentication result.
-	AuthResult authentication_result = 1;
 	// The current behavior for the requested database and table. 
 	// This value is defined in the /treaty/treaty-types/enum.rs file. 
-	optional uint32 behavior = 2;
+	optional uint32 behavior = 1;
 	// An error if Treaty was unable to return the current behavior. 
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Replies with the current version of Treaty at this instance,.
 message VersionReply {
-	// The authentication result.
-	AuthResult authentication_result = 1;
 	// The version of Treaty.
-	optional Versions versions = 2;
+	optional Versions versions = 1;
 	// An error if Treaty was unable to return the current version numbers.
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // The version of Treaty.
@@ -366,12 +348,10 @@ message Versions {
 
 // Replies with the current Host Info at this Treaty instance.
 message HostInfoReply {
-	// The authentication result.
-	AuthResult authentication_result = 1;
 	// The host information.
-	optional Host host_info = 2;
+	optional Host host_info = 1;
 	// An error if Treaty was unable to return the current host information. 
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Replies with the result of attempting to revoke the current Json Web Token.
@@ -388,99 +368,76 @@ message TokenReply {
 
 // Requests the current Active Contract for the specified database. 
 message GetActiveContractRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;	
+	string database_name = 1;	
 }
 
 // Replies with the active contract for the specified database. 
 message GetActiveContractReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// The active database contract. 
-	Contract contract = 2;	
+	Contract contract = 1;	
 	// An error if Treaty was unable to return the Active Contract for the specified database. 
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Requests a list of participants for the specified database. 
 message GetParticipantsRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 }
 
 // Replies with the list of Participants for the specified database. 
 message GetParticipantsReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// A list of participants for the specified database. 
-	repeated ParticipantStatus participants = 2;
+	repeated ParticipantStatus participants = 1;
 	// If the request has an error. 
-	bool is_error = 3;
+	bool is_error = 2;
 	// An error if Treaty was unable to return the list of participants for the specified database. 
-	optional TreatyError error = 4;
-}
-
-// Requests a list of the databases at Treaty.
-message GetDatabasesRequest {
-	AuthRequest authentication = 1;
+	optional TreatyError error = 3;
 }
 
 // Replies with the list of databses at Tretay.
 message GetDatabasesReply {
-	// The authentication result.
-	AuthResult authentication_result = 1;
 	// The databases hosted at this Treaty instance.
-	repeated DatabaseSchema databases = 2;
+	repeated DatabaseSchema databases = 1;
 	// An error if Treaty was unable to return the list of databases.
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Requests to accept a pending action at a Participant.
 message AcceptPendingActionRequest {
-	// The authentication request.
-	AuthRequest authentication = 1;
 	// The database name.
-	string database_name = 2;
+	string database_name = 1;
 	// The table name. 
-	string table_name = 3;
+	string table_name = 2;
 	// The row id.
-	uint32 row_id = 4;
+	uint32 row_id = 3;
 }
 
 // Replies with the result of accepting a pending action at a Participant.
 message AcceptPendingActionReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the acceptance of the action is successful.
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// An error if Treaty was unable to accept the action.
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Requests a list of pending actions at a Participant.
 message GetPendingActionsRequest {
-	// The authentication request.
-	AuthRequest authentication = 1;
 	// The database name.
-	string database_name = 2;
+	string database_name = 1;
 	// The table name.
-	string table_name = 3;
+	string table_name = 2;
 	// The type of action we are interested in (UPDATE or DELETE)
-	string action = 4;
+	string action = 3;
 }
 
 // Replies with a list of pending actions (statements).
 message GetPendingActionsReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// A list of pending statements to be executed.
-	repeated PendingStatement pending_statements = 2;
+	repeated PendingStatement pending_statements = 1;
 	// An error if Treaty was unable to get the list of pending actions. 
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // A statement that is queued to be executed at a Treaty instance. 
@@ -499,239 +456,199 @@ message PendingStatement {
 
 // Requests that a data log be enabled for the specified table. 
 message SetDataLogTableStatusRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name.
-	string database_name = 2;
+	string database_name = 1;
 	// The table name. 
-	string table_name = 3;
+	string table_name = 2;
 	// If a data log should be enabled. 
-	bool use_data_log = 4;
+	bool use_data_log = 3;
 }
 
 // Replies with the result of configuring a data log. 
 message SetDataLogTableStatusReply {
-	// The authentication result.
-	AuthResult authentication_result = 1;
 	// If the request was successful or not.
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// An error if Treaty was unable to set the requested status of data logging.
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Requests the status of data logging for the specified table. 
 message GetDataLogTableStatusRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// The table name. 
-	string table_name = 3;
+	string table_name = 2;
 }
 
 // Replies with the status of data logging for the specified table. 
 message GetDataLogTableStatusReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If data logging was configured or not.
-	bool use_data_log = 2;
+	bool use_data_log = 1;
 	// An error if Treaty was unable to get the status of data logging.
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Requests the row ids for the specified WHERE clause. 
 message GetReadRowIdsRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// The table name. 
-	string table_name = 3;
+	string table_name = 2;
 	// The WHERE clause.
-	string where_clause = 4;
+	string where_clause = 3;
 }
 
 // Replies with a list of row ids for the request. 
 message GetReadRowIdsReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// The list of row ids.
-	repeated uint32 row_ids = 2;
+	repeated uint32 row_ids = 1;
 	// An error if Treaty was unable to get the list of affected row ids.
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Requests the saved data hash for the specified row id. 
 message GetDataHashRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// The table name.
-	string table_name = 3;
+	string table_name = 2;
 	// The row id.
-	uint32 row_id = 4;
+	uint32 row_id = 3;
 }
 
 // Returns the requested data hash. 
 message GetDataHashReply {
-	// The authentiation result. 
-	AuthResult authentication_result = 1;
 	// The requested data hash.
-	uint64 dataHash = 2;
+	uint64 dataHash = 1;
 	// An error if Treaty was unable to get the requested data hash. 
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Request to change the "DeletesToHost" behavior. 
 message ChangeDeletesToHostBehaviorRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// The table name. 
-	string table_name = 3;
+	string table_name = 2;
 	// The "DeletesToHost" before setting. 
 	// This value is defined in the /treaty/treaty-types/enums.rs file. 
-	uint32 behavior = 4;
+	uint32 behavior = 3;
 }
 
 // Replies with the result of the request to change the "DeletesToHost" behavior. 
 message ChangeDeletesToHostBehaviorReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the request was successful. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// A message if any additional information is needed. This value can be empty.
-	string message = 3;
+	string message = 2;
 	// An error if Treaty was unable to get the requested data hash. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 3;
 }
 
 // A request to change the "UpdatesToHostBehavior". 
 message ChangeUpdatesToHostBehaviorRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// The table name. 
-	string table_name = 3;
+	string table_name = 2;
 	// The behavior to change to. 
 	// This value is defined in the /treaty/treaty-types/enums.rs file. 
-	uint32 behavior = 4;
+	uint32 behavior = 3;
 }
 
 // Replies with the result of attempting to change the "UpdatesToHost" behavior. 
 message ChangeUpdatesToHostBehaviorReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the request was successful.
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// A message if any additional information is needed. This value can be empty. 
-	string message = 3;
+	string message = 2;
 	// An error if Treaty was unable to set the behavior. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 3;
 }
 
 // Request to change the "DeletesFromHost" behavior. 
 message ChangeDeletesFromHostBehaviorRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// The table name.
-	string table_name = 3;
+	string table_name = 2;
 	// The behavior to change to. 
 	// This value is defined in the /treaty/treaty-types/enums.rs file. 
-	uint32 behavior = 4;
+	uint32 behavior = 3;
 }
 
 // Replies with the result of changing the "DeletesFromHost" behavior. 
 message ChangeDeletesFromHostBehaviorReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the request was successful or not. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// A message if any additional information is available. This value can be empty. 
-	string message = 3;
+	string message = 2;
 	// An error if Treaty was unable to change the behavior. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 3;
 }
 
 // Request to change the "UpdatesFromHost" behavior. 
 message ChangeUpdatesFromHostBehaviorRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// The table name. 
-	string table_name = 3;
+	string table_name = 2;
 	// The behavior to change to. 
 	// This value is defined in the /treaty/treaty-types/enums.rs file. 
-	uint32 behavior = 4;
+	uint32 behavior = 3;
 }
 
 // Replies with the result of changing the "UpdatesFromHost" behavior. 
 message ChangesUpdatesFromHostBehaviorReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the request was successful or not. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// A message with any additional information. This value can be empty. 
-	string message = 3;
+	string message = 2;
 	// An error if Treaty was unable to change the behavior. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 3;
 }
 
 // A request to attempt to authenticate at the specified Participant. This tests to make sure that we 
 // have not been rejected by the specified participant. 
 message TryAuthAtParticipantRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The participant id. 
-	string participant_id = 2;
+	string participant_id = 1;
 	// The participant alias. 
-	string participant_alias = 3;
+	string participant_alias = 2;
 	// The database name.
-	string db_name = 4;
+	string db_name = 3;
 }
 
 // Replies with the result of attempting to autenticate at the specified Participant. 
 message TryAuthAtPartipantReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the result was successful. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// A message with any additional information. This value can be empty. 
-	string message = 3;
+	string message = 2;
 	// An error if Treaty was unable to attempt authentication. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 3;
 }
 
 // Request to change the status of a Host to ALLOW/DENY. 
 message ChangeHostStatusRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The host alias. 
-	string host_alias = 2;
+	string host_alias = 1;
 	// The host id. 
-	string host_id = 3;
+	string host_id = 2;
 	// The status to change for the host. 
 	// This value is defined in the /treaty/treaty-types/enums.rs file. 
-	uint32 status = 4;
+	uint32 status = 3;
 }
 
 // Replies with the result of changing the host status. 
 // This can return "false" if the host id or alias was not found in the database. 
 message ChangeHostStatusReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the request was successful. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// The status the value was changed to. This echoes what was sent. 
-	uint32 status = 3;
+	uint32 status = 2;
 	// An error if Treaty was unable to change the host status. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 3;
 }
 
 // Request to generate host information for Treaty. 
@@ -741,43 +658,35 @@ message ChangeHostStatusReply {
 // ❗ WARNING: If calling this request, this will re-generate the host token which is used to identify this 
 // Treaty instance to other Treaty instances. 
 message GenerateHostInfoRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The friendly host name to use. 
-	string host_name = 2;
+	string host_name = 1;
 }
 
 // Replies with the result of attempting to generate host information.
 message GenerateHostInfoReply {
-	// The authentication result.
-	AuthResult authentication_result = 1;
 	// If creating host information was successful or not.
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// An error if Treaty was unable to generate host information. 
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Requests to send the active database contract ot the specified participant. 
 message SendParticipantContractRequest {
-  // The authentication request.  
-  AuthRequest authentication = 1;
   // The name of the database.
-  string database_name = 2;
+  string database_name = 1;
   // The alias of the participant. 
-  string participant_alias = 3;
+  string participant_alias = 2;
 }
 
 // Replies with the result of sending the active contract to the participant. 
 message SendParticipantContractReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the contract was sent. 
-	bool is_sent = 2;
+	bool is_sent = 1;
 	// The current status of the contract at the participant. 
 	// This is an echo of what the Participant thinks the contract status is.
-	uint32 contract_status = 3;
+	uint32 contract_status = 2;
 	// An error if Treaty was unable to send the active contract to the Participant. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 3;
 }
 
 // A message representing the results of a SQL query.
@@ -794,118 +703,98 @@ message StatementResultset {
 
 // Requests to create a database. 
 message CreateUserDatabaseRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 }
 
 // Delete user database. 
 message DeleteUserDatabaseRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 }
 
 // Replies with the result of deleting a database. 
 message DeleteUserDatabaseReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the database was deleted. 
-	bool is_deleted = 2;
+	bool is_deleted = 1;
 	// A message describing any details if needed. This field can be blank.
-	string message = 3;
+	string message = 2;
 	// An error if Treaty was unable to delete the requested database. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 3;
 }
 
 // Replies with the result of creating a database. 
 message CreateUserDatabaseReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the database was created. 
-	bool is_created = 2;
+	bool is_created = 1;
 	// A message describing any details if needed. This field can be blank.
-	string message = 3;
+	string message = 2;
 	// An error if Treaty was unable to create the requested database. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 3;
 }
 
 // Requests to execute the specified SELECT statement. 
 message ExecuteReadRequest {
-  // The authentication request. 
-  AuthRequest authentication = 1;
   // The database name. 
-  string database_name = 2;
+  string database_name = 1;
   // The SELECT SQL statement. 
-  string sql_statement = 3;
-  // The datababase type (Sqlite, MySQL, Postgres)
-  uint32 database_type = 4;
+  string sql_statement = 2;
+  // The datababase type (Sqlite, Postgres)
+  uint32 database_type = 3;
 }
 
 // Replies with the result of the SELECT statement. 
 message ExecuteReadReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// The total number of result-sets.
-	uint64 total_resultsets = 2;
+	uint64 total_resultsets = 1;
 	// The results of the query. 
-	repeated StatementResultset results = 3;
+	repeated StatementResultset results = 2;
 	// Denotes if there was an error executing the query. 
-	bool is_error = 4;
+	bool is_error = 3;
 	// An error if Treaty was unable to execute the SELECT statement provided. 
-	optional TreatyError error = 5;
+	optional TreatyError error = 4;
 }
 
 // Requests to execute the provided INSERT/UPDATE/DELETE statement. 
 message ExecuteWriteRequest {
-  // The authentication request. 
-  AuthRequest authentication = 1;
   // The database name. 
-  string database_name = 2;
+  string database_name = 1;
   // The INSERT/UPDATE/DELETE statement to execute. 
-  string sql_statement = 3;
-  // The database type (Sqlite, MySQL, Postgres). 
-  uint32 database_type = 4;
+  string sql_statement = 2;
+  // The database type (Sqlite, Postgres). 
+  uint32 database_type = 3;
   // The WHERE clause of the statement, if applicable. 
   // ℹ️ Note: If the "sql_statement" includes a WHERE clause, duplicate the contents here. Otherwise, leave the string empty. 
   // This is needed because of a limitation with Treaty's implementation of Antlr. In the future, hopefully this field will not be needed.
-  string where_clause = 5;
+  string where_clause = 4;
 }
 
 // Replies with the results of the provided INSERT/UPDATE/DELETE statement. 
 message ExecuteWriteReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the statement executed without error. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// The total number of rows the statement affected, if applicable. 
-	uint32 total_rows_affected = 3;
+	uint32 total_rows_affected = 2;
 	// Denotes if there was an error executing the statement. 
-	bool is_error = 4;
+	bool is_error = 3;
 	// An error if Treaty was uanble to execute the INSERT/UPDATE/DELETE statement provided. 
-	optional TreatyError error = 5;
+	optional TreatyError error = 4;
 }
 
 // Requests to find out if the specified table exists. 
 message HasTableRequest {
-  // The authentication request.
-  AuthRequest authentication = 1;
   // The database name. 
-  string database_name = 2;
+  string database_name = 1;
   // The table name. 
-  string table_name = 3;
+  string table_name = 2;
 }
 
 // Replies if the specified table exists. 
 message HasTableReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the table exists or not. 
-	bool has_table = 2;
+	bool has_table = 1;
 	// An error if Treaty was uanble to determine if the specified table exists or not. 
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // A request to generate a contract for the specified database. 
@@ -914,76 +803,64 @@ message HasTableReply {
 // ❗ Note: You will need to ensure that each table in your database has a Logical Storage Policy set before 
 // generating a contract, otherwise this call will fail.  
 message GenerateContractRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// A host name to identify this Treaty instance to others. 
-	string host_name = 2;
+	string host_name = 1;
 	// A general description for the contract. 
 	// This will be made visible to Participants. 
-	string description = 3;
+	string description = 2;
 	// The name of the database this contract is for. 
-	string database_name = 4;
+	string database_name = 3;
 	// The Remote Delete Behavior for this Host for this contract. 
 	// This value is defined in the /treaty/treaty-types/enums.rs file.
-	uint32 remote_delete_behavior = 5;
+	uint32 remote_delete_behavior = 4;
 }
 
 // Replies with the status of generating a contract for the specified database.  
 message GenerateContractReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If contract generation was successful. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// A message providing any additional details. This value can be empty. 
-	string message = 3;
+	string message = 2;
 	// An error if Treaty was unable to generate the contract. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 3;
 }
 
 // Requests Treaty to set the specified Logical Storage Policy for the specified table. 
 message SetLogicalStoragePolicyRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// The table name. 
-	string table_name = 3;
+	string table_name = 2;
 	// The policy to set the table to. 
 	// This value is defined in the /treaty/treaty-types/enums.rs file.
-	uint32 policy_mode = 4;
+	uint32 policy_mode = 3;
 }
 
 // Replies with the result of setting the Logical Storage Policy for the specified table. 
 message SetLogicalStoragePolicyReply {
-	// The authentication result. 
-	AuthResult authentication_result  = 1;
 	// If the request was successful. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// A message providing any additional information. This value can be empty. 
-	string message = 3;
+	string message = 2;
 	// An error if Treaty was unable to generate the contract. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 3;
 }
 
 // Request the current Logical Storage Policy for the specified table. 
 message GetLogicalStoragePolicyRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// The table name. 
-	string table_name = 3;
+	string table_name = 2;
 }
 
 // Replies with the current Logical Storage Policy for the specified table. 
 message GetLogicalStoragePolicyReply {
-	// The authentication result. 
-	AuthResult authentication_result  = 1;
 	// The current Logical Storage policy for the requested table. 
 	// This value is defined in the /treaty/treaty-types/enums.rs file.
-	uint32 policy_mode = 2;
+	uint32 policy_mode = 1;
 	// An error if Treaty was unable to get the Logical Storage Policy for the specified table. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 2;
 }
 
 // Requests Treaty to execute the specified INSERT/UPDATE/DELETE statement both at the 
@@ -992,50 +869,46 @@ message GetLogicalStoragePolicyReply {
 // will keep metadata about the action at the Host. 
 // For more information, see the README.md or the manual. 
 message ExecuteCooperativeWriteRequest {
-  // The authentaction request. 
-  AuthRequest authentication = 1;
   // The name of the database. 
-  string database_name = 2;
+  string database_name = 1;
   // The INSERT/UPDATE/DELETE statement to execute at the Participant. 
-  string sql_statement = 3;
-  // The type of database: Sqlite, MySQL, Postgres. 
+  string sql_statement = 2;
+  // The type of database: Sqlite, Postgres. 
   // This value is defined in the /treaty/treaty-types/enums.rs file.
-  uint32 database_type = 4;
+  uint32 database_type = 3;
   // The participant alias this statement is for. 
-  string alias = 5;
+  string alias = 4;
   // The participant id this statement is for. 
-  string participant_id = 6;
+  string participant_id = 5;
   // The WHERE clause of the INSERT/UPDATE/STATEMENT. For technical reasons this needs to be the same as in the "sql_statement" field 
   // if applicable. This field can be empty. 
-  string where_clause = 7;
+  string where_clause = 6;
 }
 
 // Replies with the result of Cooperative Write. 
 message ExecuteCooperativeWriteReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the result was successful. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// The total number of rows affected by the INSERT/UPDATE/DELETE statement. 
-	uint32 total_rows_affected = 3;
+	uint32 total_rows_affected = 2;
 	// An error if Treaty was unable to execute the Cooperative Write. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 3;
 }
 
 // Request to add the Participant to the specified database. 
 message AddParticipantRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// An alias for this participant. 
-	string alias = 3;
+	string alias = 2;
 	// The IP address for this Participant, in IP 4 format. 
-	string ip4_address = 4;
+	string ip4_address = 3;
 	// The database port number for this Participant. 
-	uint32 port = 5;
+	optional uint32 db_port = 4;
+	// The info port number for this Participant. 
+	uint32 info_port = 5;
 	// The HTTP address for this Participant. 
-	string http_addr =  6;
+	string http_addr = 6;
 	// The HTTP port for this Participant. 
 	uint32 http_port = 7;
 	// The Host Id for this participant. This field is optional. This is used if Treaty is being hosted by a 
@@ -1046,30 +919,20 @@ message AddParticipantRequest {
 
 // Replies with the result of adding a Participant. 
 message AddParticipantReply {
-	// The authentication result.
-	AuthResult authentication_result = 1;
 	// If adding the Participant was successful. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// A message describing any additional details if needed. This field can be empty.
-	string message = 3;
+	string message = 2;
 	// An error if Treaty was unable to add the Participant. 
-	optional TreatyError error = 4;
-}
-
-// Requests to view a list of all contracts Treaty has that are in a Pending state,. 
-message ViewPendingContractsRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
+	optional TreatyError error = 3;
 }
 
 // Replies with a list of pending contracts. 
 message ViewPendingContractsReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// A list of contracts that are in a pending state. This list may be empty. 
-	repeated Contract contracts = 2;
+	repeated Contract contracts = 1;
 	// An error if Treaty was unable to get the list of pending contracts. 
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Requests Treaty to accept the pending contract from the specified Host,. 
@@ -1077,71 +940,60 @@ message ViewPendingContractsReply {
 // and will create additional meta-data structures to support the contract. 
 // For more information, see the manual. 
 message AcceptPendingContractRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The host that has sent us the pending contract. 
-	string host_alias = 2;
+	string host_alias = 1;
 }
 
 // Replies with the result of accepting a pending contract,. 
 message AcceptPendingContractReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the request was successful. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// A message with any additional information. This field may be blank. 
-	string message = 3;
+	string message = 2;
 	// An error if Treaty was unable to accept the pending contract. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 3;
 }
 
 // Requests that Treaty reject the pending contract from the specified host,. 
 // This sends a message back to the Host that we are not interested in this contract. No database changes are made. 
 // For more information, see the manual. 
 message RejectPendingContractRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The alias of the host. 
-	string host_alias = 2;
+	string host_alias = 1;
 }
 
 // Replies with the result of rejecting a pending contract.  
 message RejectPendingContractReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the rejection was successful. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// A message with any additional information. This field may be blank. 
-	string message = 3;
+	string message = 2;
 	// An error if Treaty was unable to reject the pending contract. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 3;
 }
 
 // Requests that Treaty enable cooperative features for a database, if authentiated. 
 // This modifies the database with additional structures to support adding Participants and other related actions. 
 // For more information, see the manual. 
 message EnableCoooperativeFeaturesRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name to enable cooperative features. 
-	string database_name = 2;
+	string database_name = 1;
 }
 
 // Replies with the result of enabling cooperative features,. 
 message EnableCoooperativeFeaturesReply {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If enabling cooperative features was successful. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// A message containing any additional details. This field may be blank. 
-	string message = 3;
+	string message = 2;
 	// An error if Treaty was unable to enable cooperative features on the specified database. 
-	optional TreatyError error = 4;
+	optional TreatyError error = 3;
 }
 
 /**
  * A service that a Treaty instance can talk to other Treaty instances.
  * Generally defaults to port 50052. See the "Settings.toml" file for configuration.
+ * 🔐 These calls require authentication. 
  */
 service DataService {
 	// A call to see if the service is available. 
@@ -1158,64 +1010,50 @@ service DataService {
 	rpc DeleteCommandIntoTable(DeleteDataRequest) returns (DeleteDataResult);
 	// Requests a specific row from a partial database. 
 	rpc GetRowFromPartialDatabase(GetRowFromPartialDatabaseRequest) returns (GetRowFromPartialDatabaseResult);
-	// Request to save a Contract; usually to be later Accepted or Rejected. 
-	rpc SaveContract(SaveContractRequest) returns (SaveContractResult);
-	// Notification that a Participant has accepted a contract. 
-	rpc AcceptContract(ParticipantAcceptsContractRequest) returns (ParticipantAcceptsContractResult);
 	// Notification that a data hash has changed at a Participant. 
 	rpc UpdateRowDataHashForHost(UpdateRowDataHashForHostRequest) returns (UpdateRowDataHashForHostResult);
 	// Notification that a row in a partial database has been removed at a Participant. 
 	rpc NotifyHostOfRemovedRow(NotifyHostOfRemovedRowRequest) returns (NotifyHostOfRemovedRowResult);
 	// Check if we can authenticate at this Treaty instance. 
-	rpc TryAuth(TryAuthRequest) returns (TryAuthResult);
-}
-
-// A request to validate that we have access to this Treaty instance. 
-message TryAuthRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
+	rpc TryAuth(google.protobuf.Empty) returns (TryAuthResult);
 }
 
 // Replies with the authentication result. 
 message TryAuthResult {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
+	// returns if the authentication is valid
+	bool is_authenticated = 1;
 }
 
 // A message for creating a table in a database.
 message CreateTableRequest {
-	// The user requesting the table creation.
-	AuthRequest authentication = 1;
 	// The database in which to create the table.
-	string database_name = 2;
+	string database_name = 1;
 	// The database GUID in which to create the table.
-	string database_guid = 3;
+	string database_guid = 2;
 	// The name of the table to create.
-	string table_name = 4;
+	string table_name = 3;
 	// A list of columns for the table.
-	repeated ColumnSchema columns = 5;
+	repeated ColumnSchema columns = 4;
 }
 
 // A message for describing the result of a CreateTableRequest.
 message CreateTableResult {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the table was created. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// The name of the database the table was created in. 
-	string database_name = 3;
+	string database_name = 2;
 	// Any additional information if needed. This field can be blank. 
-	string result_message = 4;
+	string result_message = 3;
 	// The database id the table was created in. 
-	string database_id = 5;
+	string database_id = 4;
 	// The table name that was created. This should line up with the request made and is intended for confirmation. 
-	string table_name = 6;
+	string table_name = 5;
 	// The table id that was created. 
-	string table_id = 7;
+	string table_id = 6;
 	// If the request failed in any manner. 
-	bool is_error = 8;
+	bool is_error = 7;
 	// An error detailing if the request failed in any manner. 
-	optional TreatyError error = 9;
+	optional TreatyError error = 8;
 }
 
 // A message describing the details of a row in a partial database. 
@@ -1234,129 +1072,114 @@ message RowInfo {
 //❗ Warning: At the moment, Treaty can only handle simple INSERT statements for a single row. 
 // For more information, see the manual. 
 message InsertDataRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// The table name. 
-	string table_name = 3;
+	string table_name = 2;
 	// The actual INSERT statement. 
 	// Note: while this is duplicative, at the moment the contents of this INSERT statement must match the database and table name. 
-	string cmd = 4;
+	string cmd = 3;
 }
 
 // A result of executing an INSERT statement against a partial database.  
 message InsertDataResult {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the result was successful. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// A hash of the data inserted. 
-	uint64 data_hash = 3;
+	uint64 data_hash = 2;
 	// An additional message if needed. This field can be blank. 
-	string message = 4;
+	string message = 3;
 	// The row id of the record inserted. 
-	uint32 row_id = 5;
+	uint32 row_id = 4;
 	// If there was an error executing the INSERT statement. 
-	bool is_error = 6;
+	bool is_error = 5;
 	// An error detailing if the request failed. 
-	optional TreatyError error = 7;
+	optional TreatyError error = 6;
 }
 
 // A request for Treaty to execute the specified UPDATE statement if authentiated. 
 //❗ Warning: At the moment, Treaty can only handle simple UPDATE statements. 
 // For more information, see the manual. 
 message UpdateDataRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// The table name. 
-	string table_name = 3;
+	string table_name = 2;
 	// The actual UPDATE statement. 
-	string cmd = 4;
-	string where_clause = 5;
+	string cmd = 3;
+	// The where clause
+	string where_clause = 4;
 }
 
 // Replies with the result of executing the provided UPDATE statement. 
 message UpdateDataResult {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the UPDATE statement was successful. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// A message describing any additional details. This field can be blank. 
-	string message = 3;
+	string message = 2;
 	// A copy of the rows that were affected. 
-	repeated RowInfo rows = 4;
+	repeated RowInfo rows = 3;
 	// The status of the actual update. Values are: 
 	// 0 - unknown
 	// 1 - success (overwrite or overwrite with log)
 	// 2 - pending (queue for review)
 	// 3 - ignored (ignore)
 	// Note: These values are defined in the /treaty/treaty-types/enums.rs file. 
-	uint32 update_status = 5;
+	uint32 update_status = 4;
 	// If there was an error executing the UPDATE statement. 
-	bool is_error = 6;
+	bool is_error = 5;
 	// Any details if there was an error executing the UPDATE statement. 
-	optional TreatyError error = 7;
+	optional TreatyError error = 6;
 }
 
 // A request for Treaty to execute the provided DELETE statement. 
 //❗ Warning: At the moment, Treaty can only handle simple UPDATE statements. 
 // For more information, see the manual. 
 message DeleteDataRequest {
-	// The authentication requestl 
-	AuthRequest authentication = 1;
 	// The database name. 
-	string database_name = 2;
+	string database_name = 1;
 	// The table name. 
-	string table_name = 3;
+	string table_name = 2;
 	// The actual DELETE statement. 
 	// Note: This DELETE statement needs to match the field specified prior. 
-	string cmd = 4;
+	string cmd = 3;
 	//❗ The WHERE clause of the delete statement. This field needs to match the WHERE clause if there is one in the prior field. 
 	// Otherwise, this field can be left blank. 
-	string where_clause = 5;
+	string where_clause = 4;
 }
 
 // Describes the result of Treaty executing the specified DELETE statement. 
 message DeleteDataResult {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the command was successfully executed. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// A message providing further details if needed. This field can be blank. 
-	string message = 3;
+	string message = 2;
 	// A message describing details of the rows impacted. 
-	repeated RowInfo rows = 4;
+	repeated RowInfo rows = 3;
 	// Denotes if there was an error executing the DELETE statement. 
-	bool is_error = 5;
+	bool is_error = 4;
 	// An error describing details if needed. 
-	optional TreatyError error = 6;
+	optional TreatyError error = 5;
 }
 
 // A request to get a specified row from a partial database. 
 message GetRowFromPartialDatabaseRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// The row which to get. 
-	RowParticipantAddress row_address = 2;
+	RowParticipantAddress row_address = 1;
 	// Additional details for debugging purposes.
-	Telemetry Telemetry = 3;
+	Telemetry Telemetry = 2;
 }
 
 // A response containing the specified row requested,. 
 message GetRowFromPartialDatabaseResult {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the request was successful.
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// Any additional details if needed. This field can be blank. 
-	string result_message = 3;
+	string result_message = 2;
 	// The actual row requested. 
-	Row row = 4;
+	Row row = 3;
 	// An error if Treaty was unable to get the specified row. 
-	optional TreatyError error = 5;
+	optional TreatyError error = 4;
 }
 
 // A message from a host to a participant to save a contract.
@@ -1413,66 +1236,58 @@ message ParticipantAcceptsContractResult {
 
 // Request from a Participant to a Host to update the data hash.
 message UpdateRowDataHashForHostRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// Additional telemetry for debugging. 
-	Telemetry Telemetry = 2;
+	Telemetry Telemetry = 1;
 	// The host information this data hash came from (from the perspective of the Host, this is the Participant's information).
-	Host host_info = 3;
+	Host host_info = 2;
 	// The database name. 
-	string database_name = 4;
+	string database_name = 3;
 	// The database id. 
-	string database_id = 5;
+	string database_id = 4;
 	// The table name. 
-	string table_name = 6;
+	string table_name = 5;
 	// The table id. 
-	uint32 table_id = 7;
+	uint32 table_id = 6;
 	// The row id. 
-	uint32 row_id = 8;
+	uint32 row_id = 7;
 	// The new hash value for the row. 
-	uint64 updated_hash_value = 9;
+	uint64 updated_hash_value = 8;
 	// If the row is deleted. 
-	bool is_deleted_at_participant = 10;
+	bool is_deleted_at_participant = 9;
 }
 
 // Replies with the result of the update data hash request. 
 message UpdateRowDataHashForHostResult {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the message was successful. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// An error if the updated data hash could not be sent. 
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // Request to notify the upstream Host that a row has been deleted. 
 message NotifyHostOfRemovedRowRequest{
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// Debugging information about the sender of this message. 
-	Telemetry Telemetry = 2;
+	Telemetry Telemetry = 1;
 	// The host information. From an upstream Host's perspective, this is the Participant. 
-	Host host_info = 3;
+	Host host_info = 2;
 	// The database name. 
-	string database_name = 4;
+	string database_name = 3;
 	// The database id. 
-	string database_id = 5;
+	string database_id = 4;
 	// The table name.
-	string table_name = 6;
+	string table_name = 5;
 	// The table id. 
-	uint32 table_id = 7;
+	uint32 table_id = 6;
 	// The row id. 
-	uint32 row_id = 8;
+	uint32 row_id = 7;
 }
 
 // The result of notifying the upstream Host that a row has been deleted. 
 message NotifyHostOfRemovedRowResult {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the notification was successful. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// An error if Treaty was not able to notify the upstream Host. 
-	optional TreatyError error = 3;
+	optional TreatyError error = 2;
 }
 
 // A message for basic online testing.
@@ -1514,24 +1329,51 @@ message Telemetry {
 }
 
 // Credentials to authenticate against Treaty.
-message AuthRequest {
-  // The name of the user.
-  string user_name = 1;
-  // The pw of the user.
-  string pw = 2;
-  // A hash of the pw of the user. 
-  bytes pw_hash = 3;
-  // A generated token of the pw of the user.
-  bytes token = 4;
-  // A Json Web Token in place of credentials.
-  string jwt = 5;
-  // An optional Host Id of the Treaty instance. This is used when talking to a `treaty-proxy` instance.
-  optional string id = 6;
+message AuthRequestBasic {
+	// The name of the user.
+	string user_name = 1;
+	// The pw of the user.
+	string pw = 2;
+  }
+
+  // Credentials to authenticate against Treaty.
+message AuthRequestWebToken {
+	// A Json Web Token in place of credentials.
+	string jwt = 1;
+  }
+
+  // Credentials to authenticate against Treaty.
+message AuthRequestBinary {
+	// The name of the user.
+	string user_name = 1;
+	// A generated token of the pw of the user.
+	bytes token = 2;
+  }
+
+  // Additional metadata to support authorization actions.
+message AuthRequestMetadata {
+	 // An optional Host Id of the Treaty instance. This is used when talking to a `treaty-proxy` instance.
+	 optional string id = 1;
+	 // The name of the database to verify authorization, if applicable. This is usually in
+	 // the case of Participants sending messages back to the Host. 
+	 optional string db_name = 2;
+}
+
+// A message explaining the author of the request. Maps to the treaty-types enum of the same name.
+// Values are:
+// - 0 - Unknown
+// - 1 - User
+// - 2 - Data
+// - 3 - Participant
+message AuthRequestAuthor {
+	 // The type who is making the request: a user or a type of 
+	 // Treaty instance.
+	 uint32 author_type = 1;
 }
 
 // A message describing the results of an authentication attempt.
 message AuthResult {
-	//. 
+	// If the authentication attempt was successful.
 	bool is_authenticated = 1;
 	// An optional message for any additional information. 
 	optional string message = 2;
@@ -1539,28 +1381,24 @@ message AuthResult {
 
 // A message for creating a partial database.
 message CreatePartialDatabaseRequest {
-	// The authentication request. 
-	AuthRequest authentication = 1;
 	// Additional debugging information. 
-	Telemetry Telemetry = 2;
+	Telemetry Telemetry = 1;
 	// The database name. 
-	string database_name = 3;
+	string database_name = 2;
 }
 
 // A message describing the results of a CreateDatabaseRequest.
 message CreatePartialDatabaseResult {
-	// The authentication result. 
-	AuthResult authentication_result = 1;
 	// If the partial database creation was successful. 
-	bool is_successful = 2;
+	bool is_successful = 1;
 	// The name of the database. 
-	string database_name = 3;
+	string database_name = 2;
 	// The id of the database. 
-	string databaseId = 4;
+	string databaseId = 3;
 	// If there was an error creating the database. 
-	bool is_error = 5;
+	bool is_error = 4;
 	// An error describing what happened during the request, if applicable. 
-	optional TreatyError error = 6;
+	optional TreatyError error = 5;
 }
 
 // An object for representing a row in a table. Used for returning data.
@@ -1651,14 +1489,16 @@ message Participant {
 	string ip6_address = 4;
 	// The database port number. 
 	uint32 database_port_number = 5;
+	// The info port number
+	uint32 info_port_number = 6;
 	// A token used for authentication. 
-	bytes token = 6;
+	bytes token = 7;
 	// An internal generated GUID/UUID for the Participant. 
-	string internal_participant_guid = 7;
+	string internal_participant_guid = 8;
 	// The HTTP address.
-	string http_addr = 8;
+	string http_addr = 9;
 	// The HTTP port number. 
-	uint32 http_port = 9;
+	uint32 http_port = 10;
 }
 
 // The status of a Participant at a Host. 
@@ -1694,6 +1534,8 @@ message HostNetwork {
 	optional string http_addr = 7;
 	// The HTTP port. 
 	optional uint32 http_port = 8;
+	// The information port number
+	optional uint32 info_port_number = 9;
 }
 
 // A message describing the latest status of a Host. 
@@ -1715,7 +1557,7 @@ message DatabaseSchema {
 	string database_id = 2;
 	// The tables of the database. 
 	repeated TableSchema tables = 3;
-	// The type of database: Sqlite, Postgres, or MySQL. 
+	// The type of database: Sqlite or Postgres. 
 	// This value is defined in the /treaty/treaty-types/enums.rs file. 
 	uint32 database_type = 4;
 	// The type of Treaty database; i.e. A Host, Partial, or internal Treaty system database. 
@@ -1753,4 +1595,36 @@ message RowParticipantAddress {
 	string table_name = 2;
 	// The row id. 
 	uint32 row_id = 3;
+}
+
+// A message with ports available. These values can be empty depending on what the Treaty host has configured.
+message TreatyPorts {
+	// The public info port used to provide general public information
+	optional uint32 info_port = 1;
+	// The data port used for Treaty to Treaty operations
+	optional uint32 data_port = 2;
+	// The client port, used for application developer or admin user operations
+	optional uint32 user_port = 3;
+}
+
+/**
+ * A service that can be queried for general or unauthenticated activities.
+ * It can also provide authentication as needed.
+ * Generally defaults to port 50059. See the "Settings.toml" file for configuration.
+ * 🔓 These calls generally do not require authentication, unless explicitly seeking to generate an authentication token.
+ */
+service InfoService {
+	// Denotes if the instance is online.
+	rpc IsOnline(TestRequest) returns (TestReply); 
+	// Request to save a Contract; usually to be later Accepted or Rejected. 
+	rpc SaveContract(SaveContractRequest) returns (SaveContractResult);
+	// Request to get the public available ports on this instance
+	rpc PortsAvailable(google.protobuf.Empty) returns (TreatyPorts);
+	// Notification that a Participant has accepted a contract. 
+	rpc AcceptContract(ParticipantAcceptsContractRequest) returns (ParticipantAcceptsContractResult);
+	// Attempts to see if the supplied token is valid
+	rpc TryAuthWebToken(AuthRequestWebToken) returns (TryAuthResult);
+	// Requests Treaty to generate a Json Web Token for the credentials provided.
+	// Note: This call is the same as the one on the User service.
+	rpc AuthForToken (AuthRequestBasic) returns (TokenReply);
 }

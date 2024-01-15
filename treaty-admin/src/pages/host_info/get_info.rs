@@ -5,7 +5,7 @@ use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
 
 use crate::{
     log::log_to_console,
-    request::{self, clear_status, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, set_status, get_client},
 };
 
 #[function_component]
@@ -21,10 +21,9 @@ pub fn GetInfo() -> Html {
         let host_info = host_info.clone();
         Callback::from(move |_| {
             let host_info = host_info.clone();
-            let token = get_token();
-            let url = format!("{}{}", token.addr, GET_HOST_INFO);
+            let client = get_client();
+            let url = format!("{}{}", client.user_addr_port(), GET_HOST_INFO);
 
-            let request_json = token.auth_json();
 
             let cb = Callback::from(move |response: Result<AttrValue, String>| {
                 if let Ok(ref x) = response {
@@ -33,23 +32,14 @@ pub fn GetInfo() -> Html {
                     let host_info = host_info.clone();
                     let reply: HostInfoReply = serde_json::from_str(x).unwrap();
 
-                    let is_authenticated = reply
-                        .authentication_result
-                        .as_ref()
-                        .unwrap()
-                        .is_authenticated;
-                    update_token_login_status(is_authenticated);
-
-                    if is_authenticated {
-                        host_info.set(reply.host_info.unwrap());
-                    }
+                    host_info.set(reply.host_info.unwrap());
                 } else {
                     let error_message = response.err().unwrap();
                     set_status(error_message);
                 }
             });
 
-            request::post(url, request_json, cb);
+            request::post(url, "".to_string(), cb);
         })
     };
 

@@ -1,8 +1,6 @@
 use indexmap::IndexMap;
 
-use crate::{types::treaty_proto::TableSchema, formatter::build_table};
-
-
+use crate::{formatter::build_table, types::treaty_proto::TableSchema};
 
 /// returns a markdown table with column name, column data type
 pub fn table_schema_to_markdown_table(table: &TableSchema) -> String {

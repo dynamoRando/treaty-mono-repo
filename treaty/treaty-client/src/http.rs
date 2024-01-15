@@ -1,85 +1,109 @@
-use crate::{client_actions::ClientActions, Auth};
+use crate::client_actions::ClientActions;
 use async_trait::async_trait;
-use reqwest::Client;
 use serde::de;
 use stdext::function_name;
-use tracing::trace;
-
-use treaty_http_endpoints::client::{
-    ACCEPT_PENDING_ACTION, ACCEPT_PENDING_CONTRACT, ADD_PARTICIPANT, AUTH_FOR_TOKEN,
-    CHANGE_DELETES_FROM_HOST_BEHAVIOR, CHANGE_DELETES_TO_HOST_BEHAVIOR, CHANGE_HOST_STATUS_ID,
-    CHANGE_HOST_STATUS_NAME, CHANGE_UPDATES_FROM_HOST_BEHAVIOR, CHANGE_UPDATES_TO_HOST_BEHAVIOR,
-    COOPERATIVE_WRITE_SQL_AT_HOST, ENABLE_COOPERATIVE_FEATURES, GENERATE_CONTRACT,
-    GENERATE_HOST_INFO, GET_ACTIVE_CONTRACT, GET_COOP_HOSTS, GET_DATABASES, GET_DATA_HASH_AT_HOST,
-    GET_DATA_HASH_AT_PARTICIPANT, GET_DELETES_FROM_HOST_BEHAVIOR, GET_DELETES_TO_HOST_BEHAVIOR,
-    GET_HOST_INFO, GET_PARTICIPANTS, GET_PENDING_ACTIONS, GET_POLICY, GET_ROW_AT_PARTICIPANT,
-    GET_SETTINGS, GET_UPDATES_FROM_HOST_BEHAVIOR, GET_UPDATES_TO_HOST_BEHAVIOR, HAS_TABLE,
-    IS_ONLINE, NEW_DATABASE, READ_SQL_AT_HOST, READ_SQL_AT_PARTICIPANT, REVOKE_TOKEN,
-    SEND_CONTRACT_TO_PARTICIPANT, SET_POLICY, TRY_AUTH_PARTICIPANT, VIEW_PENDING_CONTRACTS,
-    WRITE_SQL_AT_HOST, WRITE_SQL_AT_PARTICIPANT
-};
-use treaty_types::enums::*;
+use tracing::{trace, warn};
 use treaty::{
+    settings::HttpTlsClientOptions,
     treaty_proto::{
         AcceptPendingActionReply, AcceptPendingActionRequest, AcceptPendingContractReply,
-        AcceptPendingContractRequest, AddParticipantReply, AddParticipantRequest, AuthRequest,
+        AcceptPendingContractRequest, AddParticipantReply, AddParticipantRequest,
+        AuthRequestAuthor, AuthRequestBasic, AuthRequestMetadata, AuthRequestWebToken,
         ChangeDeletesFromHostBehaviorReply, ChangeDeletesFromHostBehaviorRequest,
         ChangeDeletesToHostBehaviorReply, ChangeDeletesToHostBehaviorRequest,
         ChangeHostStatusReply, ChangeHostStatusRequest, ChangeUpdatesFromHostBehaviorRequest,
         ChangeUpdatesToHostBehaviorReply, ChangeUpdatesToHostBehaviorRequest,
         ChangesUpdatesFromHostBehaviorReply, Contract, CreateUserDatabaseReply,
-        CreateUserDatabaseRequest, EnableCoooperativeFeaturesReply,
-        EnableCoooperativeFeaturesRequest, ExecuteCooperativeWriteReply,
-        ExecuteCooperativeWriteRequest, ExecuteReadReply, ExecuteReadRequest, ExecuteWriteReply,
-        ExecuteWriteRequest, GenerateContractReply, GenerateContractRequest, GenerateHostInfoReply,
-        GenerateHostInfoRequest, GetActiveContractReply, GetActiveContractRequest,
-        GetCooperativeHostsReply, GetCooperativeHostsRequest, GetDataHashReply, GetDataHashRequest,
-        GetDatabasesReply, GetDatabasesRequest, GetDeletesFromHostBehaviorReply,
-        GetDeletesFromHostBehaviorRequest, GetDeletesToHostBehaviorReply,
-        GetDeletesToHostBehaviorRequest, GetLogicalStoragePolicyReply,
-        GetLogicalStoragePolicyRequest, GetParticipantsReply, GetParticipantsRequest,
-        GetPendingActionsReply, GetPendingActionsRequest, GetReadRowIdsReply, GetReadRowIdsRequest,
-        GetSettingsReply, GetSettingsRequest, GetUpdatesFromHostBehaviorReply,
-        GetUpdatesFromHostBehaviorRequest, GetUpdatesToHostBehaviorReply,
-        GetUpdatesToHostBehaviorRequest, HasTableReply, HasTableRequest, HostInfoReply,
-        RevokeReply, SendParticipantContractReply, SendParticipantContractRequest,
-        SetLogicalStoragePolicyReply, SetLogicalStoragePolicyRequest, StatementResultset,
-        TestReply, TestRequest, TokenReply, TreatyError, TryAuthAtParticipantRequest,
-        TryAuthAtPartipantReply, ViewPendingContractsReply, ViewPendingContractsRequest,
+        CreateUserDatabaseRequest, DeleteUserDatabaseReply, DeleteUserDatabaseRequest,
+        EnableCoooperativeFeaturesReply, EnableCoooperativeFeaturesRequest,
+        ExecuteCooperativeWriteReply, ExecuteCooperativeWriteRequest, ExecuteReadReply,
+        ExecuteReadRequest, ExecuteWriteReply, ExecuteWriteRequest, GenerateContractReply,
+        GenerateContractRequest, GenerateHostInfoReply, GenerateHostInfoRequest,
+        GetActiveContractReply, GetActiveContractRequest, GetBackingDatabaseConfigReply,
+        GetCooperativeHostsReply, GetDataHashReply, GetDataHashRequest, GetDatabasesReply,
+        GetDeletesFromHostBehaviorReply, GetDeletesFromHostBehaviorRequest,
+        GetDeletesToHostBehaviorReply, GetDeletesToHostBehaviorRequest,
+        GetLogicalStoragePolicyReply, GetLogicalStoragePolicyRequest, GetParticipantsReply,
+        GetParticipantsRequest, GetPendingActionsReply, GetPendingActionsRequest,
+        GetReadRowIdsReply, GetReadRowIdsRequest, GetSettingsReply,
+        GetUpdatesFromHostBehaviorReply, GetUpdatesFromHostBehaviorRequest,
+        GetUpdatesToHostBehaviorReply, GetUpdatesToHostBehaviorRequest, HasTableReply,
+        HasTableRequest, HostInfoReply, RevokeReply, SendParticipantContractReply,
+        SendParticipantContractRequest, SetLogicalStoragePolicyReply,
+        SetLogicalStoragePolicyRequest, StatementResultset, TestReply, TestRequest, TokenReply,
+        TreatyError, TryAuthAtParticipantRequest, TryAuthAtPartipantReply, TryAuthResult,
+        ViewPendingContractsReply,
     },
 };
+use treaty_http_endpoints::{
+    client::{
+        ACCEPT_PENDING_ACTION, ACCEPT_PENDING_CONTRACT, ADD_PARTICIPANT, AUTH_FOR_TOKEN,
+        CHANGE_DELETES_FROM_HOST_BEHAVIOR, CHANGE_DELETES_TO_HOST_BEHAVIOR, CHANGE_HOST_STATUS_ID,
+        CHANGE_HOST_STATUS_NAME, CHANGE_UPDATES_FROM_HOST_BEHAVIOR,
+        CHANGE_UPDATES_TO_HOST_BEHAVIOR, COOPERATIVE_WRITE_SQL_AT_HOST, DB_TYPE,
+        DELETE_DATABASE_FORCE, ENABLE_COOPERATIVE_FEATURES, GENERATE_CONTRACT, GENERATE_HOST_INFO,
+        GET_ACTIVE_CONTRACT, GET_COOP_HOSTS, GET_DATABASES, GET_DATA_HASH_AT_HOST,
+        GET_DATA_HASH_AT_PARTICIPANT, GET_DELETES_FROM_HOST_BEHAVIOR, GET_DELETES_TO_HOST_BEHAVIOR,
+        GET_HOST_INFO, GET_PARTICIPANTS, GET_PENDING_ACTIONS, GET_POLICY, GET_ROW_AT_PARTICIPANT,
+        GET_SETTINGS, GET_UPDATES_FROM_HOST_BEHAVIOR, GET_UPDATES_TO_HOST_BEHAVIOR, HAS_TABLE,
+        IS_ONLINE, NEW_DATABASE, READ_SQL_AT_HOST, READ_SQL_AT_PARTICIPANT, REVOKE_TOKEN,
+        SEND_CONTRACT_TO_PARTICIPANT, SET_POLICY, TRY_AUTH_PARTICIPANT, VIEW_PENDING_CONTRACTS,
+        WRITE_SQL_AT_HOST, WRITE_SQL_AT_PARTICIPANT,
+    },
+    headers::{
+        TREATY_AUTH_HEADER_AUTHOR, TREATY_AUTH_HEADER_BASIC, TREATY_AUTH_HEADER_METADATA,
+        TREATY_AUTH_HEADER_WEB_TOKEN,
+    },
+    info::{INFO_AUTH_FOR_TOKEN, INFO_TRY_AUTH},
+};
+use treaty_types::enums::*;
 
 #[derive(Debug, Clone)]
 pub struct HttpClient {
-    pub addr: String,
-    pub port: u32,
-    pub http_client: Option<Client>,
-    pub auth: Auth,
+    user_service_address: String,
+    user_service_port: u32,
+    info_service_addres: String,
+    info_service_port: u32,
+    basic_auth: AuthRequestBasic,
+    token_auth: Option<AuthRequestWebToken>,
     timeout_in_seconds: u32,
-    send_jwt_if_available: bool,
     // when talking to a treaty-proxy instance, send the host_id to identify which account you want
     host_id: Option<String>,
+    /// use TLS
+    use_tls: bool,
+    /// Optional: Tls Client settings, used for local tests
+    opt_tls_settings: Option<HttpTlsClientOptions>,
 }
 
 impl HttpClient {
     pub async fn new(
-        addr: &str,
-        port: u32,
-        auth: Auth,
+        user_service_address: &str,
+        user_service_port: u32,
+        info_service_address: &str,
+        info_service_port: u32,
+        username: &str,
+        pw: &str,
         timeout_in_seconds: u32,
-        send_jwt_if_available: bool,
         host_id: Option<String>,
+        use_tls: bool,
+        opt_tls_settings: Option<HttpTlsClientOptions>,
     ) -> Self {
-        let http = reqwest::Client::new();
+        let basic_auth = AuthRequestBasic {
+            user_name: username.to_string(),
+            pw: pw.to_string(),
+        };
 
         Self {
-            addr: addr.to_string(),
-            port,
-            http_client: Some(http),
-            auth,
+            user_service_address: user_service_address.to_string(),
+            user_service_port,
+            info_service_addres: info_service_address.to_string(),
+            info_service_port,
+            basic_auth,
+            token_auth: None,
             timeout_in_seconds,
-            send_jwt_if_available,
             host_id,
+            use_tls,
+            opt_tls_settings,
         }
     }
 
@@ -87,62 +111,254 @@ impl HttpClient {
         self.timeout_in_seconds
     }
 
-    fn gen_auth_request(&self) -> AuthRequest {
-        let auth: AuthRequest;
-
-        if self.send_jwt_if_available && !self.auth.jwt.is_empty() {
-            auth = AuthRequest {
-                user_name: String::from(""),
-                pw: String::from(""),
-                pw_hash: Vec::new(),
-                token: Vec::new(),
-                jwt: self.auth.jwt.clone(),
-                id: self.host_id.clone(),
-            };
-
-            trace!("[{}]: {auth:?}", function_name!());
-
-            return auth;
-        }
-
-        auth = AuthRequest {
-            user_name: self.auth.user_name.clone(),
-            pw: self.auth.pw.clone(),
-            pw_hash: Vec::new(),
-            token: Vec::new(),
-            jwt: String::from(""),
-            id: self.host_id.clone(),
-        };
-
-        trace!("[{}]: {:?}", function_name!(), auth);
-
-        auth
-    }
-
     fn get_http_url(&self, action_url: &str) -> String {
-        let http_base = format!("{}{}:{}", "http://", self.addr, self.port);
+        let http_base = if self.use_tls {
+            format!(
+                "{}{}:{}",
+                "https://", self.user_service_address, self.user_service_port
+            )
+        } else {
+            format!(
+                "{}{}:{}",
+                "http://", self.user_service_address, self.user_service_port
+            )
+        };
 
         let result = format!("{http_base}{action_url}");
         trace!("[{}]: {}", function_name!(), result);
         result
     }
 
-    async fn send_http_message(&self, json_message: String, url: String) -> String {
-        let client = self.http_client.as_ref().unwrap();
+    async fn validate_web_token(&mut self) -> bool {
+        if let Some(web_token) = self.token_auth.clone() {
+            trace!("[{}]: {web_token:?}", function_name!());
+            let json_message = serde_json::to_string(&web_token).unwrap();
+            let author = AuthRequestAuthor { author_type: 1 };
+
+            let metadata = AuthRequestMetadata {
+                id: self.host_id.clone(),
+                db_name: None,
+            };
+
+            let http_base = if self.use_tls {
+                format!(
+                    "{}{}:{}",
+                    "https://", self.info_service_addres, self.info_service_port
+                )
+            } else {
+                format!(
+                    "{}{}:{}",
+                    "http://", self.info_service_addres, self.info_service_port
+                )
+            };
+
+            let action_url = INFO_TRY_AUTH;
+            let url = format!("{http_base}{action_url}");
+
+            let client = match &self.opt_tls_settings {
+                Some(opts) => {
+                    if opts.danger_accept_invalid_certs {
+                        warn!("[{}]: WARNING - ACCEPT INVALID CERTS!", function_name!());
+                    }
+
+                    if !opts.tls_sni {
+                        warn!(
+                            "[{}]: WARNING - IGNORING TLS Server Name Indicator",
+                            function_name!()
+                        );
+                    }
+
+                    reqwest::Client::builder()
+                        .danger_accept_invalid_certs(opts.danger_accept_invalid_certs)
+                        .tls_sni(opts.tls_sni)
+                        .build()
+                        .unwrap()
+                }
+                None => reqwest::Client::new(),
+            };
+
+            let json_response = client
+                .post(url)
+                .header("Content-Type", "application/json")
+                .body(json_message)
+                .header(
+                    TREATY_AUTH_HEADER_WEB_TOKEN,
+                    serde_json::to_string(&self.token_auth.as_ref().unwrap().clone()).unwrap(),
+                )
+                .header(
+                    TREATY_AUTH_HEADER_AUTHOR,
+                    serde_json::to_string(&author).unwrap(),
+                )
+                .header(
+                    TREATY_AUTH_HEADER_METADATA,
+                    serde_json::to_string(&metadata).unwrap(),
+                )
+                .send()
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap();
+
+            let response: TryAuthResult = serde_json::from_str(&json_response).unwrap();
+            trace!("[{}]: {response:?}", function_name!());
+            return response.is_authenticated;
+        }
+
+        trace!("[{}]: Web token was not validated", function_name!());
+        false
+    }
+
+    async fn update_token(&mut self) {
+        if !self.validate_web_token().await {
+            let metadata = AuthRequestMetadata {
+                id: self.host_id.clone(),
+                db_name: None,
+            };
+            let author = AuthRequestAuthor { author_type: 1 };
+
+            let client = match &self.opt_tls_settings {
+                Some(opts) => {
+                    if opts.danger_accept_invalid_certs {
+                        warn!("[{}]: WARNING - ACCEPT INVALID CERTS!", function_name!());
+                    }
+
+                    if !opts.tls_sni {
+                        warn!(
+                            "[{}]: WARNING - IGNORING TLS Server Name Indicator",
+                            function_name!()
+                        );
+                    }
+
+                    reqwest::Client::builder()
+                        .danger_accept_invalid_certs(opts.danger_accept_invalid_certs)
+                        .tls_sni(opts.tls_sni)
+                        .build()
+                        .unwrap()
+                }
+                None => reqwest::Client::new(),
+            };
+
+            let json_message = serde_json::to_string(&self.basic_auth).unwrap();
+            let http_base = if self.use_tls {
+                format!(
+                    "{}{}:{}",
+                    "https://", self.info_service_addres, self.info_service_port
+                )
+            } else {
+                format!(
+                    "{}{}:{}",
+                    "http://", self.info_service_addres, self.info_service_port
+                )
+            };
+
+            let action_url = INFO_AUTH_FOR_TOKEN;
+            let url = format!("{http_base}{action_url}");
+            let json_response = client
+                .post(url)
+                .header("Content-Type", "application/json")
+                .body(json_message)
+                .header(
+                    TREATY_AUTH_HEADER_BASIC,
+                    serde_json::to_string(&self.basic_auth.clone()).unwrap(),
+                )
+                .header(
+                    TREATY_AUTH_HEADER_AUTHOR,
+                    serde_json::to_string(&author).unwrap(),
+                )
+                .header(
+                    TREATY_AUTH_HEADER_METADATA,
+                    serde_json::to_string(&metadata).unwrap(),
+                )
+                .send()
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap();
+
+            trace!("[{}]: {json_response:?}", function_name!());
+            let response: TokenReply = serde_json::from_str(&json_response).unwrap();
+            if response.is_successful {
+                let token = AuthRequestWebToken {
+                    jwt: response.jwt.clone(),
+                };
+
+                self.token_auth = Some(token);
+            }
+        }
+    }
+
+    async fn send_http_message(&mut self, json_message: String, url: String) -> String {
+        self.update_token().await;
+        let is_web_token_valid = self.validate_web_token().await;
+
+        let client = match &self.opt_tls_settings {
+            Some(opts) => {
+                if opts.danger_accept_invalid_certs {
+                    warn!("[{}]: WARNING - ACCEPT INVALID CERTS!", function_name!());
+                }
+
+                if !opts.tls_sni {
+                    warn!(
+                        "[{}]: WARNING - IGNORING TLS Server Name Indicator",
+                        function_name!()
+                    );
+                }
+
+                reqwest::Client::builder()
+                    .danger_accept_invalid_certs(opts.danger_accept_invalid_certs)
+                    .tls_sni(opts.tls_sni)
+                    .build()
+                    .unwrap()
+            }
+            None => reqwest::Client::new(),
+        };
 
         trace!("[{}]: {json_message}", function_name!());
         trace!("[{}]: {url}", function_name!());
 
-        client
-            .post(url)
-            .header("Content-Type", "application/json")
-            .body(json_message)
-            .send()
-            .await
-            .unwrap()
-            .text()
-            .await
-            .unwrap()
+        let author = AuthRequestAuthor { author_type: 1 };
+
+        if is_web_token_valid {
+            return client
+                .post(url)
+                .header("Content-Type", "application/json")
+                .body(json_message)
+                .header(
+                    TREATY_AUTH_HEADER_WEB_TOKEN,
+                    serde_json::to_string(&self.token_auth.as_ref().unwrap().clone()).unwrap(),
+                )
+                .header(
+                    TREATY_AUTH_HEADER_AUTHOR,
+                    serde_json::to_string(&author).unwrap(),
+                )
+                .send()
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap();
+        } else {
+            return client
+                .post(url)
+                .header("Content-Type", "application/json")
+                .body(json_message)
+                .header(
+                    TREATY_AUTH_HEADER_BASIC,
+                    serde_json::to_string(&self.basic_auth).unwrap(),
+                )
+                .header(
+                    TREATY_AUTH_HEADER_AUTHOR,
+                    serde_json::to_string(&author).unwrap(),
+                )
+                .send()
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap();
+        }
     }
 
     pub async fn get_http_result<
@@ -156,6 +372,7 @@ impl HttpClient {
         request: U,
     ) -> T {
         let request_json = serde_json::to_string(&request).unwrap();
+        trace!("[{}]: {request_json:?}", function_name!());
         let result_json: String = self.send_http_message(request_json, url).await;
         trace!("[{}]: {result_json:?}", function_name!());
         let value: T = serde_json::from_str(&result_json).unwrap();
@@ -182,11 +399,18 @@ impl ClientActions for HttpClient {
         Ok(result.reply_echo_message == test_string)
     }
 
-    async fn get_host_info(&mut self) -> Result<HostInfoReply, TreatyError> {
-        let request = self.gen_auth_request();
+    async fn get_backing_db_config(
+        &mut self,
+    ) -> Result<GetBackingDatabaseConfigReply, TreatyError> {
+        let url = self.get_http_url(DB_TYPE);
+        let result: GetBackingDatabaseConfigReply =
+            self.get_http_result(url, String::from("")).await;
+        Ok(result)
+    }
 
+    async fn get_host_info(&mut self) -> Result<HostInfoReply, TreatyError> {
         let url = self.get_http_url(GET_HOST_INFO);
-        let result = self.get_http_result(url, request).await;
+        let result = self.get_http_result(url, String::from("")).await;
         Ok(result)
     }
 
@@ -194,10 +418,7 @@ impl ClientActions for HttpClient {
         &mut self,
         db_name: &str,
     ) -> Result<GetActiveContractReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetActiveContractRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
         };
 
@@ -208,39 +429,38 @@ impl ClientActions for HttpClient {
     }
 
     async fn revoke_token(&mut self) -> Result<RevokeReply, TreatyError> {
-        let auth = self.gen_auth_request();
+        if let Some(token) = self.token_auth.clone() {
+            let url = self.get_http_url(REVOKE_TOKEN);
+            let result = self.get_http_result(url, token).await;
 
-        let url = self.get_http_url(REVOKE_TOKEN);
-        let result = self.get_http_result(url, auth).await;
+            return Ok(result);
+        }
 
-        Ok(result)
+        Err(TreatyError {
+            message: "Token does not exist".to_string(),
+            help: None,
+            number: 0,
+        })
     }
 
     async fn auth_for_token(&mut self) -> Result<TokenReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let url = self.get_http_url(AUTH_FOR_TOKEN);
-        let result: TokenReply = self.get_http_result(url, auth).await;
+        let token = self.basic_auth.clone();
+        let result: TokenReply = self.get_http_result(url, token).await;
 
         if result.is_successful {
-            let x = result.clone();
-            self.auth.jwt = x.jwt;
+            let reply = result.clone();
+            self.token_auth = Some(AuthRequestWebToken { jwt: reply.jwt });
         } else {
-            self.auth.jwt = "".to_string();
+            self.token_auth = None;
         }
 
         Ok(result)
     }
 
     async fn get_settings(&mut self) -> Result<GetSettingsReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
-        let request = GetSettingsRequest {
-            authentication: Some(auth),
-        };
-
         let url = self.get_http_url(GET_SETTINGS);
-        let result = self.get_http_result(url, request).await;
+        let result = self.get_http_result(url, String::from("")).await;
 
         Ok(result)
     }
@@ -251,10 +471,7 @@ impl ClientActions for HttpClient {
         table_name: &str,
         row_id: u32,
     ) -> Result<AcceptPendingActionReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = AcceptPendingActionRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             row_id,
@@ -267,13 +484,8 @@ impl ClientActions for HttpClient {
     }
 
     async fn get_cooperative_hosts(&mut self) -> Result<GetCooperativeHostsReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
-        let request = GetCooperativeHostsRequest {
-            authentication: Some(auth),
-        };
         let url = self.get_http_url(GET_COOP_HOSTS);
-        let result = self.get_http_result(url, request).await;
+        let result = self.get_http_result(url, String::from("")).await;
 
         Ok(result)
     }
@@ -282,10 +494,7 @@ impl ClientActions for HttpClient {
         &mut self,
         db_name: &str,
     ) -> Result<GetParticipantsReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetParticipantsRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
         };
 
@@ -301,10 +510,7 @@ impl ClientActions for HttpClient {
         table_name: &str,
         action: &str,
     ) -> Result<GetPendingActionsReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetPendingActionsRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             action: action.to_string(),
@@ -322,10 +528,7 @@ impl ClientActions for HttpClient {
         table_name: &str,
         where_clause: &str,
     ) -> Result<Vec<u32>, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetReadRowIdsRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             where_clause: where_clause.to_string(),
@@ -343,10 +546,7 @@ impl ClientActions for HttpClient {
         table_name: &str,
         row_id: u32,
     ) -> Result<u64, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetDataHashRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             row_id,
@@ -364,10 +564,7 @@ impl ClientActions for HttpClient {
         table_name: &str,
         row_id: u32,
     ) -> Result<u64, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetDataHashRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             row_id,
@@ -384,9 +581,7 @@ impl ClientActions for HttpClient {
         db_name: &str,
         table_name: &str,
     ) -> Result<GetDeletesToHostBehaviorReply, TreatyError> {
-        let auth = self.gen_auth_request();
         let request = GetDeletesToHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
         };
@@ -403,10 +598,7 @@ impl ClientActions for HttpClient {
         table_name: &str,
         behavior: DeletesToHostBehavior,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ChangeDeletesToHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             behavior: num::ToPrimitive::to_u32(&behavior).unwrap(),
@@ -422,9 +614,7 @@ impl ClientActions for HttpClient {
         db_name: &str,
         table_name: &str,
     ) -> Result<GetUpdatesToHostBehaviorReply, TreatyError> {
-        let auth = self.gen_auth_request();
         let request = GetUpdatesToHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
         };
@@ -441,10 +631,7 @@ impl ClientActions for HttpClient {
         table_name: &str,
         behavior: UpdatesToHostBehavior,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ChangeUpdatesToHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             behavior: num::ToPrimitive::to_u32(&behavior).unwrap(),
@@ -461,10 +648,7 @@ impl ClientActions for HttpClient {
         db_name: &str,
         table_name: &str,
     ) -> Result<GetDeletesFromHostBehaviorReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetDeletesFromHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
         };
@@ -481,10 +665,7 @@ impl ClientActions for HttpClient {
         table_name: &str,
         behavior: DeletesFromHostBehavior,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ChangeDeletesFromHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             behavior: num::ToPrimitive::to_u32(&behavior).unwrap(),
@@ -500,10 +681,7 @@ impl ClientActions for HttpClient {
         db_name: &str,
         table_name: &str,
     ) -> Result<GetUpdatesFromHostBehaviorReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetUpdatesFromHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
         };
@@ -519,9 +697,7 @@ impl ClientActions for HttpClient {
         table_name: &str,
         behavior: UpdatesFromHostBehavior,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
         let request = ChangeUpdatesFromHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             behavior: UpdatesFromHostBehavior::to_u32(behavior),
@@ -538,9 +714,7 @@ impl ClientActions for HttpClient {
         host_id: &str,
         status: u32,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
         let request = ChangeHostStatusRequest {
-            authentication: Some(auth),
             host_alias: String::from(""),
             host_id: host_id.to_string(),
             status,
@@ -557,9 +731,7 @@ impl ClientActions for HttpClient {
         host_name: &str,
         status: u32,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
         let request = ChangeHostStatusRequest {
-            authentication: Some(auth),
             host_alias: host_name.to_string(),
             host_id: String::from(""),
             status,
@@ -571,9 +743,7 @@ impl ClientActions for HttpClient {
         Ok(result.is_successful)
     }
     async fn generate_host_info(&mut self, host_name: &str) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
         let request = GenerateHostInfoRequest {
-            authentication: Some(auth),
             host_name: host_name.to_string(),
         };
         let url = self.get_http_url(GENERATE_HOST_INFO);
@@ -583,14 +753,8 @@ impl ClientActions for HttpClient {
     }
 
     async fn get_databases(&mut self) -> Result<GetDatabasesReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
-        let request = GetDatabasesRequest {
-            authentication: Some(auth),
-        };
-
         let url = self.get_http_url(GET_DATABASES);
-        let result = self.get_http_result(url, request).await;
+        let result = self.get_http_result(url, String::from("")).await;
         Ok(result)
     }
     async fn execute_cooperative_write_at_host(
@@ -600,10 +764,7 @@ impl ClientActions for HttpClient {
         participant_alias: &str,
         where_clause: &str,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ExecuteCooperativeWriteRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             sql_statement: cmd.to_string(),
             database_type: DatabaseType::to_u32(DatabaseType::Sqlite),
@@ -619,23 +780,14 @@ impl ClientActions for HttpClient {
         Ok(result.is_successful)
     }
     async fn view_pending_contracts(&mut self) -> Result<Vec<Contract>, TreatyError> {
-        let auth = self.gen_auth_request();
-
-        let request = ViewPendingContractsRequest {
-            authentication: Some(auth),
-        };
-
         let url = self.get_http_url(VIEW_PENDING_CONTRACTS);
-        let result: ViewPendingContractsReply = self.get_http_result(url, request).await;
+        let result: ViewPendingContractsReply = self.get_http_result(url, String::from("")).await;
 
         Ok(result.contracts)
     }
 
     async fn accept_pending_contract(&mut self, host_alias: &str) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = AcceptPendingContractRequest {
-            authentication: Some(auth),
             host_alias: host_alias.to_string(),
         };
 
@@ -650,10 +802,7 @@ impl ClientActions for HttpClient {
         db_name: &str,
         participant_alias: &str,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = SendParticipantContractRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             participant_alias: participant_alias.to_string(),
         };
@@ -669,19 +818,18 @@ impl ClientActions for HttpClient {
         db_name: &str,
         participant_alias: &str,
         participant_ip4addr: &str,
-        participant_db_port: u32,
+        participant_db_port: Option<u32>,
+        participant_info_port: u32,
         participant_http_addr: &str,
         participant_http_port: u16,
         participant_id: Option<String>,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = AddParticipantRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             alias: participant_alias.to_string(),
             ip4_address: participant_ip4addr.to_string(),
-            port: participant_db_port,
+            db_port: participant_db_port,
+            info_port: participant_info_port,
             http_addr: participant_http_addr.to_string(),
             http_port: participant_http_port as u32,
             id: participant_id,
@@ -700,10 +848,7 @@ impl ClientActions for HttpClient {
         desc: &str,
         remote_delete_behavior: RemoteDeleteBehavior,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GenerateContractRequest {
-            authentication: Some(auth),
             host_name: host_name.to_string(),
             description: desc.to_string(),
             database_name: db_name.to_string(),
@@ -716,10 +861,7 @@ impl ClientActions for HttpClient {
         Ok(result.is_successful)
     }
     async fn has_table(&mut self, db_name: &str, table_name: &str) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = HasTableRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
         };
@@ -734,10 +876,7 @@ impl ClientActions for HttpClient {
         db_name: &str,
         table_name: &str,
     ) -> Result<LogicalStoragePolicy, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetLogicalStoragePolicyRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
         };
@@ -753,10 +892,7 @@ impl ClientActions for HttpClient {
         table_name: &str,
         policy: LogicalStoragePolicy,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = SetLogicalStoragePolicyRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             policy_mode: LogicalStoragePolicy::to_u32(policy),
@@ -773,10 +909,7 @@ impl ClientActions for HttpClient {
         db_type: u32,
         where_clause: &str,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ExecuteWriteRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             sql_statement: sql_statement.to_string(),
             database_type: db_type,
@@ -795,10 +928,7 @@ impl ClientActions for HttpClient {
         db_type: u32,
         where_clause: &str,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ExecuteWriteRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             sql_statement: sql_statement.to_string(),
             database_type: db_type,
@@ -816,10 +946,7 @@ impl ClientActions for HttpClient {
         id: &str,
         db_name: &str,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = TryAuthAtParticipantRequest {
-            authentication: Some(auth),
             participant_id: id.to_string(),
             participant_alias: alias.to_string(),
             db_name: db_name.to_string(),
@@ -836,10 +963,7 @@ impl ClientActions for HttpClient {
         sql_statement: &str,
         db_type: u32,
     ) -> Result<StatementResultset, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ExecuteReadRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             sql_statement: sql_statement.to_string(),
             database_type: db_type,
@@ -858,10 +982,7 @@ impl ClientActions for HttpClient {
         sql_statement: &str,
         db_type: u32,
     ) -> Result<StatementResultset, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ExecuteReadRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             sql_statement: sql_statement.to_string(),
             database_type: db_type,
@@ -874,10 +995,7 @@ impl ClientActions for HttpClient {
         Ok(result.results[0].clone())
     }
     async fn enable_cooperative_features(&mut self, db_name: &str) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = EnableCoooperativeFeaturesRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
         };
 
@@ -886,11 +1004,9 @@ impl ClientActions for HttpClient {
 
         Ok(result.is_successful)
     }
-    async fn create_user_database(&mut self, db_name: &str) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
 
+    async fn create_user_database(&mut self, db_name: &str) -> Result<bool, TreatyError> {
         let request = CreateUserDatabaseRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
         };
 
@@ -898,6 +1014,20 @@ impl ClientActions for HttpClient {
         let result: CreateUserDatabaseReply = self.get_http_result(url, request).await;
 
         Ok(result.is_created)
+    }
+
+    async fn drop_database_forcefully(
+        &mut self,
+        db_name: &str,
+    ) -> Result<DeleteUserDatabaseReply, TreatyError> {
+        let request = DeleteUserDatabaseRequest {
+            database_name: db_name.to_string(),
+        };
+
+        let url = self.get_http_url(DELETE_DATABASE_FORCE);
+        let result: DeleteUserDatabaseReply = self.get_http_result(url, request).await;
+
+        Ok(result)
     }
 
     fn debug(&self) -> String {

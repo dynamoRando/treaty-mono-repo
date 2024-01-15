@@ -1,12 +1,15 @@
 use treaty_http_endpoints::client::GET_ACTIVE_CONTRACT;
-use treaty_types::{types::treaty_proto::{GetActiveContractReply, GetActiveContractRequest}, formatter};
+use treaty_types::{
+    formatter,
+    types::treaty_proto::{GetActiveContractReply, GetActiveContractRequest},
+};
 
 use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
 
 use crate::{
     log::log_to_console,
     pages::common::select_database::SelectDatabase,
-    request::{self, clear_status, get_database, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, get_database, set_status, get_client},
 };
 
 #[function_component]
@@ -27,16 +30,14 @@ pub fn Active() -> Html {
                 let cooperation_enabled = database.cooperation_enabled;
 
                 if cooperation_enabled {
-                    let token = get_token();
-                    let auth = token.auth();
+                    let client = get_client();
 
                     let get_active_contract_request = GetActiveContractRequest {
-                        authentication: Some(auth),
                         database_name: db_name.clone().into(),
                     };
 
                     let request_json = serde_json::to_string(&get_active_contract_request).unwrap();
-                    let url = format!("{}{}", token.addr, GET_ACTIVE_CONTRACT);
+                    let url = format!("{}{}", client.user_addr_port(), GET_ACTIVE_CONTRACT);
 
                     let cb = Callback::from(move |response: Result<AttrValue, String>| {
                         if let Ok(ref x) = response {
@@ -45,21 +46,12 @@ pub fn Active() -> Html {
 
                             let reply: GetActiveContractReply = serde_json::from_str(x).unwrap();
 
-                            let is_authenticated = reply
-                                .authentication_result
-                                .as_ref()
-                                .unwrap()
-                                .is_authenticated;
-                            update_token_login_status(is_authenticated);
-
-                            if is_authenticated {
-                                let contract = reply.contract.unwrap();
-                                let contract_text =
-                                    formatter::markdown::contract::contract_to_markdown_table(
-                                        &contract,
-                                    );
-                                active_contract_text.set(contract_text);
-                            }
+                            let contract = reply.contract.unwrap();
+                            let contract_text =
+                                formatter::markdown::contract::contract_to_markdown_table(
+                                    &contract,
+                                );
+                            active_contract_text.set(contract_text);
                         } else {
                             set_status(response.err().unwrap());
                         }

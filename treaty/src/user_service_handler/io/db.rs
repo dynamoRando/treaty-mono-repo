@@ -28,7 +28,7 @@ pub async fn handle_execute_read_at_host<T: DbiActions + Clone, R: RemoteActions
         warning: None,
     };
 
-    let has_cooperative_tables = db.has_cooperative_tables(db_name, sql)?;
+    let has_cooperative_tables = db.has_cooperative_tables(db_name, sql).await?;
 
     if has_cooperative_tables {
         trace!(
@@ -38,7 +38,10 @@ pub async fn handle_execute_read_at_host<T: DbiActions + Clone, R: RemoteActions
             &sql
         );
 
-        let cooperative_tables = db.get_cooperative_tables(db_name, sql)?.unwrap_or_default();
+        let cooperative_tables = db
+            .get_cooperative_tables(db_name, sql)
+            .await?
+            .unwrap_or_default();
 
         trace!(
             "[{}]: cooperative_tables: {cooperative_tables:?}",
@@ -47,7 +50,8 @@ pub async fn handle_execute_read_at_host<T: DbiActions + Clone, R: RemoteActions
 
         for ct in &cooperative_tables {
             let participants_for_table = db
-                .get_participants_for_table(db_name, ct.as_str())?
+                .get_participants_for_table(db_name, ct.as_str())
+                .await?
                 .unwrap_or_default();
 
             trace!(
@@ -66,15 +70,12 @@ pub async fn handle_execute_read_at_host<T: DbiActions + Clone, R: RemoteActions
                 trace!("execute_read_at_host: participant: {participant:?}");
 
                 for row in &participant.row_data {
-
-                    trace!(
-                        "[{}]: row: {row:?}",
-                        function_name!()
-                    );
+                    trace!("[{}]: row: {row:?}", function_name!());
 
                     // we would need to get rows for that table from the participant
                     let host_info = db
                         .treaty_get_host_info()
+                        .await
                         .expect("no host info is set")
                         .unwrap_or_default();
 
@@ -140,7 +141,7 @@ pub async fn handle_execute_read_at_host<T: DbiActions + Clone, R: RemoteActions
             );
         }
     } else {
-        let query_result = db.execute_read_at_host(db_name, sql)?;
+        let query_result = db.execute_read_at_host(db_name, sql).await?;
         let result_rows = query_result.convert_to_protobuf();
         read_result.rows_affected = result_rows.len() as u32;
         read_result.rows = result_rows;

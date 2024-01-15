@@ -5,7 +5,7 @@ use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
 use crate::request;
 use crate::{
     log::log_to_console,
-    request::treaty::{clear_status, get_treaty_token, set_status, update_token_login_status},
+    request::treaty::{clear_status, get_treaty_token, set_status},
 };
 
 #[function_component]
@@ -32,16 +32,7 @@ pub fn GetInfo() -> Html {
                     let host_info = host_info.clone();
                     let reply: HostInfoReply = serde_json::from_str(x).unwrap();
 
-                    let is_authenticated = reply
-                        .authentication_result
-                        .as_ref()
-                        .unwrap()
-                        .is_authenticated;
-                    update_token_login_status(is_authenticated);
-
-                    if is_authenticated {
-                        host_info.set(reply.host_info.unwrap());
-                    }
+                    host_info.set(reply.host_info.unwrap());
                 } else {
                     let error_message = response.err().unwrap();
                     set_status(error_message);

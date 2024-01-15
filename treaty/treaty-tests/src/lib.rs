@@ -1,10 +1,10 @@
 use std::{env, fs, path::Path};
 
-pub const DEFAULT_GRPC_TIMEOUT_SECONDS: u32 = 5;
+pub const DEFAULT_GRPC_TIMEOUT_SECONDS: u32 = 300;
 pub const DEFAULT_TEST_UN: &str = "tester";
 pub const DEFAULT_TEST_PW: &str = "123456";
 pub const DEFAULT_BACKING_DB_NAME: &str = "treaty.db";
-pub const USE_LOCAL_IP: bool = true;
+pub const USE_LOCAL_IP: bool = false;
 
 #[doc(hidden)]
 pub mod common_contract_setup;

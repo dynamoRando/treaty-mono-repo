@@ -1,10 +1,12 @@
 use crate::{
     log::log_to_console,
     pages::databases::columns::ColumnProps,
-    request::{self, clear_status, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, set_status, get_client},
 };
 use treaty_http_endpoints::client::GET_POLICY;
-use treaty_types::types::treaty_proto::{GetLogicalStoragePolicyReply, GetLogicalStoragePolicyRequest};
+use treaty_types::types::treaty_proto::{
+    GetLogicalStoragePolicyReply, GetLogicalStoragePolicyRequest,
+};
 use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
 
 #[function_component]
@@ -27,42 +29,32 @@ pub fn GetTablePolicy(ColumnProps { table }: &ColumnProps) -> Html {
 
             let reply: GetLogicalStoragePolicyReply = serde_json::from_str(x).unwrap();
 
-            let is_authenticated = reply
-                .authentication_result
-                .as_ref()
-                .unwrap()
-                .is_authenticated;
-            update_token_login_status(is_authenticated);
+            let policy_value = reply.policy_mode;
 
-            if is_authenticated {
-                let policy_value = reply.policy_mode;
+            let policy_name = match policy_value {
+                0 => "None",
+                1 => "Host Only",
+                2 => "Participant Owned",
+                3 => "Shared",
+                4 => "Mirror",
+                _ => "Unknown",
+            };
 
-                let policy_name = match policy_value {
-                    0 => "None",
-                    1 => "Host Only",
-                    2 => "Participant Owned",
-                    3 => "Shared",
-                    4 => "Mirror",
-                    _ => "Unknown",
-                };
-
-                table_policy.set(Some(policy_name));
-            }
+            table_policy.set(Some(policy_name));
         } else {
             set_status(response.err().unwrap());
         }
     });
 
-    let token = get_token();
+    let client = get_client();
 
     let request = GetLogicalStoragePolicyRequest {
-        authentication: Some(token.auth()),
         database_name,
         table_name: table_name.clone(),
     };
 
     let request_json = serde_json::to_string(&request).unwrap();
-    let url = format!("{}{}", token.addr, GET_POLICY);
+    let url = format!("{}{}", client.user_addr_port(), GET_POLICY);
     request::post(url, request_json, get_policy_response_cb);
 
     html!(

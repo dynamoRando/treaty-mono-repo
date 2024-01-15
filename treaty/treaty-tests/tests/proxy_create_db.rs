@@ -1,12 +1,17 @@
-use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
 
 use tracing::debug;
-use treaty::treaty_proto::{AuthRequest, CreateUserDatabaseRequest, CreateUserDatabaseReply};
+use treaty::treaty_proto::{CreateUserDatabaseReply, CreateUserDatabaseRequest};
 
 use treaty_proxy::proxy_server::ProxyServer;
-use treaty_tests::harness::{proxy::{configure_proxy_for_test, TreatyProxyTestType, get_http_result}, init_trace_to_screen};
-use treaty_types::proxy::{server_messages::{RegisterLoginRequest, ExecuteReply, RegisterLoginReply, ExecuteRequest}, request_type::RequestType};
-
+use treaty_tests::harness::{
+    init_trace_to_screen,
+    proxy::{configure_proxy_for_test, get_http_result, TreatyProxyTestType},
+};
+use treaty_types::proxy::{
+    request_type::RequestType,
+    server_messages::{ExecuteReply, ExecuteRequest, RegisterLoginReply, RegisterLoginRequest},
+};
 
 struct TestId {
     pub id: Option<String>,
@@ -14,7 +19,7 @@ struct TestId {
 
 #[tokio::test]
 async fn create_database() {
-    init_trace_to_screen(false);
+    init_trace_to_screen(false, None);
 
     let id = TestId { id: None };
     let id = Mutex::new(id);
@@ -71,17 +76,7 @@ async fn create_database() {
             _id = Some(_lock.id.as_ref().unwrap().clone());
         }
 
-        let _auth = AuthRequest {
-            user_name: "tester".to_string(),
-            pw: "1234".to_string(),
-            pw_hash: Vec::new(),
-            token: Vec::new(),
-            jwt: "".to_string(),
-            id: _id,
-        };
-
         let _request = CreateUserDatabaseRequest {
-            authentication: Some(_auth),
             database_name: "hopeitworks.db".to_string(),
         };
 

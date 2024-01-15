@@ -1,8 +1,6 @@
-use treaty_types::enums::{
-    DeletesFromHostBehavior,
-    UpdatesFromHostBehavior,
-};
+use num::FromPrimitive;
 use treaty_http_endpoints::client::CHANGE_DELETES_FROM_HOST_BEHAVIOR;
+use treaty_types::enums::{DeletesFromHostBehavior, UpdatesFromHostBehavior};
 use treaty_types::types::treaty_proto::{
     ChangeDeletesFromHostBehaviorReply, ChangeDeletesFromHostBehaviorRequest,
 };
@@ -10,11 +8,11 @@ use web_sys::HtmlInputElement;
 use yew::{
     function_component, html, use_node_ref, AttrValue, Callback, Html, Properties, UseStateHandle,
 };
-use num::FromPrimitive;
 
+use crate::request::get_client;
 use crate::{
     log::log_to_console,
-    request::{self, clear_status, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, set_status},
 };
 
 #[derive(Properties, PartialEq)]
@@ -47,10 +45,9 @@ pub fn ChangeBehavior(
                 UpdatesFromHostBehavior::from_u32(behavior.parse::<u32>().unwrap());
             let behavior_value = UpdatesFromHostBehavior::to_u32(behavior_value);
 
-            let token = get_token();
-            let url = format!("{}{}", token.addr, CHANGE_DELETES_FROM_HOST_BEHAVIOR);
+            let client = get_client();
+            let url = format!("{}{}", client.user_addr_port(), CHANGE_DELETES_FROM_HOST_BEHAVIOR);
             let request = ChangeDeletesFromHostBehaviorRequest {
-                authentication: Some(token.auth()),
                 database_name: (*database).clone(),
                 table_name: (*table).clone(),
                 behavior: behavior_value,
@@ -68,47 +65,38 @@ pub fn ChangeBehavior(
 
                     let reply: ChangeDeletesFromHostBehaviorReply =
                         serde_json::from_str(&response).unwrap();
-                    let is_authenticated = reply
-                        .authentication_result
-                        .as_ref()
-                        .unwrap()
-                        .is_authenticated;
-                    update_token_login_status(is_authenticated);
 
-                    if is_authenticated {
-                        if reply.is_successful {
-                            let behavior: DeletesFromHostBehavior = DeletesFromHostBehavior::from_u32(behavior_value).unwrap();
-                            let behavior = behavior.to_string();
+                    if reply.is_successful {
+                        let behavior: DeletesFromHostBehavior =
+                            DeletesFromHostBehavior::from_u32(behavior_value).unwrap();
+                        let behavior = behavior.to_string();
 
-                            let message = format!(
-                                "{}{}{}{}{}{}",
-                                "Behavior Updated For: ",
-                                (*database),
-                                " table: ",
-                                (*table),
-                                " behavior to: ",
-                                behavior
-                            );
-                            set_status(message);
-                        } else {
-                            let behavior: DeletesFromHostBehavior = DeletesFromHostBehavior::from_u32(behavior_value).unwrap();
-                            let behavior = behavior.to_string();
+                        let message = format!(
+                            "{}{}{}{}{}{}",
+                            "Behavior Updated For: ",
+                            (*database),
+                            " table: ",
+                            (*table),
+                            " behavior to: ",
+                            behavior
+                        );
+                        set_status(message);
+                    } else {
+                        let behavior: DeletesFromHostBehavior =
+                            DeletesFromHostBehavior::from_u32(behavior_value).unwrap();
+                        let behavior = behavior.to_string();
 
-                            let message = format!(
-                                "{}{}{}{}{}{}",
-                                "Behavior Updated FAILED For: ",
-                                (*database),
-                                " table: ",
-                                (*table),
-                                " behavior to: ",
-                                behavior
-                            );
-                            set_status(message);
-                        }
+                        let message = format!(
+                            "{}{}{}{}{}{}",
+                            "Behavior Updated FAILED For: ",
+                            (*database),
+                            " table: ",
+                            (*table),
+                            " behavior to: ",
+                            behavior
+                        );
+                        set_status(message);
                     }
-                } else {
-                    let error_message = response.err().unwrap();
-                    set_status(error_message);
                 }
             });
 

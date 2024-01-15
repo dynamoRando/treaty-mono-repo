@@ -4,11 +4,11 @@ use treaty_tests::harness::{
     init_trace_to_screen,
     proxy::{configure_proxy_for_test, get_http_result, TreatyProxyTestType},
 };
-use treaty_types::proxy::server_messages::{RegisterLoginRequest, RegisterLoginReply};
+use treaty_types::proxy::server_messages::{RegisterLoginReply, RegisterLoginRequest};
 
 #[tokio::test]
 async fn register_account() {
-    init_trace_to_screen(false);
+    init_trace_to_screen(false, None);
 
     let setup = configure_proxy_for_test("proxy-i-register-user", TreatyProxyTestType::Grpc);
     let proxy = setup.proxy.clone();

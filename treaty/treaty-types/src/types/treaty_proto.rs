@@ -1,3 +1,19 @@
+/// Responds with information about the backing database technology used at this Treaty instance.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq)]
+pub struct GetBackingDatabaseConfigReply {
+    /// The backing database type. This corresponds to the DatabaseType enum.
+    
+    pub database_type: u32,
+    /// Specifies if the database technology is using a schema for Treaty settings instead of a
+    /// seperate database, if applicable. Default is false.
+    
+    pub use_schema: bool,
+    /// An error if Treaty was unable to return the database information.
+    
+    pub error: ::core::option::Option<TreatyError>,
+}
 /// A message describing an error in the system. This usually refers to a SQL database error.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -51,9 +67,6 @@ pub struct TreatyLogEntry {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetLogsByLastNumberRequest {
-    /// Authentication.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The last number of logs to fetch.
     
     pub number_of_logs: u32,
@@ -63,9 +76,6 @@ pub struct GetLogsByLastNumberRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetLogsByLastNumberReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// A list of log entries.
     
     pub logs: Vec<TreatyLogEntry>,
@@ -73,23 +83,11 @@ pub struct GetLogsByLastNumberReply {
     
     pub error: ::core::option::Option<TreatyError>,
 }
-/// Requests the current settings from Treaty. These are the values from the "Settings.toml" file.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq)]
-pub struct GetSettingsRequest {
-    /// Authentication.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
-}
 /// Responds with the current Settings.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetSettingsReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The settings in JSON format.
     
     pub settings_json: ::core::option::Option<String>,
@@ -97,23 +95,11 @@ pub struct GetSettingsReply {
     
     pub error: ::core::option::Option<TreatyError>,
 }
-/// Requests a list of hosts that this Treaty instance is cooperating with.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq)]
-pub struct GetCooperativeHostsRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
-}
 /// Responds with a list of hosts that this Treaty instance is cooperating with.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetCooperativeHostsReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The list of hosts this Treaty instance is cooperating with.
     
     pub hosts: Vec<HostInfoStatus>,
@@ -126,9 +112,6 @@ pub struct GetCooperativeHostsReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetDeletesToHostBehaviorRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -141,9 +124,6 @@ pub struct GetDeletesToHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetDeletesToHostBehaviorReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The current behavior for the requested database and table.
     /// This value is defined in the /treaty/treaty-types/enums.rs file.
     
@@ -157,9 +137,6 @@ pub struct GetDeletesToHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetDeletesFromHostBehaviorRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -172,9 +149,6 @@ pub struct GetDeletesFromHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetDeletesFromHostBehaviorReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The current behavior for the requested database and table.
     /// This value is defined in the /treaty/treaty-types/enum.rs file.
     
@@ -188,9 +162,6 @@ pub struct GetDeletesFromHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetUpdatesToHostBehaviorRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -203,9 +174,6 @@ pub struct GetUpdatesToHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetUpdatesToHostBehaviorReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The current behavior for the for the requested database and table.
     /// This value is defined in the /treaty/treaty-types/enum.rs file.
     
@@ -219,9 +187,6 @@ pub struct GetUpdatesToHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetUpdatesFromHostBehaviorRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -234,9 +199,6 @@ pub struct GetUpdatesFromHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetUpdatesFromHostBehaviorReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The current behavior for the requested database and table.
     /// This value is defined in the /treaty/treaty-types/enum.rs file.
     
@@ -250,9 +212,6 @@ pub struct GetUpdatesFromHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct VersionReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The version of Treaty.
     
     pub versions: ::core::option::Option<Versions>,
@@ -273,9 +232,6 @@ pub struct Versions {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct HostInfoReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The host information.
     
     pub host_info: ::core::option::Option<Host>,
@@ -308,9 +264,6 @@ pub struct TokenReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetActiveContractRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -320,9 +273,6 @@ pub struct GetActiveContractRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetActiveContractReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The active database contract.
     
     pub contract: ::core::option::Option<Contract>,
@@ -335,9 +285,6 @@ pub struct GetActiveContractReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetParticipantsRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -347,9 +294,6 @@ pub struct GetParticipantsRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetParticipantsReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// A list of participants for the specified database.
     
     pub participants: Vec<ParticipantStatus>,
@@ -360,22 +304,11 @@ pub struct GetParticipantsReply {
     
     pub error: ::core::option::Option<TreatyError>,
 }
-/// Requests a list of the databases at Treaty.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq)]
-pub struct GetDatabasesRequest {
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
-}
 /// Replies with the list of databses at Tretay.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetDatabasesReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The databases hosted at this Treaty instance.
     
     pub databases: Vec<DatabaseSchema>,
@@ -388,9 +321,6 @@ pub struct GetDatabasesReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct AcceptPendingActionRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -406,9 +336,6 @@ pub struct AcceptPendingActionRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct AcceptPendingActionReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the acceptance of the action is successful.
     
     pub is_successful: bool,
@@ -421,9 +348,6 @@ pub struct AcceptPendingActionReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetPendingActionsRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -439,9 +363,6 @@ pub struct GetPendingActionsRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetPendingActionsReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// A list of pending statements to be executed.
     
     pub pending_statements: Vec<PendingStatement>,
@@ -475,9 +396,6 @@ pub struct PendingStatement {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct SetDataLogTableStatusRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -493,9 +411,6 @@ pub struct SetDataLogTableStatusRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct SetDataLogTableStatusReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful or not.
     
     pub is_successful: bool,
@@ -508,9 +423,6 @@ pub struct SetDataLogTableStatusReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetDataLogTableStatusRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -523,9 +435,6 @@ pub struct GetDataLogTableStatusRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetDataLogTableStatusReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If data logging was configured or not.
     
     pub use_data_log: bool,
@@ -538,9 +447,6 @@ pub struct GetDataLogTableStatusReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetReadRowIdsRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -556,9 +462,6 @@ pub struct GetReadRowIdsRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetReadRowIdsReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The list of row ids.
     
     pub row_ids: Vec<u32>,
@@ -571,9 +474,6 @@ pub struct GetReadRowIdsReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetDataHashRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -589,9 +489,6 @@ pub struct GetDataHashRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetDataHashReply {
-    /// The authentiation result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The requested data hash.
     
     pub data_hash: u64,
@@ -604,9 +501,6 @@ pub struct GetDataHashReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ChangeDeletesToHostBehaviorRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -623,9 +517,6 @@ pub struct ChangeDeletesToHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ChangeDeletesToHostBehaviorReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful.
     
     pub is_successful: bool,
@@ -641,9 +532,6 @@ pub struct ChangeDeletesToHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ChangeUpdatesToHostBehaviorRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -660,9 +548,6 @@ pub struct ChangeUpdatesToHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ChangeUpdatesToHostBehaviorReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful.
     
     pub is_successful: bool,
@@ -678,9 +563,6 @@ pub struct ChangeUpdatesToHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ChangeDeletesFromHostBehaviorRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -697,9 +579,6 @@ pub struct ChangeDeletesFromHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ChangeDeletesFromHostBehaviorReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful or not.
     
     pub is_successful: bool,
@@ -715,9 +594,6 @@ pub struct ChangeDeletesFromHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ChangeUpdatesFromHostBehaviorRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -734,9 +610,6 @@ pub struct ChangeUpdatesFromHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ChangesUpdatesFromHostBehaviorReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful or not.
     
     pub is_successful: bool,
@@ -753,9 +626,6 @@ pub struct ChangesUpdatesFromHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct TryAuthAtParticipantRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The participant id.
     
     pub participant_id: String,
@@ -771,9 +641,6 @@ pub struct TryAuthAtParticipantRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct TryAuthAtPartipantReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the result was successful.
     
     pub is_successful: bool,
@@ -789,9 +656,6 @@ pub struct TryAuthAtPartipantReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ChangeHostStatusRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The host alias.
     
     pub host_alias: String,
@@ -809,9 +673,6 @@ pub struct ChangeHostStatusRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ChangeHostStatusReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful.
     
     pub is_successful: bool,
@@ -832,9 +693,6 @@ pub struct ChangeHostStatusReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GenerateHostInfoRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The friendly host name to use.
     
     pub host_name: String,
@@ -844,9 +702,6 @@ pub struct GenerateHostInfoRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GenerateHostInfoReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If creating host information was successful or not.
     
     pub is_successful: bool,
@@ -859,9 +714,6 @@ pub struct GenerateHostInfoReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct SendParticipantContractRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The name of the database.
     
     pub database_name: String,
@@ -874,9 +726,6 @@ pub struct SendParticipantContractRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct SendParticipantContractReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the contract was sent.
     
     pub is_sent: bool,
@@ -911,9 +760,6 @@ pub struct StatementResultset {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct CreateUserDatabaseRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -923,9 +769,6 @@ pub struct CreateUserDatabaseRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct DeleteUserDatabaseRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -935,9 +778,6 @@ pub struct DeleteUserDatabaseRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct DeleteUserDatabaseReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the database was deleted.
     
     pub is_deleted: bool,
@@ -953,9 +793,6 @@ pub struct DeleteUserDatabaseReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct CreateUserDatabaseReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the database was created.
     
     pub is_created: bool,
@@ -971,16 +808,13 @@ pub struct CreateUserDatabaseReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ExecuteReadRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
     /// The SELECT SQL statement.
     
     pub sql_statement: String,
-    /// The datababase type (Sqlite, MySQL, Postgres)
+    /// The datababase type (Sqlite, Postgres)
     
     pub database_type: u32,
 }
@@ -989,9 +823,6 @@ pub struct ExecuteReadRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ExecuteReadReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The total number of result-sets.
     
     pub total_resultsets: u64,
@@ -1010,16 +841,13 @@ pub struct ExecuteReadReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ExecuteWriteRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
     /// The INSERT/UPDATE/DELETE statement to execute.
     
     pub sql_statement: String,
-    /// The database type (Sqlite, MySQL, Postgres).
+    /// The database type (Sqlite, Postgres).
     
     pub database_type: u32,
     /// The WHERE clause of the statement, if applicable.
@@ -1033,9 +861,6 @@ pub struct ExecuteWriteRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ExecuteWriteReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the statement executed without error.
     
     pub is_successful: bool,
@@ -1054,9 +879,6 @@ pub struct ExecuteWriteReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct HasTableRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -1069,9 +891,6 @@ pub struct HasTableRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct HasTableReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the table exists or not.
     
     pub has_table: bool,
@@ -1088,9 +907,6 @@ pub struct HasTableReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GenerateContractRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// A host name to identify this Treaty instance to others.
     
     pub host_name: String,
@@ -1111,9 +927,6 @@ pub struct GenerateContractRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GenerateContractReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If contract generation was successful.
     
     pub is_successful: bool,
@@ -1129,9 +942,6 @@ pub struct GenerateContractReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct SetLogicalStoragePolicyRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -1148,9 +958,6 @@ pub struct SetLogicalStoragePolicyRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct SetLogicalStoragePolicyReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful.
     
     pub is_successful: bool,
@@ -1166,9 +973,6 @@ pub struct SetLogicalStoragePolicyReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetLogicalStoragePolicyRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -1181,9 +985,6 @@ pub struct GetLogicalStoragePolicyRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetLogicalStoragePolicyReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The current Logical Storage policy for the requested table.
     /// This value is defined in the /treaty/treaty-types/enums.rs file.
     
@@ -1201,16 +1002,13 @@ pub struct GetLogicalStoragePolicyReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ExecuteCooperativeWriteRequest {
-    /// The authentaction request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The name of the database.
     
     pub database_name: String,
     /// The INSERT/UPDATE/DELETE statement to execute at the Participant.
     
     pub sql_statement: String,
-    /// The type of database: Sqlite, MySQL, Postgres.
+    /// The type of database: Sqlite, Postgres.
     /// This value is defined in the /treaty/treaty-types/enums.rs file.
     
     pub database_type: u32,
@@ -1230,9 +1028,6 @@ pub struct ExecuteCooperativeWriteRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ExecuteCooperativeWriteReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the result was successful.
     
     pub is_successful: bool,
@@ -1248,9 +1043,6 @@ pub struct ExecuteCooperativeWriteReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct AddParticipantRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -1262,7 +1054,10 @@ pub struct AddParticipantRequest {
     pub ip4_address: String,
     /// The database port number for this Participant.
     
-    pub port: u32,
+    pub db_port: ::core::option::Option<u32>,
+    /// The info port number for this Participant.
+    
+    pub info_port: u32,
     /// The HTTP address for this Participant.
     
     pub http_addr: String,
@@ -1280,9 +1075,6 @@ pub struct AddParticipantRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct AddParticipantReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If adding the Participant was successful.
     
     pub is_successful: bool,
@@ -1293,23 +1085,11 @@ pub struct AddParticipantReply {
     
     pub error: ::core::option::Option<TreatyError>,
 }
-/// Requests to view a list of all contracts Treaty has that are in a Pending state,.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq)]
-pub struct ViewPendingContractsRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
-}
 /// Replies with a list of pending contracts.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct ViewPendingContractsReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// A list of contracts that are in a pending state. This list may be empty.
     
     pub contracts: Vec<Contract>,
@@ -1325,9 +1105,6 @@ pub struct ViewPendingContractsReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct AcceptPendingContractRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The host that has sent us the pending contract.
     
     pub host_alias: String,
@@ -1337,9 +1114,6 @@ pub struct AcceptPendingContractRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct AcceptPendingContractReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful.
     
     pub is_successful: bool,
@@ -1357,9 +1131,6 @@ pub struct AcceptPendingContractReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct RejectPendingContractRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The alias of the host.
     
     pub host_alias: String,
@@ -1369,9 +1140,6 @@ pub struct RejectPendingContractRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct RejectPendingContractReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the rejection was successful.
     
     pub is_successful: bool,
@@ -1389,9 +1157,6 @@ pub struct RejectPendingContractReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct EnableCoooperativeFeaturesRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name to enable cooperative features.
     
     pub database_name: String,
@@ -1401,9 +1166,6 @@ pub struct EnableCoooperativeFeaturesRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct EnableCoooperativeFeaturesReply {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If enabling cooperative features was successful.
     
     pub is_successful: bool,
@@ -1414,32 +1176,20 @@ pub struct EnableCoooperativeFeaturesReply {
     
     pub error: ::core::option::Option<TreatyError>,
 }
-/// A request to validate that we have access to this Treaty instance.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq)]
-pub struct TryAuthRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
-}
 /// Replies with the authentication result.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct TryAuthResult {
-    /// The authentication result.
+    /// returns if the authentication is valid
     
-    pub authentication_result: ::core::option::Option<AuthResult>,
+    pub is_authenticated: bool,
 }
 /// A message for creating a table in a database.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct CreateTableRequest {
-    /// The user requesting the table creation.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database in which to create the table.
     
     pub database_name: String,
@@ -1458,9 +1208,6 @@ pub struct CreateTableRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct CreateTableResult {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the table was created.
     
     pub is_successful: bool,
@@ -1511,9 +1258,6 @@ pub struct RowInfo {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct InsertDataRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -1530,9 +1274,6 @@ pub struct InsertDataRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct InsertDataResult {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the result was successful.
     
     pub is_successful: bool,
@@ -1559,9 +1300,6 @@ pub struct InsertDataResult {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct UpdateDataRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -1571,6 +1309,7 @@ pub struct UpdateDataRequest {
     /// The actual UPDATE statement.
     
     pub cmd: String,
+    /// The where clause
     
     pub where_clause: String,
 }
@@ -1579,9 +1318,6 @@ pub struct UpdateDataRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct UpdateDataResult {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the UPDATE statement was successful.
     
     pub is_successful: bool,
@@ -1613,9 +1349,6 @@ pub struct UpdateDataResult {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct DeleteDataRequest {
-    /// The authentication requestl
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
     
     pub database_name: String,
@@ -1636,9 +1369,6 @@ pub struct DeleteDataRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct DeleteDataResult {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the command was successfully executed.
     
     pub is_successful: bool,
@@ -1660,9 +1390,6 @@ pub struct DeleteDataResult {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetRowFromPartialDatabaseRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The row which to get.
     
     pub row_address: ::core::option::Option<RowParticipantAddress>,
@@ -1675,9 +1402,6 @@ pub struct GetRowFromPartialDatabaseRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct GetRowFromPartialDatabaseResult {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful.
     
     pub is_successful: bool,
@@ -1773,9 +1497,6 @@ pub struct ParticipantAcceptsContractResult {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct UpdateRowDataHashForHostRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// Additional telemetry for debugging.
     
     pub telemetry: ::core::option::Option<Telemetry>,
@@ -1809,9 +1530,6 @@ pub struct UpdateRowDataHashForHostRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct UpdateRowDataHashForHostResult {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the message was successful.
     
     pub is_successful: bool,
@@ -1824,9 +1542,6 @@ pub struct UpdateRowDataHashForHostResult {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct NotifyHostOfRemovedRowRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// Debugging information about the sender of this message.
     
     pub telemetry: ::core::option::Option<Telemetry>,
@@ -1854,9 +1569,6 @@ pub struct NotifyHostOfRemovedRowRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct NotifyHostOfRemovedRowResult {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the notification was successful.
     
     pub is_successful: bool,
@@ -1925,32 +1637,69 @@ pub struct Telemetry {
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
-pub struct AuthRequest {
+pub struct AuthRequestBasic {
     /// The name of the user.
     
     pub user_name: String,
     /// The pw of the user.
     
     pub pw: String,
-    /// A hash of the pw of the user.
-    
-    pub pw_hash: Vec<u8>,
-    /// A generated token of the pw of the user.
-    
-    pub token: Vec<u8>,
+}
+/// Credentials to authenticate against Treaty.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq)]
+pub struct AuthRequestWebToken {
     /// A Json Web Token in place of credentials.
     
     pub jwt: String,
+}
+/// Credentials to authenticate against Treaty.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq)]
+pub struct AuthRequestBinary {
+    /// The name of the user.
+    
+    pub user_name: String,
+    /// A generated token of the pw of the user.
+    
+    pub token: Vec<u8>,
+}
+/// Additional metadata to support authorization actions.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq)]
+pub struct AuthRequestMetadata {
     /// An optional Host Id of the Treaty instance. This is used when talking to a `treaty-proxy` instance.
     
     pub id: ::core::option::Option<String>,
+    /// The name of the database to verify authorization, if applicable. This is usually in
+    /// the case of Participants sending messages back to the Host.
+    
+    pub db_name: ::core::option::Option<String>,
+}
+/// A message explaining the author of the request. Maps to the treaty-types enum of the same name.
+/// Values are:
+/// - 0 - Unknown
+/// - 1 - User
+/// - 2 - Data
+/// - 3 - Participant
+#[derive(serde::Serialize, serde::Deserialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq)]
+pub struct AuthRequestAuthor {
+    /// The type who is making the request: a user or a type of
+    /// Treaty instance.
+    
+    pub author_type: u32,
 }
 /// A message describing the results of an authentication attempt.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct AuthResult {
-    /// .
+    /// If the authentication attempt was successful.
     
     pub is_authenticated: bool,
     /// An optional message for any additional information.
@@ -1962,9 +1711,6 @@ pub struct AuthResult {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct CreatePartialDatabaseRequest {
-    /// The authentication request.
-    
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// Additional debugging information.
     
     pub telemetry: ::core::option::Option<Telemetry>,
@@ -1977,9 +1723,6 @@ pub struct CreatePartialDatabaseRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq)]
 pub struct CreatePartialDatabaseResult {
-    /// The authentication result.
-    
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the partial database creation was successful.
     
     pub is_successful: bool,
@@ -2131,6 +1874,9 @@ pub struct Participant {
     /// The database port number.
     
     pub database_port_number: u32,
+    /// The info port number
+    
+    pub info_port_number: u32,
     /// A token used for authentication.
     
     pub token: Vec<u8>,
@@ -2195,6 +1941,9 @@ pub struct HostNetwork {
     /// The HTTP port.
     
     pub http_port: ::core::option::Option<u32>,
+    /// The information port number
+    
+    pub info_port_number: ::core::option::Option<u32>,
 }
 /// A message describing the latest status of a Host.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -2226,7 +1975,7 @@ pub struct DatabaseSchema {
     /// The tables of the database.
     
     pub tables: Vec<TableSchema>,
-    /// The type of database: Sqlite, Postgres, or MySQL.
+    /// The type of database: Sqlite or Postgres.
     /// This value is defined in the /treaty/treaty-types/enums.rs file.
     
     pub database_type: u32,
@@ -2281,4 +2030,19 @@ pub struct RowParticipantAddress {
     /// The row id.
     
     pub row_id: u32,
+}
+/// A message with ports available. These values can be empty depending on what the Treaty host has configured.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq)]
+pub struct TreatyPorts {
+    /// The public info port used to provide general public information
+    
+    pub info_port: ::core::option::Option<u32>,
+    /// The data port used for Treaty to Treaty operations
+    
+    pub data_port: ::core::option::Option<u32>,
+    /// The client port, used for application developer or admin user operations
+    
+    pub user_port: ::core::option::Option<u32>,
 }

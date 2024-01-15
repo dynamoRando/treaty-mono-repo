@@ -16,7 +16,7 @@ pub fn set_treaty_client(client: &TreatyClient) {
 pub fn get_treaty_client() -> TreatyClient {
     let client = SessionStorage::get(TREATYCLIENT).unwrap_or_else(|_| String::from(""));
     if client.is_empty() {
-        TreatyClient::new("", 0)
+        TreatyClient::new("", 0, "", 0, "", "", None)
     } else {
         let client: TreatyClient = serde_json::from_str(&client).unwrap();
         client
@@ -79,12 +79,6 @@ pub fn get_participants() -> Vec<ParticipantStatus> {
     participants
 }
 
-/// updates our status on if we're logged in or not
-pub fn update_token_login_status(is_logged_in: bool) {
-    let mut token = get_treaty_token();
-    token.is_logged_in = is_logged_in;
-    set_treaty_token(token);
-}
 
 pub fn set_status(status: String) {
     let date = js_sys::Date::new_0();

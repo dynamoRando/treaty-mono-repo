@@ -1,29 +1,37 @@
-use crate::proxy_grpc::{ProxyDataServiceHandlerGrpc, ProxyUserServiceHandlerGrpc};
 use chrono::{DateTime, Utc};
 use config::Config;
-use treaty_types::proxy::server_messages::AuthForTokenReply;
 use repo::{sqlite_repo::SqliteRepo, RepoActions};
 use std::{env, fs, path::Path};
 use stdext::function_name;
 use thiserror::Error;
 use tonic::transport::Server;
+use tracing::warn;
 #[allow(unused_imports)]
 use tracing::{debug, error, info, trace};
-use treaty_types::enums::*;
+use treaty::info_service_handler::info_service_handler_actions::InfoServiceHandlerActions;
+use treaty::service::handler_builder::HandlerBuilder;
+use treaty::service::ServiceBuilder;
 use treaty::{
     crypt::{self, hash},
     data_service_handler::data_service_handler_actions::DataServiceHandlerActions,
     jwt::create_jwt,
     service::Service,
     treaty_proto::{
-        data_service_server::DataServiceServer, user_service_server::UserServiceServer,
+        data_service_server::DataServiceServer, info_service_server::InfoServiceServer,
+        user_service_server::UserServiceServer,
     },
     user_service_handler::user_service_handler_actions::UserServiceHandlerActions,
 };
+use treaty_types::enums::*;
+use treaty_types::proxy::server_messages::AuthForTokenReply;
 use triggered::{Listener, Trigger};
 use user_info::UserInfo;
 use uuid::Uuid;
 
+use crate::proxy_grpc::{
+    data::ProxyDataServiceHandlerGrpc, info::ProxyInfoServiceHandlerGrpc,
+    user::ProxyUserServiceHandlerGrpc,
+};
 const SETTINGS: &str = "Settings.toml";
 const PROXY_DB: &str = "Proxy.db";
 
@@ -40,8 +48,7 @@ mod user_info;
 
 `treaty-proxy` is a crate designed to emulate multiple Treaty instances as a "proxy" for an actual Treaty instance. It's intended to be a
 SaaS-like offering to allow multiple users to host their accounts on one server. This is accomplished by abstracting each Treaty instance
-by folder and keeping track of each instance in the `Proxy.db` database. Databases leverage Sqlite to persist information.
-(Other database types: MySQL/Postgres/etc hopefully implemented later.)
+by folder and keeping track of each instance in the `Proxy.db` database. Databases leverage Sqlite or Postgres to persist information.
 
 `treaty-proxy` has two main structs:
 
@@ -101,9 +108,8 @@ impl TreatyProxyDbBuilder {
         match db_type {
             DatabaseType::Unknown => todo!(),
             DatabaseType::Sqlite => SqliteRepo::new(&dir, &db_name),
-            DatabaseType::Mysql => todo!(),
+
             DatabaseType::Postgres => todo!(),
-            DatabaseType::Sqlserver => todo!(),
         }
     }
 }
@@ -121,8 +127,9 @@ struct GrpcServiceSettings {
 pub struct TreatyProxySettings {
     pub use_grpc: bool,
     pub use_http: bool,
-    pub grpc_client_addr_port: String,
+    pub grpc_user_addr_port: String,
     pub grpc_db_addr_port: String,
+    pub grpc_info_addr_port: String,
     pub http_ip: String,
     pub http_port: usize,
     pub root_dir: String,
@@ -131,6 +138,10 @@ pub struct TreatyProxySettings {
     // for the webpage to talk to this instance
     pub proxy_http_addr: String,
     pub proxy_http_port: usize,
+    pub send_user_port_number: bool,
+    pub send_info_port_number: bool,
+    pub send_data_port_number: bool,
+    pub jwt_timeout_in_minutes: u32,
 }
 
 impl TreatyProxy {
@@ -237,6 +248,16 @@ impl TreatyProxy {
             }
         };
 
+        let result_info_addr = settings.get_string("info_addr_port");
+
+        let info_addr = match result_info_addr {
+            Ok(addr) => addr,
+            Err(_) => {
+                error!("missing setting: 'info_addr_port', using default 127.0.0.1:50059");
+                "127.0.0.1:50059".to_string()
+            }
+        };
+
         let result_http_addr = settings.get_string("http_addr");
 
         let http_addr = match result_http_addr {
@@ -289,10 +310,22 @@ impl TreatyProxy {
 
         let db_type = DatabaseType::from_u32(db_type.parse().unwrap());
 
+        let s_jwt_valid_time_in_minutes: String = settings
+            .get_string(&String::from("jwt_valid_time_in_minutes"))
+            .unwrap();
+
+        let jwt_valid_time_in_minutes: u32 = match s_jwt_valid_time_in_minutes.parse() {
+            Ok(timeout) => timeout,
+            Err(_) => {
+                error!("Could not parse: {s_jwt_valid_time_in_minutes:?}, defaulting to 20");
+                20
+            }
+        };
+
         Ok(TreatyProxySettings {
             use_grpc: true,
             use_http: true,
-            grpc_client_addr_port: client_addr,
+            grpc_user_addr_port: client_addr,
             grpc_db_addr_port: db_addr,
             http_ip: http_addr,
             http_port: http_port.parse().unwrap(),
@@ -301,6 +334,11 @@ impl TreatyProxy {
             database_name: db_name,
             proxy_http_addr,
             proxy_http_port: proxy_http_port.parse().unwrap(),
+            grpc_info_addr_port: info_addr,
+            send_user_port_number: false,
+            send_info_port_number: true,
+            send_data_port_number: true,
+            jwt_timeout_in_minutes: jwt_valid_time_in_minutes,
         })
     }
 
@@ -377,7 +415,10 @@ impl TreatyProxy {
         info!("Data Proxy Service Ending...");
     }
 
-    async fn start_grpc_client_with_settings(settings: GrpcServiceSettings, listener: Listener) {
+    async fn start_grpc_user_service_with_settings(
+        settings: GrpcServiceSettings,
+        listener: Listener,
+    ) {
         let client = ProxyUserServiceHandlerGrpc::new(
             settings.root_folder.clone(),
             settings.database_name.clone(),
@@ -406,20 +447,76 @@ impl TreatyProxy {
         info!("Cient Proxy Service Ending...");
     }
 
-    pub async fn start_grpc_client_with_trigger(&self) -> Trigger {
+    async fn start_grpc_info_service_with_settings(
+        settings: GrpcServiceSettings,
+        listener: Listener,
+        info_addr_port: &str,
+    ) {
+        let client = ProxyInfoServiceHandlerGrpc::new(
+            settings.root_folder.clone(),
+            settings.database_name.clone(),
+            settings.addr_port.clone(),
+            info_addr_port.to_string(),
+            settings.own_db_addr_port.to_string(),
+            settings.proxy.clone(),
+        );
+
+        let addr = info_addr_port;
+
+        let service = tonic_reflection::server::Builder::configure()
+            .build()
+            .unwrap();
+
+        info!("Info Proxy Service Starting At: {addr}");
+
+        let addr = addr.parse().unwrap();
+
+        Server::builder()
+            .add_service(InfoServiceServer::new(client))
+            .add_service(service)
+            .serve_with_shutdown(addr, listener)
+            .await
+            .unwrap();
+
+        info!("Info Proxy Service Ending...");
+    }
+
+    pub async fn start_grpc_info_client_with_trigger(&self) -> Trigger {
         let (trigger, listener) = triggered::trigger();
 
         let settings = GrpcServiceSettings {
             root_folder: self.settings.root_dir.clone(),
             database_name: self.settings.database_name.clone(),
-            addr_port: self.settings.grpc_client_addr_port.clone(),
+            addr_port: self.settings.grpc_user_addr_port.clone(),
             own_db_addr_port: self.settings.grpc_db_addr_port.clone(),
             proxy: self.clone(),
         };
 
-        tokio::spawn(
-            async move { Self::start_grpc_client_with_settings(settings, listener).await },
-        );
+        let info_addr = self.settings.grpc_info_addr_port.clone();
+
+        info!("Client Proxy Info Service Starting At: {info_addr}");
+
+        tokio::spawn(async move {
+            Self::start_grpc_info_service_with_settings(settings, listener, &info_addr).await
+        });
+
+        trigger
+    }
+
+    pub async fn start_grpc_user_client_with_trigger(&self) -> Trigger {
+        let (trigger, listener) = triggered::trigger();
+
+        let settings = GrpcServiceSettings {
+            root_folder: self.settings.root_dir.clone(),
+            database_name: self.settings.database_name.clone(),
+            addr_port: self.settings.grpc_user_addr_port.clone(),
+            own_db_addr_port: self.settings.grpc_db_addr_port.clone(),
+            proxy: self.clone(),
+        };
+
+        tokio::spawn(async move {
+            Self::start_grpc_user_service_with_settings(settings, listener).await
+        });
 
         trigger
     }
@@ -441,11 +538,15 @@ impl TreatyProxy {
     }
 
     pub async fn start_grpc_client(&self) -> Trigger {
-        self.start_grpc_client_with_trigger().await
+        self.start_grpc_user_client_with_trigger().await
     }
 
     pub async fn start_grpc_data(&self) -> Trigger {
         self.start_grpc_data_with_trigger().await
+    }
+
+    pub async fn start_grpc_info(&self) -> Trigger {
+        self.start_grpc_info_client_with_trigger().await
     }
 
     pub fn revoke_tokens_for_login(&self, un: &str) {
@@ -482,7 +583,7 @@ impl TreatyProxy {
     }
 
     fn create_token_for_login(&self, login: &str) -> (String, DateTime<Utc>) {
-        let token_data = create_jwt("treaty-proxy", login);
+        let token_data = create_jwt("treaty-proxy", login, self.settings.jwt_timeout_in_minutes);
         self.db()
             .save_token(login, &token_data.0, token_data.1)
             .unwrap();
@@ -499,6 +600,8 @@ impl TreatyProxy {
             });
 
             return Ok(crypt::verify(padded, pw));
+        } else {
+            warn!("Proxy user not found: {}", un);
         }
         Ok(false)
     }
@@ -530,13 +633,13 @@ impl TreatyProxy {
     }
 
     /// sets up the treaty instnce for the user. intended to be called after `register_user`
-    pub fn create_treaty_instance(
+    pub async fn create_treaty_instance(
         &self,
         un: &str,
         overwrite_existing: bool,
     ) -> Result<String, TreatyProxyErr> {
         let full_folder_path = self.setup_user_folder(overwrite_existing)?;
-        let host_id = self.setup_treaty_service(un, &full_folder_path)?;
+        let host_id = self.setup_treaty_service(un, &full_folder_path).await?;
 
         let mut u = self.db().get_user(un)?;
         u.id = Some(host_id.clone());
@@ -554,7 +657,7 @@ impl TreatyProxy {
 
     /// sets up a brand new treaty service for the specified user and updates the treaty folder for this user
     /// intended to be called after a user is registered
-    pub fn setup_treaty_service(
+    pub async fn setup_treaty_service(
         &self,
         un: &str,
         full_folder_path: &str,
@@ -575,14 +678,19 @@ impl TreatyProxy {
             self.db().update_user(&u).unwrap();
         }
 
-        let mut service = Service::new(full_folder_path, &settings);
+        let mut service = if settings.database_type == DatabaseType::Sqlite {
+            ServiceBuilder::build_from_settings(&settings, Some(full_folder_path.to_string()))
+                .unwrap()
+        } else {
+            Service::new(&settings)
+        };
 
-        trace!("[{}]: {service:?}", function_name!());
+        // trace!("[{}]: {service:?}", function_name!());
 
-        service.init_db_with_admin(un, u.hash.clone());
-        service.warn_init_host_info();
+        service.init_db_with_admin(un, u.hash.clone()).await;
+        service.warn_init_host_info().await;
 
-        let host_id = service.host_id();
+        let host_id = service.host_id().await;
 
         if u.id.is_none() {
             u.id = Some(host_id.clone());
@@ -594,7 +702,7 @@ impl TreatyProxy {
         Ok(host_id)
     }
 
-    pub fn get_treaty_service_for_existing_user(
+    pub async fn get_treaty_service_for_existing_user(
         &self,
         un: &str,
     ) -> Result<Service, TreatyProxyErr> {
@@ -602,25 +710,48 @@ impl TreatyProxy {
         let full_folder_path = self.get_user_root_dir(&u)?;
 
         let settings = self.get_default_treaty_settings(un);
-        let service = Service::new(&full_folder_path, &settings);
-        service.init_db();
+        let service = if settings.database_type == DatabaseType::Sqlite {
+            ServiceBuilder::build_from_settings(&settings, Some(full_folder_path.to_string()))
+                .unwrap()
+        } else {
+            Service::new(&settings)
+        };
+        service.init_db().await;
         Ok(service)
     }
 
-    pub fn get_treaty_data_handler(
+    pub async fn get_treaty_data_handler(
         &self,
         id: &str,
-    ) -> Result<impl DataServiceHandlerActions, TreatyProxyErr> {
+    ) -> Result<Box<dyn DataServiceHandlerActions + Send + Sync>, TreatyProxyErr> {
         let service = self.get_treaty_service_for_existing_host(id)?;
-        Ok(service.data_handler())
+        let service =
+            HandlerBuilder::build_data(service.root().as_deref(), &service.settings()).await;
+        Ok(service)
     }
 
-    pub fn get_treaty_grpc_user_handler(
+    pub async fn get_treaty_info_handler(
         &self,
         id: &str,
-    ) -> Result<impl UserServiceHandlerActions, TreatyProxyErr> {
+    ) -> Result<Box<dyn InfoServiceHandlerActions + Send + Sync>, TreatyProxyErr> {
         let service = self.get_treaty_service_for_existing_host(id)?;
-        Ok(service.grpc_user_handler())
+        let service =
+            HandlerBuilder::build_info(service.root().as_deref(), &service.settings()).await;
+        Ok(service)
+    }
+
+    pub async fn get_treaty_grpc_user_handler(
+        &self,
+        id: &str,
+    ) -> Result<Box<dyn UserServiceHandlerActions + Send + Sync>, TreatyProxyErr> {
+        let service = self.get_treaty_service_for_existing_host(id)?;
+        let service = HandlerBuilder::build_user(
+            service.root().as_deref(),
+            &service.settings(),
+            CommunicationType::Grpc,
+        )
+        .await;
+        Ok(service)
     }
 
     pub fn get_treaty_service_for_existing_host(
@@ -629,10 +760,13 @@ impl TreatyProxy {
     ) -> Result<Service, TreatyProxyErr> {
         let u = self.db().get_host(id)?;
         let full_folder_path = self.get_user_root_dir(&u)?;
-        let service = Service::new(
-            &full_folder_path,
-            &self.get_default_treaty_settings(&u.username),
-        );
+        let settings = self.get_default_treaty_settings(&u.username);
+        let service = if settings.database_type == DatabaseType::Sqlite {
+            ServiceBuilder::build_from_settings(&settings, Some(full_folder_path.to_string()))
+                .unwrap()
+        } else {
+            Service::new(&settings)
+        };
         Ok(service)
     }
 
@@ -641,16 +775,26 @@ impl TreatyProxy {
             admin_un: un.to_string(),
             admin_pw: "".to_string(),
             database_type: DatabaseType::Sqlite,
-            backing_database_name: "treaty.db".to_string(),
-            grpc_client_service_addr_port: self.settings.grpc_client_addr_port.clone(),
+            backing_database_name: Some("treaty.db".to_string()),
+            grpc_user_service_addr_port: self.settings.grpc_user_addr_port.clone(),
             grpc_data_service_addr_port: self.settings.grpc_db_addr_port.clone(),
-            client_grpc_timeout_in_seconds: 60,
+            user_grpc_timeout_in_seconds: 60,
             data_grpc_timeout_in_seconds: 60,
             http_addr: self.settings.http_ip.clone(),
             http_port: self.settings.http_port as u16,
             use_grpc: true,
             use_http: false,
-            override_ip_with_local: true,
+            override_ip_with_local: false,
+            grpc_info_service_addr_port: self.settings.grpc_info_addr_port.clone(),
+            info_grpc_timeout_in_seconds: 60,
+            send_user_port_number: false,
+            send_data_port_number: true,
+            send_info_port_number: true,
+            jwt_valid_time_in_minutes: 20,
+            postgres_settings: None,
+            use_tls: false,
+            tls_options: None,
+            tls_http_options: None,
         }
     }
 
@@ -734,33 +878,45 @@ pub fn test_register_twice() {
     );
 }
 
-#[test]
-pub fn test_register_and_setup_user_and_host() {
-    let proxy = test_treaty_common_setup("treaty-proxy-unit-test-reg-setup-run-host").unwrap();
-    let service = proxy.get_treaty_service_for_existing_user("test").unwrap();
-    let host_id = service.host_id();
+#[tokio::test]
+pub async fn test_register_and_setup_user_and_host() {
+    let proxy = test_treaty_common_setup("treaty-proxy-unit-test-reg-setup-run-host")
+        .await
+        .unwrap();
+    let service = proxy
+        .get_treaty_service_for_existing_user("test")
+        .await
+        .unwrap();
+    let host_id = service.host_id().await;
     debug!("{host_id:?}");
     assert!(!host_id.is_empty());
 
     let service = proxy
         .get_treaty_service_for_existing_host(&host_id)
         .unwrap();
-    let id = service.host_id();
+    let id = service.host_id().await;
     assert_eq!(host_id, id);
 }
 
-#[test]
-pub fn test_register_and_setup_user() {
-    let proxy = test_treaty_common_setup("treaty-proxy-unit-test-reg-setup-run").unwrap();
-    let service = proxy.get_treaty_service_for_existing_user("test").unwrap();
-    let host_id = service.host_id();
+#[tokio::test]
+pub async fn test_register_and_setup_user() {
+    let proxy = test_treaty_common_setup("treaty-proxy-unit-test-reg-setup-run")
+        .await
+        .unwrap();
+    let service = proxy
+        .get_treaty_service_for_existing_user("test")
+        .await
+        .unwrap();
+    let host_id = service.host_id().await;
     debug!("{host_id:?}");
     assert!(!host_id.is_empty());
 }
 
-#[test]
-pub fn test_get_treaty_for_user() {
-    test_treaty_common_setup("treaty-proxy-unit-test-get-treaty-for-user").unwrap();
+#[tokio::test]
+pub async fn test_get_treaty_for_user() {
+    test_treaty_common_setup("treaty-proxy-unit-test-get-treaty-for-user")
+        .await
+        .unwrap();
     assert!(true);
 }
 
@@ -776,7 +932,7 @@ pub fn test_setup(test_name: &str) -> TreatyProxy {
 
 #[cfg(test)]
 /// common setup code - sets up the proxy instance and then returns an treaty service for the "test" user
-pub fn test_treaty_common_setup(test_name: &str) -> Option<TreatyProxy> {
+pub async fn test_treaty_common_setup(test_name: &str) -> Option<TreatyProxy> {
     let proxy = test_setup(test_name);
     let result_register = proxy.register_user("test", "1234");
 
@@ -788,7 +944,7 @@ pub fn test_treaty_common_setup(test_name: &str) -> Option<TreatyProxy> {
 
     match result_setup {
         Ok(root_dir) => {
-            let result_setup_treaty = proxy.setup_treaty_service("test", &root_dir);
+            let result_setup_treaty = proxy.setup_treaty_service("test", &root_dir).await;
 
             match result_setup_treaty {
                 Ok(host_id) => {

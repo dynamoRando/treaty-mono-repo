@@ -5,15 +5,12 @@ use crate::{
     },
     request::{
         self,
-        treaty::{
-            clear_status, get_database, get_databases, get_treaty_token, set_status,
-            update_token_login_status,
-        },
+        treaty::{clear_status, get_database, get_databases, get_treaty_token, set_status},
     },
 };
 use treaty_types::{
-   
-    proxy::request_type::RequestType, types::treaty_proto::{GetParticipantsRequest, GetParticipantsReply},
+    proxy::request_type::RequestType,
+    types::treaty_proto::{GetParticipantsReply, GetParticipantsRequest},
 };
 
 use web_sys::HtmlInputElement;
@@ -62,7 +59,6 @@ pub fn EnterSql(SqlProps { sql_result_state }: &SqlProps) -> Html {
                     let token = get_treaty_token();
 
                     let request = GetParticipantsRequest {
-                        authentication: Some(token.auth()),
                         database_name: db_name,
                     };
 
@@ -75,24 +71,15 @@ pub fn EnterSql(SqlProps { sql_result_state }: &SqlProps) -> Html {
                                     serde_json::from_str(&reply).unwrap();
                                 clear_status();
 
-                                let is_authenticated = reply
-                                    .authentication_result
-                                    .as_ref()
-                                    .unwrap()
-                                    .is_authenticated;
-                                update_token_login_status(is_authenticated);
+                                let participants = reply.participants;
+                                participant_dropdown_enabled.set(true);
 
-                                if is_authenticated {
-                                    let participants = reply.participants;
-                                    participant_dropdown_enabled.set(true);
-
-                                    let mut aliases: Vec<String> = Vec::new();
-                                    for p in &participants {
-                                        aliases.push(p.participant.as_ref().unwrap().alias.clone());
-                                    }
-
-                                    participant_aliases.set(Some(aliases));
+                                let mut aliases: Vec<String> = Vec::new();
+                                for p in &participants {
+                                    aliases.push(p.participant.as_ref().unwrap().alias.clone());
                                 }
+
+                                participant_aliases.set(Some(aliases));
                             }
                             Err(e) => {
                                 set_status(e);

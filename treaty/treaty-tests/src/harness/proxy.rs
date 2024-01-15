@@ -1,6 +1,6 @@
 use tracing::debug;
-use treaty_types::enums::DatabaseType;
 use treaty_proxy::{TreatyProxy, TreatyProxySettings};
+use treaty_types::enums::DatabaseType;
 
 use crate::get_test_temp_dir;
 
@@ -18,6 +18,7 @@ pub struct TreatyProxyInfo {
     pub proxy: TreatyProxy,
     pub client_addr: ServiceAddr,
     pub db_addr: Option<ServiceAddr>,
+    pub info_addr: ServiceAddr,
 }
 
 #[derive(Debug, Clone)]
@@ -47,11 +48,13 @@ pub fn configure_proxy_for_test(
             let db_port = get_next_avail_port();
             let db_addr = format!("127.0.0.1:{}", db_port);
             let proxy_http_port = get_next_avail_port();
+            let info_port = get_next_avail_port();
+            let info_addr = format!("127.0.0.1:{}", info_port);
 
             let settings = TreatyProxySettings {
                 use_grpc: true,
                 use_http: false,
-                grpc_client_addr_port: client_addr,
+                grpc_user_addr_port: client_addr,
                 grpc_db_addr_port: db_addr,
                 http_ip: "127.0.0.1".to_string(),
                 http_port: 0,
@@ -60,6 +63,11 @@ pub fn configure_proxy_for_test(
                 proxy_http_addr: "127.0.0.1".to_string(),
                 proxy_http_port: proxy_http_port as usize,
                 root_dir,
+                grpc_info_addr_port: info_addr,
+                send_user_port_number: false,
+                send_info_port_number: true,
+                send_data_port_number: true,
+                jwt_timeout_in_minutes: 20,
             };
 
             let proxy = TreatyProxy::get_proxy_with_config(settings);
@@ -77,10 +85,17 @@ pub fn configure_proxy_for_test(
                 addr_type: AddrType::Database,
             };
 
+            let info_addr = ServiceAddr {
+                ip4_addr: "127.0.0.1:".to_string(),
+                port: info_port,
+                addr_type: AddrType::Info,
+            };
+
             TreatyProxyInfo {
                 proxy,
                 client_addr,
                 db_addr: Some(db_addr),
+                info_addr: info_addr,
             }
         }
         TreatyProxyTestType::Http => {
@@ -89,7 +104,7 @@ pub fn configure_proxy_for_test(
             let settings = TreatyProxySettings {
                 use_grpc: false,
                 use_http: true,
-                grpc_client_addr_port: "127.0.0.1:0".to_string(),
+                grpc_user_addr_port: "127.0.0.1:0".to_string(),
                 grpc_db_addr_port: "127.0.0.1:0".to_string(),
                 http_ip: "127.0.0.1".to_string(),
                 http_port: 0,
@@ -98,32 +113,48 @@ pub fn configure_proxy_for_test(
                 proxy_http_addr: "127.0.0.1".to_string(),
                 proxy_http_port: port as usize,
                 root_dir,
+                grpc_info_addr_port: "127.0.0.1:0".to_string(),
+                send_user_port_number: false,
+                send_info_port_number: true,
+                send_data_port_number: true,
+                jwt_timeout_in_minutes: 20,
             };
 
             let proxy = TreatyProxy::get_proxy_with_config(settings);
             proxy.start();
             let client_addr = ServiceAddr {
                 ip4_addr: "127.0.0.1".to_string(),
-                port,
+                port: port,
                 addr_type: AddrType::Client,
             };
 
             let db_addr = ServiceAddr {
                 ip4_addr: "127.0.0.1".to_string(),
-                port,
+                port: port,
                 addr_type: AddrType::Database,
+            };
+
+            let info_addr = ServiceAddr {
+                ip4_addr: "127.0.0.1".to_string(),
+                port: port,
+                addr_type: AddrType::Info,
             };
 
             TreatyProxyInfo {
                 proxy,
                 client_addr,
                 db_addr: Some(db_addr),
+                info_addr: info_addr,
             }
         }
     }
 }
 
-fn register_proxy_user(proxy: &TreatyProxy, un: &str, pw: &str) -> Option<TreatyProxyTestUser> {
+async fn register_proxy_user(
+    proxy: &TreatyProxy,
+    un: &str,
+    pw: &str,
+) -> Option<TreatyProxyTestUser> {
     let result_register = proxy.register_user(un, pw);
 
     if result_register.is_err() {
@@ -134,7 +165,7 @@ fn register_proxy_user(proxy: &TreatyProxy, un: &str, pw: &str) -> Option<Treaty
 
     match result_setup {
         Ok(root_dir) => {
-            let result_setup_treaty = proxy.setup_treaty_service(un, &root_dir);
+            let result_setup_treaty = proxy.setup_treaty_service(un, &root_dir).await;
 
             match result_setup_treaty {
                 Ok(host_id) => {
@@ -157,7 +188,7 @@ fn register_proxy_user(proxy: &TreatyProxy, un: &str, pw: &str) -> Option<Treaty
 }
 
 /// common setup code - sets up the proxy instance and then returns an treaty service for the "test" user
-pub fn setup_proxy_with_users(
+pub async fn setup_proxy_with_users(
     test_name: &str,
     main_and_participant: bool,
     proxy_type: TreatyProxyTestType,
@@ -165,8 +196,8 @@ pub fn setup_proxy_with_users(
     let proxy = configure_proxy_for_test(test_name, proxy_type);
 
     if main_and_participant {
-        if let Some(main) = register_proxy_user(&proxy.proxy, "tester", "123456") {
-            if let Some(part) = register_proxy_user(&proxy.proxy, "part", "123456") {
+        if let Some(main) = register_proxy_user(&proxy.proxy, "tester", "123456").await {
+            if let Some(part) = register_proxy_user(&proxy.proxy, "part", "123456").await {
                 return Some(TreatyProxyTestSetup {
                     proxy_info: proxy,
                     main,
@@ -176,7 +207,7 @@ pub fn setup_proxy_with_users(
         };
     }
 
-    if let Some(main) = register_proxy_user(&proxy.proxy, "tester", "123456") {
+    if let Some(main) = register_proxy_user(&proxy.proxy, "tester", "123456").await {
         return Some(TreatyProxyTestSetup {
             proxy_info: proxy,
             main,
@@ -186,7 +217,6 @@ pub fn setup_proxy_with_users(
 
     None
 }
-
 
 use serde::de;
 

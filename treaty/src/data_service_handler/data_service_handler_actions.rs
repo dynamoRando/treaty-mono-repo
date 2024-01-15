@@ -4,10 +4,9 @@ use crate::treaty_proto::{
     CreatePartialDatabaseRequest, CreatePartialDatabaseResult, CreateTableRequest,
     CreateTableResult, DeleteDataRequest, DeleteDataResult, GetRowFromPartialDatabaseRequest,
     GetRowFromPartialDatabaseResult, InsertDataRequest, InsertDataResult,
-    NotifyHostOfRemovedRowRequest, NotifyHostOfRemovedRowResult, ParticipantAcceptsContractRequest,
-    ParticipantAcceptsContractResult, SaveContractRequest, SaveContractResult, TestReply,
-    TestRequest, TryAuthRequest, TryAuthResult, UpdateDataRequest, UpdateDataResult,
-    UpdateRowDataHashForHostRequest, UpdateRowDataHashForHostResult,
+    NotifyHostOfRemovedRowRequest, NotifyHostOfRemovedRowResult, TestReply, TestRequest,
+    TryAuthResult, UpdateDataRequest, UpdateDataResult, UpdateRowDataHashForHostRequest,
+    UpdateRowDataHashForHostResult,
 };
 
 #[async_trait]
@@ -18,17 +17,12 @@ pub trait DataServiceHandlerActions {
         request: GetRowFromPartialDatabaseRequest,
     ) -> GetRowFromPartialDatabaseResult;
     async fn update_command_into_table(&self, request: UpdateDataRequest) -> UpdateDataResult;
-    async fn save_contract(&self, request: SaveContractRequest) -> SaveContractResult;
     async fn insert_command_into_table(&self, request: InsertDataRequest) -> InsertDataResult;
     async fn create_table_in_database(&self, request: CreateTableRequest) -> CreateTableResult;
     async fn create_partial_database(
         &self,
         request: CreatePartialDatabaseRequest,
     ) -> CreatePartialDatabaseResult;
-    async fn accept_contract(
-        &self,
-        request: ParticipantAcceptsContractRequest,
-    ) -> ParticipantAcceptsContractResult;
     async fn update_row_data_hash_for_host(
         &self,
         request: UpdateRowDataHashForHostRequest,
@@ -37,6 +31,6 @@ pub trait DataServiceHandlerActions {
         &self,
         request: NotifyHostOfRemovedRowRequest,
     ) -> NotifyHostOfRemovedRowResult;
-    async fn try_auth(&self, request: TryAuthRequest) -> TryAuthResult;
+    async fn try_auth(&self) -> TryAuthResult;
     async fn is_online(&self, request: TestRequest) -> TestReply;
 }

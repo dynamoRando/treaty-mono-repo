@@ -1,8 +1,10 @@
-use treaty_types::enums::UpdatesFromHostBehavior;
 use treaty_http_endpoints::client::GET_UPDATES_FROM_HOST_BEHAVIOR;
+use treaty_types::enums::UpdatesFromHostBehavior;
 use yew::{function_component, html, Html};
 
-use treaty_types::types::treaty_proto::{GetUpdatesFromHostBehaviorReply, GetUpdatesFromHostBehaviorRequest};
+use treaty_types::types::treaty_proto::{
+    GetUpdatesFromHostBehaviorReply, GetUpdatesFromHostBehaviorRequest,
+};
 use yew::{use_state_eq, AttrValue, Callback};
 
 mod change_behavior;
@@ -16,9 +18,7 @@ use crate::{
         },
         common::{select_database::SelectDatabase, select_table::SelectTable},
     },
-    request::{
-        self, clear_status, get_databases, get_token, set_status, update_token_login_status,
-    },
+    request::{self, clear_status, get_databases, set_status, get_client},
 };
 
 #[function_component]
@@ -67,16 +67,15 @@ pub fn UpdatesFromHost() -> Html {
             if !table_name.is_empty() {
                 log_to_console(table_name.clone());
 
-                let token = get_token();
+                let client = get_client();
 
                 let request = GetUpdatesFromHostBehaviorRequest {
-                    authentication: Some(token.auth()),
                     database_name: active_database.to_string(),
                     table_name,
                 };
 
                 let body = serde_json::to_string(&request).unwrap();
-                let url = format!("{}{}", token.addr, GET_UPDATES_FROM_HOST_BEHAVIOR);
+                let url = format!("{}{}", client.user_addr_port(), GET_UPDATES_FROM_HOST_BEHAVIOR);
 
                 let cb = Callback::from(move |response: Result<AttrValue, String>| {
                     if let Ok(ref x) = response {
@@ -86,19 +85,10 @@ pub fn UpdatesFromHost() -> Html {
                         let reply: GetUpdatesFromHostBehaviorReply =
                             serde_json::from_str(x).unwrap();
 
-                        let is_authenticated = reply
-                            .authentication_result
-                            .as_ref()
-                            .unwrap()
-                            .is_authenticated;
-                        update_token_login_status(is_authenticated);
-
-                        if is_authenticated {
-                            let behavior = reply.behavior.unwrap();
-                            let behavior_value =
-                                UpdatesFromHostBehavior::from_u32(behavior).as_string();
-                            behavior_type_state.set(behavior_value);
-                        }
+                        let behavior = reply.behavior.unwrap();
+                        let behavior_value =
+                            UpdatesFromHostBehavior::from_u32(behavior).as_string();
+                        behavior_type_state.set(behavior_value);
                     } else {
                         set_status(response.err().unwrap());
                     }

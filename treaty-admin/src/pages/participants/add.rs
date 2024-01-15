@@ -7,7 +7,7 @@ use yew::{function_component, html, use_node_ref, use_state_eq, AttrValue, Callb
 use crate::{
     log::log_to_console,
     pages::participants::ActiveDbProps,
-    request::{self, clear_status, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, set_status, get_client},
 };
 
 #[function_component]
@@ -42,15 +42,15 @@ pub fn AddParticipant(ActiveDbProps { active_db }: &ActiveDbProps) -> Html {
             let http = ui_http.cast::<HtmlInputElement>().unwrap().value();
             let http_port = ui_http_port.cast::<HtmlInputElement>().unwrap().value();
 
-            let token = get_token();
-            let url = format!("{}{}", token.addr, ADD_PARTICIPANT);
+            let client = get_client();
+            let url = format!("{}{}", client.user_addr_port(), ADD_PARTICIPANT);
 
             let request = AddParticipantRequest {
-                authentication: Some(token.auth()),
                 database_name: db_name,
                 alias: alias.clone(),
                 ip4_address: addr,
-                port: port.parse().unwrap(),
+                db_port: Some(port.parse().unwrap()),
+                info_port: port.parse().unwrap(),
                 http_addr: http,
                 http_port: http_port.parse().unwrap(),
                 id: None,
@@ -65,23 +65,14 @@ pub fn AddParticipant(ActiveDbProps { active_db }: &ActiveDbProps) -> Html {
 
                     let reply: AddParticipantReply = serde_json::from_str(x).unwrap();
 
-                    let is_authenticated = reply
-                        .authentication_result
-                        .as_ref()
-                        .unwrap()
-                        .is_authenticated;
-                    update_token_login_status(is_authenticated);
+                    let now = Date::new(&Date::new_0());
+                    let now = Date::to_iso_string(&now);
 
-                    if is_authenticated {
-                        let now = Date::new(&Date::new_0());
-                        let now = Date::to_iso_string(&now);
-
-                        let message = format!(
-                            "Alias: {} Is Successful: {} At Time: {}",
-                            alias, reply.is_successful, now
-                        );
-                        add_participant_result.set(message);
-                    }
+                    let message = format!(
+                        "Alias: {} Is Successful: {} At Time: {}",
+                        alias, reply.is_successful, now
+                    );
+                    add_participant_result.set(message);
                 } else {
                     set_status(response.err().unwrap());
                 }

@@ -1,18 +1,16 @@
-use treaty_types::enums::DatabaseType;
 use treaty_tests::harness::get_treaty_client;
 use treaty_tests::harness::CoreTestConfig;
 use treaty_tests::harness::TreatyClientConfig;
+use treaty_types::enums::DatabaseType;
 
-pub fn test_core(config: CoreTestConfig) {
+pub async fn test_core(config: CoreTestConfig) {
     let mc = config.main_client.clone();
     let db = config.test_db_name;
-    let response = client(&db, &mc);
+    let response = client(&db, &mc).await;
 
     assert!(response);
 }
 
-#[cfg(test)]
-#[tokio::main]
 async fn client(db_name: &str, config: &TreatyClientConfig) -> bool {
     let database_type = DatabaseType::to_u32(DatabaseType::Sqlite);
     let mut client = get_treaty_client(config).await;
@@ -40,11 +38,10 @@ async fn client(db_name: &str, config: &TreatyClientConfig) -> bool {
 
 pub mod http {
     use crate::test_core;
-    use treaty_tests::{
-        runner::{RunnerConfig, TestRunner},
-    };
-    #[test]
-    fn test() {
+    use treaty_tests::runner::{RunnerConfig, TestRunner};
+
+    #[tokio::test]
+    async fn test() {
         let test_name = "has_table_http";
 
         let config = RunnerConfig {
@@ -53,7 +50,7 @@ pub mod http {
             use_internal_logging: false,
         };
 
-        TestRunner::run_http_test(config, test_core);
+        TestRunner::run_http_test(config, test_core).await;
     }
 }
 
@@ -63,9 +60,9 @@ pub mod grpc {
         harness::init_trace_to_screen,
         runner::{RunnerConfig, TestRunner},
     };
-    #[test]
-    fn test() {
-        init_trace_to_screen(false);
+    #[tokio::test]
+    async fn test() {
+        init_trace_to_screen(false, None);
 
         let test_name = "has_table_gprc";
         let config = RunnerConfig {
@@ -74,11 +71,25 @@ pub mod grpc {
             use_internal_logging: false,
         };
 
-        TestRunner::run_grpc_test(config, test_core);
+        TestRunner::run_grpc_test(config, test_core).await;
     }
 
-    #[test]
-    fn proxy() {
+    #[tokio::test]
+    async fn postgres() {
+        let test_name = "has_table_grpc_postgres";
+        init_trace_to_screen(false, Some(String::from("has_table=trace")));
+
+        let config = RunnerConfig {
+            test_name: test_name.to_string(),
+            contract_desc: Some(String::from("contract")),
+            use_internal_logging: false,
+        };
+
+        TestRunner::run_grpc_test_postgres(config, test_core).await;
+    }
+
+    #[tokio::test]
+    async fn proxy() {
         let test_name = "has_table_gprc-proxy";
 
         let config = RunnerConfig {
@@ -87,6 +98,6 @@ pub mod grpc {
             use_internal_logging: false,
         };
 
-        TestRunner::run_grpc_proxy_test(config, test_core);
+        TestRunner::run_grpc_proxy_test(config, test_core).await;
     }
 }

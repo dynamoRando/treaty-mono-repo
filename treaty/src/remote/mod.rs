@@ -1,5 +1,7 @@
 use async_trait::async_trait;
 
+use crate::treaty_proto::TreatyPorts;
+
 use self::remote_actions::RemoteActions;
 
 #[allow(dead_code, unused_variables)]
@@ -9,6 +11,7 @@ pub(crate) mod remote_grpc;
 #[allow(dead_code, unused_variables)]
 pub(crate) mod remote_http;
 
+/// A remote client for connecting to another Treaty instance
 #[derive(Debug, Clone)]
 pub(crate) struct Remote<R: RemoteActions> {
     r: R,
@@ -228,5 +231,20 @@ impl<R: RemoteActions + Clone> RemoteActions for Remote<R> {
     {
         self.r
             .notify_host_of_acceptance_of_contract(accepted_contract, own_host_info)
+    }
+
+    fn get_remote_ports<'life0, 'life1, 'async_trait>(
+        &'life0 self,
+        ip4addr: &'life1 str,
+        info_port: u32,
+    ) -> core::pin::Pin<
+        Box<dyn core::future::Future<Output = TreatyPorts> + core::marker::Send + 'async_trait>,
+    >
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        Self: 'async_trait,
+    {
+        self.r.get_remote_ports(ip4addr, info_port)
     }
 }

@@ -10,7 +10,7 @@ use yew::{
 use crate::{
     log::log_to_console,
     pages::common::pending_actions::PendingActions,
-    request::{self, clear_status, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, set_status, get_client},
 };
 
 #[derive(Properties, PartialEq)]
@@ -42,10 +42,9 @@ pub fn ViewPendingUpdates(
             let active_database = active_database.clone();
             let active_table = active_table.clone();
 
-            let token = get_token();
-            let url = format!("{}{}", token.addr, ACCEPT_PENDING_ACTION);
+            let client = get_client();
+            let url = format!("{}{}", client.user_addr_port(), ACCEPT_PENDING_ACTION);
             let request = AcceptPendingActionRequest {
-                authentication: Some(token.auth()),
                 database_name: (*active_database).clone(),
                 table_name: (*active_table).clone(),
                 row_id: accepted_row_id,
@@ -58,17 +57,7 @@ pub fn ViewPendingUpdates(
                     clear_status();
                     log_to_console(x.to_string());
 
-                    let reply: AcceptPendingActionReply = serde_json::from_str(x).unwrap();
-                    let is_authenticated = reply
-                        .authentication_result
-                        .as_ref()
-                        .unwrap()
-                        .is_authenticated;
-                    update_token_login_status(is_authenticated);
-
-                    if is_authenticated {
-                        todo!("We should write the status back out somewhere")
-                    }
+                    let _: AcceptPendingActionReply = serde_json::from_str(x).unwrap();
                 } else {
                     let error_message = response.err().unwrap();
                     set_status(error_message);
@@ -88,10 +77,9 @@ pub fn ViewPendingUpdates(
             let active_database = active_database.clone();
             let active_table = active_table.clone();
 
-            let token = get_token();
-            let url = format!("{}{}", token.addr, ACCEPT_PENDING_ACTION);
+            let client = get_client();
+            let url = format!("{}{}", client.user_addr_port(), ACCEPT_PENDING_ACTION);
             let request = AcceptPendingActionRequest {
-                authentication: Some(token.auth()),
                 database_name: (*active_database).clone(),
                 table_name: (*active_table).clone(),
                 row_id: rejected_row_id,
@@ -104,17 +92,7 @@ pub fn ViewPendingUpdates(
                     clear_status();
                     log_to_console(x.to_string());
 
-                    let reply: AcceptPendingActionReply = serde_json::from_str(x).unwrap();
-                    let is_authenticated = reply
-                        .authentication_result
-                        .as_ref()
-                        .unwrap()
-                        .is_authenticated;
-                    update_token_login_status(is_authenticated);
-
-                    if is_authenticated {
-                        todo!("We should write the status out somewhere")
-                    }
+                    let _: AcceptPendingActionReply = serde_json::from_str(x).unwrap();
                 } else {
                     let error_message = response.err().unwrap();
                     set_status(error_message);
@@ -133,10 +111,9 @@ pub fn ViewPendingUpdates(
 
         Callback::from(move |_| {
             let pending_actions = pending_actions.clone();
-            let token = get_token();
-            let url = format!("{}{}", token.addr, GET_PENDING_ACTIONS);
+            let client = get_client();
+            let url = format!("{}{}", client.user_addr_port(), GET_PENDING_ACTIONS);
             let request = GetPendingActionsRequest {
-                authentication: Some(token.auth()),
                 database_name: (*active_database).clone(),
                 table_name: (*active_table).clone(),
                 action: "DELETE".to_string(),
@@ -150,17 +127,9 @@ pub fn ViewPendingUpdates(
                     log_to_console(x.to_string());
 
                     let reply: GetPendingActionsReply = serde_json::from_str(x).unwrap();
-                    let is_authenticated = reply
-                        .authentication_result
-                        .as_ref()
-                        .unwrap()
-                        .is_authenticated;
-                    update_token_login_status(is_authenticated);
 
-                    if is_authenticated {
-                        let actions = reply.pending_statements;
-                        pending_actions.set(actions);
-                    }
+                    let actions = reply.pending_statements;
+                    pending_actions.set(actions);
                 } else {
                     let error_message = response.err().unwrap();
                     set_status(error_message);

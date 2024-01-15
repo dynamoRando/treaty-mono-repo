@@ -4,7 +4,7 @@ use crate::types::treaty_proto::Row;
 
 pub mod markdown;
 
-/// takes a Vec of rows and formats a table similar to MySQL
+/// takes a Vec of rows and formats a table similar to MySQL formatting
 
 pub fn rows_to_string_table(_rows: Vec<Row>) -> String {
     todo!()

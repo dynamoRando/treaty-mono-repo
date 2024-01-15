@@ -1,0 +1,17 @@
+FROM rust:latest as dev
+ENV TREATY_POSTGRES_HOST="postgres"
+ENV TREATY_POSTGRES_PORT=5432
+ENV TREATY_POSTGRES_UN="tester"
+ENV TREATY_POSTGRES_PW="tester"
+ENV TREATY_POSTGRES_TREATY_SCHEMA="treaty"
+ENV TREATY_POSTGRES_DB_NAME="treaty"
+ENV TREATY_POSTGRES_USE_SCHEMA=true
+
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive \
+    apt-get install --no-install-recommends --assume-yes \
+      protobuf-compiler libprotobuf-dev openssl libssl-dev build-essential clang mold nano
+
+WORKDIR /treaty
+COPY config.toml /root/.cargo/config.toml
+ENTRYPOINT ["tail", "-f", "/dev/null"]

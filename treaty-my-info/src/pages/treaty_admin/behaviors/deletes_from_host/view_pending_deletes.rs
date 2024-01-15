@@ -2,13 +2,13 @@ use crate::request;
 use crate::{
     log::log_to_console,
     pages::treaty_admin::common::pending_actions::PendingActions,
-    request::treaty::{clear_status, get_treaty_token, set_status, update_token_login_status},
+    request::treaty::{clear_status, get_treaty_token, set_status},
 };
+use treaty_types::proxy::request_type::RequestType;
 use treaty_types::types::treaty_proto::{
     AcceptPendingActionReply, AcceptPendingActionRequest, GetPendingActionsReply,
     GetPendingActionsRequest, PendingStatement,
 };
-use treaty_types::proxy::request_type::RequestType;
 use yew::{
     function_component, html, use_state_eq, AttrValue, Callback, Html, Properties, UseStateHandle,
 };
@@ -45,7 +45,6 @@ pub fn ViewPendingDeletes(
             let token = get_treaty_token();
 
             let request = AcceptPendingActionRequest {
-                authentication: Some(token.auth()),
                 database_name: (*active_database).clone(),
                 table_name: (*active_table).clone(),
                 row_id: accepted_row_id,
@@ -60,16 +59,6 @@ pub fn ViewPendingDeletes(
                     log_to_console(&response);
 
                     let reply: AcceptPendingActionReply = serde_json::from_str(&response).unwrap();
-                    let is_authenticated = reply
-                        .authentication_result
-                        .as_ref()
-                        .unwrap()
-                        .is_authenticated;
-                    update_token_login_status(is_authenticated);
-
-                    if is_authenticated {
-                        todo!("We should write the status back out somewhere")
-                    }
                 }
                 Err(error_message) => {
                     set_status(error_message);
@@ -92,7 +81,6 @@ pub fn ViewPendingDeletes(
             let token = get_treaty_token();
 
             let request = AcceptPendingActionRequest {
-                authentication: Some(token.auth()),
                 database_name: (*active_database).clone(),
                 table_name: (*active_table).clone(),
                 row_id: rejected_row_id,
@@ -106,16 +94,6 @@ pub fn ViewPendingDeletes(
                     log_to_console(&response);
 
                     let reply: AcceptPendingActionReply = serde_json::from_str(&response).unwrap();
-                    let is_authenticated = reply
-                        .authentication_result
-                        .as_ref()
-                        .unwrap()
-                        .is_authenticated;
-                    update_token_login_status(is_authenticated);
-
-                    if is_authenticated {
-                        todo!("We should write the status out somewhere")
-                    }
                 }
                 Err(error_message) => {
                     set_status(error_message);
@@ -137,7 +115,6 @@ pub fn ViewPendingDeletes(
             let token = get_treaty_token();
 
             let request = GetPendingActionsRequest {
-                authentication: Some(token.auth()),
                 database_name: (*active_database).clone(),
                 table_name: (*active_table).clone(),
                 action: "DELETE".to_string(),
@@ -152,17 +129,9 @@ pub fn ViewPendingDeletes(
                     log_to_console(&response);
 
                     let reply: GetPendingActionsReply = serde_json::from_str(&response).unwrap();
-                    let is_authenticated = reply
-                        .authentication_result
-                        .as_ref()
-                        .unwrap()
-                        .is_authenticated;
-                    update_token_login_status(is_authenticated);
 
-                    if is_authenticated {
-                        let actions = reply.pending_statements;
-                        pending_actions.set(actions);
-                    }
+                    let actions = reply.pending_statements;
+                    pending_actions.set(actions);
                 }
                 Err(error_message) => {
                     set_status(error_message);

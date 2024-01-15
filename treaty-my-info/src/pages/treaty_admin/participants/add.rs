@@ -3,12 +3,12 @@ use crate::{
     pages::treaty_admin::participants::ActiveDbProps,
     request::{
         self,
-        treaty::{clear_status, get_treaty_token, set_status, update_token_login_status},
+        treaty::{clear_status, get_treaty_token, set_status},
     },
 };
 use js_sys::Date;
-use treaty_types::types::treaty_proto::{AddParticipantReply, AddParticipantRequest};
 use treaty_types::proxy::request_type::RequestType;
+use treaty_types::types::treaty_proto::{AddParticipantReply, AddParticipantRequest};
 use web_sys::HtmlInputElement;
 use yew::{function_component, html, use_node_ref, use_state_eq, AttrValue, Callback, Html};
 
@@ -56,11 +56,11 @@ pub fn AddParticipant(ActiveDbProps { active_db }: &ActiveDbProps) -> Html {
             }
 
             let request = AddParticipantRequest {
-                authentication: Some(token.auth()),
                 database_name: db_name,
                 alias: alias.clone(),
                 ip4_address: addr,
-                port: port.parse().unwrap(),
+                db_port: Some(port.parse().unwrap()),
+                info_port: 0,
                 http_addr: http,
                 http_port: http_port.parse().unwrap(),
                 id: hid,
@@ -77,23 +77,14 @@ pub fn AddParticipant(ActiveDbProps { active_db }: &ActiveDbProps) -> Html {
 
                     let reply: AddParticipantReply = serde_json::from_str(x).unwrap();
 
-                    let is_authenticated = reply
-                        .authentication_result
-                        .as_ref()
-                        .unwrap()
-                        .is_authenticated;
-                    update_token_login_status(is_authenticated);
+                    let now = Date::new(&Date::new_0());
+                    let now = Date::to_iso_string(&now);
 
-                    if is_authenticated {
-                        let now = Date::new(&Date::new_0());
-                        let now = Date::to_iso_string(&now);
-
-                        let message = format!(
-                            "Alias: {} Is Successful: {} At Time: {}",
-                            alias, reply.is_successful, now
-                        );
-                        add_participant_result.set(message);
-                    }
+                    let message = format!(
+                        "Alias: {} Is Successful: {} At Time: {}",
+                        alias, reply.is_successful, now
+                    );
+                    add_participant_result.set(message);
                 } else {
                     set_status(response.err().unwrap());
                 }

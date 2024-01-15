@@ -1,8 +1,10 @@
 use treaty_types::enums::UpdatesFromHostBehavior;
 
 use crate::request;
-use treaty_types::types::treaty_proto::{GetUpdatesFromHostBehaviorReply, GetUpdatesFromHostBehaviorRequest};
 use treaty_types::proxy::request_type::RequestType;
+use treaty_types::types::treaty_proto::{
+    GetUpdatesFromHostBehaviorReply, GetUpdatesFromHostBehaviorRequest,
+};
 use yew::{function_component, html, Html};
 use yew::{use_state_eq, AttrValue, Callback};
 mod change_behavior;
@@ -16,9 +18,7 @@ use crate::{
         },
         common::{select_database::SelectDatabase, select_table::SelectTable},
     },
-    request::treaty::{
-        clear_status, get_databases, get_treaty_token, set_status, update_token_login_status,
-    },
+    request::treaty::{clear_status, get_databases, get_treaty_token, set_status},
 };
 
 #[function_component]
@@ -70,7 +70,6 @@ pub fn UpdatesFromHost() -> Html {
                 let token = get_treaty_token();
 
                 let request = GetUpdatesFromHostBehaviorRequest {
-                    authentication: Some(token.auth()),
                     database_name: active_database.to_string(),
                     table_name,
                 };
@@ -85,19 +84,10 @@ pub fn UpdatesFromHost() -> Html {
                         let reply: GetUpdatesFromHostBehaviorReply =
                             serde_json::from_str(x).unwrap();
 
-                        let is_authenticated = reply
-                            .authentication_result
-                            .as_ref()
-                            .unwrap()
-                            .is_authenticated;
-                        update_token_login_status(is_authenticated);
-
-                        if is_authenticated {
-                            let behavior = reply.behavior.unwrap();
-                            let behavior_value =
-                                UpdatesFromHostBehavior::from_u32(behavior).as_string();
-                            behavior_type_state.set(behavior_value);
-                        }
+                        let behavior = reply.behavior.unwrap();
+                        let behavior_value =
+                            UpdatesFromHostBehavior::from_u32(behavior).as_string();
+                        behavior_type_state.set(behavior_value);
                     } else {
                         set_status(response.err().unwrap());
                     }

@@ -1,11 +1,13 @@
 use treaty_http_endpoints::client::ENABLE_COOPERATIVE_FEATURES;
-use treaty_types::types::treaty_proto::{EnableCoooperativeFeaturesReply, EnableCoooperativeFeaturesRequest};
+use treaty_types::types::treaty_proto::{
+    EnableCoooperativeFeaturesReply, EnableCoooperativeFeaturesRequest,
+};
 use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
 
 use crate::{
     log::log_to_console,
     pages::common::select_database::SelectDatabase,
-    request::{self, clear_status, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, set_status, get_client},
 };
 
 #[function_component]
@@ -20,15 +22,14 @@ pub fn EnableCoop() -> Html {
         Callback::from(move |_| {
             let active_database = active_database.clone();
             let enable_result = enable_result.clone();
-            let token = get_token();
+            let client = get_client();
 
             let request = EnableCoooperativeFeaturesRequest {
-                authentication: Some(token.auth()),
                 database_name: (*active_database).clone(),
             };
 
             let json_request = serde_json::to_string(&request).unwrap();
-            let url = format!("{}{}", token.addr, ENABLE_COOPERATIVE_FEATURES);
+            let url = format!("{}{}", client.user_addr_port(), ENABLE_COOPERATIVE_FEATURES);
 
             let cb = Callback::from(move |response: Result<AttrValue, String>| {
                 if let Ok(ref x) = response {
@@ -36,17 +37,12 @@ pub fn EnableCoop() -> Html {
                     clear_status();
 
                     let reply: EnableCoooperativeFeaturesReply = serde_json::from_str(x).unwrap();
-                    let is_authenticated = reply.authentication_result.unwrap().is_authenticated;
-                    update_token_login_status(is_authenticated);
 
-                    if is_authenticated {
-                        let message = format!(
-                            "{}{}",
-                            "Last cooperation enable request for database was: ",
-                            reply.is_successful
-                        );
-                        enable_result.set(message);
-                    }
+                    let message = format!(
+                        "{}{}",
+                        "Last cooperation enable request for database was: ", reply.is_successful
+                    );
+                    enable_result.set(message);
                 } else {
                     set_status(response.err().unwrap());
                 }

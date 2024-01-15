@@ -1,12 +1,12 @@
-use treaty_types::types::treaty_proto::{GenerateHostInfoReply, GenerateHostInfoRequest};
 use treaty_types::proxy::request_type::RequestType;
+use treaty_types::types::treaty_proto::{GenerateHostInfoReply, GenerateHostInfoRequest};
 use web_sys::HtmlInputElement;
 use yew::{function_component, html, use_node_ref, use_state_eq, AttrValue, Callback, Html};
 
 use crate::request;
 use crate::{
     log::log_to_console,
-    request::treaty::{clear_status, get_treaty_token, set_status, update_token_login_status},
+    request::treaty::{clear_status, get_treaty_token, set_status},
 };
 
 #[function_component]
@@ -25,10 +25,7 @@ pub fn GenerateInfo() -> Html {
 
             let token = get_treaty_token();
 
-            let request = GenerateHostInfoRequest {
-                authentication: Some(token.auth()),
-                host_name,
-            };
+            let request = GenerateHostInfoRequest { host_name };
 
             let json_request = serde_json::to_string(&request).unwrap();
 
@@ -41,18 +38,8 @@ pub fn GenerateInfo() -> Html {
 
                         let reply: GenerateHostInfoReply = serde_json::from_str(x).unwrap();
 
-                        let is_authenticated = reply
-                            .authentication_result
-                            .as_ref()
-                            .unwrap()
-                            .is_authenticated;
-                        update_token_login_status(is_authenticated);
-
-                        if is_authenticated {
-                            let message =
-                                format!("{}{}", "Last gen result was: ", reply.is_successful);
-                            last_gen_result.set(message);
-                        }
+                        let message = format!("{}{}", "Last gen result was: ", reply.is_successful);
+                        last_gen_result.set(message);
                     } else {
                         set_status(response.err().unwrap());
                     }

@@ -1,15 +1,14 @@
-use chrono::{DateTime, Utc};
-use guid_create::GUID;
-use rocket::log::private::warn;
-use treaty_types::enums::*;
 use crate::{
     defaults,
-    
     treaty_proto::{
         ColumnSchema, Contract, DatabaseSchema, Host, HostNetwork, Participant, RowRemoteMetadata,
         RowValue,
     },
 };
+use chrono::{DateTime, Utc};
+use guid_create::GUID;
+use rocket::log::private::warn;
+use treaty_types::enums::*;
 
 /*
 This module contains all the types that can be returned from a database interface
@@ -65,7 +64,8 @@ pub struct CdsHosts {
     pub token: Vec<u8>,
     pub ip4: String,
     pub ip6: String,
-    pub port: u32,
+    pub db_port: u32,
+    pub info_port: u32,
     pub last_comm_utc: String,
     pub http_addr: String,
     pub http_port: u32,
@@ -85,15 +85,6 @@ pub struct PartialDataResult {
 pub struct DbiConfigSqlite {
     pub root_folder: String,
     pub treaty_db_name: String,
-}
-
-#[derive(Debug, Clone)]
-pub struct DbiConfigMySql {
-    pub user_name: String,
-    pub pw: String,
-    pub connection_string: String,
-    pub host: String,
-    pub connect_options: String,
 }
 
 #[derive(Debug, Clone)]
@@ -120,12 +111,54 @@ pub struct CoopDatabaseParticipant {
     pub ip4addr: String,
     pub ip6addr: String,
     pub db_port: u32,
+    pub info_port: u32,
     pub contract_status: ContractStatus,
     pub accepted_contract_version: GUID,
     pub token: Vec<u8>,
     pub id: GUID,
     pub http_addr: String,
     pub http_port: u16,
+}
+
+impl TryFrom<Participant> for CoopDatabaseParticipant {
+    type Error = String;
+
+    fn try_from(participant: Participant) -> Result<Self, String> {
+        let result = GUID::parse(&participant.internal_participant_guid);
+
+        let iid: GUID;
+        let pid: GUID;
+
+        match result {
+            Ok(id) => {
+                iid = id;
+            }
+            Err(e) => return Err(e.to_string()),
+        }
+
+        let result = GUID::parse(&participant.participant_guid);
+        match result {
+            Ok(id) => {
+                pid = id;
+            }
+            Err(e) => return Err(e.to_string()),
+        }
+
+        Ok(Self {
+            internal_id: iid,
+            alias: participant.alias,
+            ip4addr: participant.ip4_address,
+            ip6addr: participant.ip6_address,
+            db_port: participant.database_port_number,
+            info_port: participant.info_port_number,
+            contract_status: ContractStatus::Unknown,
+            accepted_contract_version: GUID::default(),
+            token: participant.token,
+            id: pid,
+            http_addr: participant.http_addr,
+            http_port: participant.http_port as u16,
+        })
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -136,7 +169,7 @@ pub struct CoopDatabaseParticipantData {
     pub row_data: Vec<(u32, Vec<u8>)>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 /// Represents the information about an `treaty` instance. This data is used to identify a particular
 /// `treaty` instances to others. From the perspective of *participants*, this is the *host*.
 pub struct HostInfo {
@@ -145,7 +178,7 @@ pub struct HostInfo {
     pub token: Vec<u8>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CoopDatabaseContract {
     pub contract_id: GUID,
     pub generated_date: DateTime<Utc>,
@@ -162,7 +195,8 @@ impl CoopDatabaseContract {
         db_schema: DatabaseSchema,
         status: ContractStatus,
         addr: &str,
-        port: u32,
+        db_port: u32,
+        info_port: u32,
     ) -> Contract {
         let mut network: Option<HostNetwork> = None;
 
@@ -170,9 +204,10 @@ impl CoopDatabaseContract {
             network = Some(HostNetwork {
                 ip4_address: Some(addr.into()),
                 ip6_address: None,
-                database_port_number: Some(port),
+                database_port_number: Some(db_port),
+                info_port_number: Some(info_port),
                 http_addr: Some(addr.into()),
-                http_port: Some(port),
+                http_port: Some(db_port),
             });
         }
 
@@ -210,13 +245,13 @@ use stdext::function_name;
 use substring::Substring;
 use tracing::trace;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Data {
     pub data_string: String,
     pub data_byte: Vec<u8>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Value {
     pub data: Option<Data>,
     pub col: Column,
@@ -249,7 +284,7 @@ impl Row {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Column {
     pub name: String,
     pub is_nullable: bool,
@@ -262,6 +297,10 @@ impl Column {
     pub fn data_type_to_enum_u32(&self) -> u32 {
         let ct = ColumnType::try_parse(&self.data_type).unwrap_or_default();
         ColumnType::to_u32(ct)
+    }
+
+    pub fn column_type(&self) -> ColumnType {
+        ColumnType::try_parse(&self.data_type).unwrap_or_default()
     }
 
     pub fn data_type_len(&self) -> u32 {
@@ -299,6 +338,7 @@ pub struct Table {
     pub name: String,
     pub cols: Vec<Column>,
     pub rows: Vec<Row>,
+    pub backing_database_type: u32,
 }
 
 impl Default for Table {
@@ -309,12 +349,18 @@ impl Default for Table {
 
 impl Table {
     pub fn new() -> Self {
+        let default_db_type = DatabaseType::Unknown;
         Self {
             num_cols: 0,
             name: String::from(""),
             cols: Vec::new(),
             rows: Vec::new(),
+            backing_database_type: DatabaseType::to_u32(default_db_type),
         }
+    }
+
+    pub fn set_database_type(&mut self, db_type: DatabaseType) {
+        self.backing_database_type = DatabaseType::to_u32(db_type);
     }
 
     pub fn set_name(&mut self, name: &str) {

@@ -2,14 +2,14 @@ use crate::{
     log::log_to_console,
     request::{
         self,
-        treaty::{clear_status, get_treaty_token, set_status, update_token_login_status},
+        treaty::{clear_status, get_treaty_token, set_status},
     },
 };
+use treaty_types::proxy::request_type::RequestType;
 use treaty_types::types::treaty_proto::{
     ExecuteCooperativeWriteReply, ExecuteCooperativeWriteRequest, ExecuteWriteReply,
     ExecuteWriteRequest,
 };
-use treaty_types::proxy::request_type::RequestType;
 use yew::{AttrValue, Callback, UseStateHandle};
 
 pub fn write(
@@ -22,7 +22,6 @@ pub fn write(
     let auth = token.auth();
 
     let request = ExecuteWriteRequest {
-        authentication: Some(auth),
         database_name: db_name,
         sql_statement: text,
         database_type: 1,
@@ -38,32 +37,21 @@ pub fn write(
 
             let write_reply: ExecuteWriteReply = serde_json::from_str(x).unwrap();
 
-            let is_authenticated = write_reply
-                .authentication_result
-                .as_ref()
-                .unwrap()
-                .is_authenticated;
-            update_token_login_status(is_authenticated);
+            let mut result_message = String::new();
 
-            if is_authenticated {
-                let mut result_message = String::new();
+            result_message += &format!("Is result successful: {}", write_reply.is_successful);
 
-                result_message += &format!("Is result successful: {}", write_reply.is_successful);
+            result_message += "\n";
+            result_message += &format!("Total rows affected: {}", write_reply.total_rows_affected);
 
+            if write_reply.is_error {
                 result_message += "\n";
-                result_message +=
-                    &format!("Total rows affected: {}", write_reply.total_rows_affected);
-
-                if write_reply.is_error {
-                    result_message += "\n";
-                    result_message +=
-                        &format!("Error Message: {}", write_reply.error.unwrap().message);
-                }
-
-                let sql_table_text = result_message.clone();
-
-                state.set(Some(sql_table_text));
+                result_message += &format!("Error Message: {}", write_reply.error.unwrap().message);
             }
+
+            let sql_table_text = result_message.clone();
+
+            state.set(Some(sql_table_text));
         } else {
             set_status(response.err().unwrap());
         }
@@ -82,7 +70,6 @@ pub fn cooperative_write(
     let auth = token.auth();
 
     let request = ExecuteCooperativeWriteRequest {
-        authentication: Some(auth),
         database_name: db_name,
         sql_statement: text,
         database_type: 1,
@@ -100,23 +87,19 @@ pub fn cooperative_write(
 
             let write_reply: ExecuteCooperativeWriteReply = serde_json::from_str(x).unwrap();
 
-            if write_reply.authentication_result.unwrap().is_authenticated {
-                let mut result_message = String::new();
+            let mut result_message = String::new();
 
-                result_message = result_message
-                    + &format!("Is result successful: {}", write_reply.is_successful);
+            result_message =
+                result_message + &format!("Is result successful: {}", write_reply.is_successful);
 
-                result_message += "\n";
-                result_message = result_message
-                    + &format!("Total rows affected: {}", write_reply.total_rows_affected);
-                result_message += "\n";
+            result_message += "\n";
+            result_message = result_message
+                + &format!("Total rows affected: {}", write_reply.total_rows_affected);
+            result_message += "\n";
 
-                let sql_table_text = result_message;
+            let sql_table_text = result_message;
 
-                state.set(Some(sql_table_text));
-            } else {
-                set_status(response.err().unwrap());
-            }
+            state.set(Some(sql_table_text));
         }
     });
 

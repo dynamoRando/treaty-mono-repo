@@ -6,8 +6,6 @@ use crate::treaty_proto::{
 use rocket::State;
 use rocket::{http::Status, post, serde::json::Json};
 
-use crate::user_service_handler::user_service_handler_actions::UserServiceHandlerActions;
-
 #[post(
     "/client/sql/host/read",
     format = "application/json",
@@ -21,7 +19,7 @@ pub async fn read_at_host(
     // this should be a GET instead of a POST
     // need to look at HTTP spec and figure out how to send
     // authorization in the header rather than a POST
-    let core = x.user();
+    let core = x.user().await;
     let result = core.execute_read_at_host(request.into_inner()).await;
 
     (Status::Ok, Json(result))
@@ -41,7 +39,7 @@ pub async fn write_at_host(
     // need to look at HTTP spec and figure out how to send
     // authorization in the header rather than a POST
 
-    let core = x.user();
+    let core = x.user().await;
     let result = core.execute_write_at_host(request.into_inner()).await;
 
     (Status::Ok, Json(result))
@@ -61,7 +59,7 @@ pub async fn cooperative_write_at_host(
     // need to look at HTTP spec and figure out how to send
     // authorization in the header rather than a POST
 
-    let core = x.user();
+    let core = x.user().await;
     let result = core
         .execute_cooperative_write_at_host(request.into_inner())
         .await;
@@ -83,7 +81,7 @@ pub async fn write_at_participant(
     // need to look at HTTP spec and figure out how to send
     // authorization in the header rather than a POST
 
-    let core = x.user();
+    let core = x.user().await;
     let result = core
         .execute_write_at_participant(request.into_inner())
         .await;
@@ -105,7 +103,7 @@ pub async fn read_at_participant(
     // need to look at HTTP spec and figure out how to send
     // authorization in the header rather than a POST
 
-    let core = x.user();
+    let core = x.user().await;
     let result = core.execute_read_at_participant(request.into_inner()).await;
 
     (Status::Ok, Json(result))

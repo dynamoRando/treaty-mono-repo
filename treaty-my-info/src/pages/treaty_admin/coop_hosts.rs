@@ -1,13 +1,12 @@
 use crate::request;
 use crate::{
     log::log_to_console,
-    request::treaty::{clear_status, get_treaty_token, set_status, update_token_login_status},
+    request::treaty::{clear_status, get_treaty_token, set_status},
 };
-use treaty_types::proxy::request_type::RequestType;
 use treaty_types::enums::HostStatus;
+use treaty_types::proxy::request_type::RequestType;
 use treaty_types::types::treaty_proto::{
-    ChangeHostStatusReply, ChangeHostStatusRequest, GetCooperativeHostsReply,
-    GetCooperativeHostsRequest, HostInfoStatus,
+    ChangeHostStatusReply, ChangeHostStatusRequest, GetCooperativeHostsReply, HostInfoStatus,
 };
 
 use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
@@ -24,12 +23,6 @@ pub fn CooperativeHosts() -> Html {
         Callback::from(move |_| {
             let token = get_treaty_token();
 
-            let request = GetCooperativeHostsRequest {
-                authentication: Some(token.auth()),
-            };
-
-            let json_request = serde_json::to_string(&request).unwrap();
-
             let hosts_state = hosts_state.clone();
 
             let cb = Callback::from(move |response: Result<AttrValue, String>| {
@@ -39,23 +32,14 @@ pub fn CooperativeHosts() -> Html {
 
                     let coop_response: GetCooperativeHostsReply = serde_json::from_str(x).unwrap();
 
-                    let is_authenticated = coop_response
-                        .authentication_result
-                        .as_ref()
-                        .unwrap()
-                        .is_authenticated;
-                    update_token_login_status(is_authenticated);
-
-                    if is_authenticated {
-                        let hosts = coop_response.hosts;
-                        hosts_state.set(hosts);
-                    }
+                    let hosts = coop_response.hosts;
+                    hosts_state.set(hosts);
                 } else {
                     set_status(response.err().unwrap());
                 }
             });
 
-            request::post(RequestType::GetCooperativeHosts, &json_request, cb)
+            request::post(RequestType::GetCooperativeHosts, "", cb)
         })
     };
 
@@ -121,7 +105,6 @@ pub fn CooperativeHosts() -> Html {
                                                         let token = get_treaty_token();
 
                                                         let request = ChangeHostStatusRequest {
-                                                            authentication: Some(token.auth()),
                                                             host_id: id.clone(),
                                                             host_alias: name.clone(),
                                                             status: HostStatus::to_u32(HostStatus::Allow)
@@ -137,10 +120,8 @@ pub fn CooperativeHosts() -> Html {
                                                                 log_to_console(x);
 
                                                                 let reply: ChangeHostStatusReply = serde_json::from_str(x).unwrap();
-                                                                let is_authenticated = reply.authentication_result.as_ref().unwrap().is_authenticated;
-                                                                update_token_login_status(is_authenticated);
 
-                                                                if is_authenticated && reply.is_successful {
+                                                                if  reply.is_successful {
                                                                     let message = format!("{}{}{}", "Host status for ", name.clone(), " changed to allow.");
                                                                     set_status(message);
                                                                 }
@@ -165,7 +146,7 @@ pub fn CooperativeHosts() -> Html {
                                                         let token = get_treaty_token();
 
                                                         let request = ChangeHostStatusRequest {
-                                                            authentication: Some(token.auth()),
+
                                                             host_id: id.clone(),
                                                             host_alias: name.clone(),
                                                             status: HostStatus::to_u32(HostStatus::Deny)
@@ -181,10 +162,9 @@ pub fn CooperativeHosts() -> Html {
                                                                 log_to_console(x);
 
                                                                 let reply: ChangeHostStatusReply = serde_json::from_str(x).unwrap();
-                                                                let is_authenticated = reply.authentication_result.as_ref().unwrap().is_authenticated;
-                                                                update_token_login_status(is_authenticated);
 
-                                                                if is_authenticated && reply.is_successful {
+
+                                                                if  reply.is_successful {
                                                                     let message = format!("{}{}{}", "Host status for ", name.clone(), " changed to deny.");
                                                                     set_status(message);
                                                                 }

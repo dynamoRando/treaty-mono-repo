@@ -10,7 +10,7 @@ treaty = { path = "../../treaty" }
 treaty-client = { path = "../treaty-client" }
 treaty-proxy = { path = "../treaty-proxy" }
 treaty-types = { path = "../treaty-types" }
-tonic = "0.8.1"
+tonic = {version = "0.10.2", features = ["tls"] }
 tokio = { version = "1.18.0", features = ["full"] }
 lazy_static = "1.4.0"
 reqwest = { version = "0.11", features = ["json"] }
@@ -20,13 +20,13 @@ thiserror = "1.0.40"
 stdext  = "0.3"
 tracing = "0.1"
 async-trait = "0.1.68"
-num-derive = "0.3.3"
+num-derive = "0.4.1"
 num-traits = "0.2.15"
 num = "0.4.0"
 futures = { version = "0.3.*" }
 triggered = "0.1"
 chrono = "0.4.24"
-ignore = "0.4.20"
-ignore-result = "0.2.0"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 local-ip-address = "0.5.3"
+dotenvy = "0.15.7"
+tokio-postgres = "0.7.10"

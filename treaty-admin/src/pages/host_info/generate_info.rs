@@ -5,7 +5,7 @@ use yew::{function_component, html, use_node_ref, use_state_eq, AttrValue, Callb
 
 use crate::{
     log::log_to_console,
-    request::{self, clear_status, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, set_status, get_client},
 };
 
 #[function_component]
@@ -22,15 +22,12 @@ pub fn GenerateInfo() -> Html {
             let last_gen_result = last_gen_result.clone();
             let host_name = ui_host_name.cast::<HtmlInputElement>().unwrap().value();
 
-            let token = get_token();
+            let client = get_client();
 
-            let request = GenerateHostInfoRequest {
-                authentication: Some(token.auth()),
-                host_name,
-            };
+            let request = GenerateHostInfoRequest { host_name };
 
             let json_request = serde_json::to_string(&request).unwrap();
-            let url = format!("{}{}", token.addr, GENERATE_HOST_INFO);
+            let url = format!("{}{}", client.user_addr_port(), GENERATE_HOST_INFO);
 
             let cb = {
                 let last_gen_result = last_gen_result;
@@ -41,18 +38,8 @@ pub fn GenerateInfo() -> Html {
 
                         let reply: GenerateHostInfoReply = serde_json::from_str(x).unwrap();
 
-                        let is_authenticated = reply
-                            .authentication_result
-                            .as_ref()
-                            .unwrap()
-                            .is_authenticated;
-                        update_token_login_status(is_authenticated);
-
-                        if is_authenticated {
-                            let message =
-                                format!("{}{}", "Last gen result was: ", reply.is_successful);
-                            last_gen_result.set(message);
-                        }
+                        let message = format!("{}{}", "Last gen result was: ", reply.is_successful);
+                        last_gen_result.set(message);
                     } else {
                         set_status(response.err().unwrap());
                     }

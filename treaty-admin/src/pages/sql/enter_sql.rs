@@ -4,8 +4,7 @@ use crate::{
         sql::{read::read, sqlx::SqlProps, write::cooperative_write, write::write},
     },
     request::{
-        clear_status, get_client, get_database, get_databases, get_token, set_status,
-        update_token_login_status,
+        clear_status, get_client, get_database, get_databases, set_status,
     },
 };
 use treaty_http_endpoints::client::{
@@ -57,45 +56,39 @@ pub fn EnterSql(SqlProps { sql_result_state }: &SqlProps) -> Html {
                 let participant_dropdown_enabled = participant_dropdown_enabled.clone();
                 if cooperation_enabled {
                     let participant_aliases = participant_aliases.clone();
-                    let token = get_token();
-                    //
+
                     let mut client = get_client();
                     spawn_local(async move {
-                        let reply = client.get_participants(token.auth(), &db_name).await;
+                        let reply = client.get_participants(&db_name).await;
 
                         match reply {
                             Ok(response) => {
                                 clear_status();
                                 let participant_aliases = participant_aliases.clone();
 
-                                let is_authenticated = response
-                                    .authentication_result
-                                    .as_ref()
-                                    .unwrap()
-                                    .is_authenticated;
-                                update_token_login_status(is_authenticated);
+                                if !response.is_error {
+                                    let participants = response.participants;
 
-                                if is_authenticated {
-                                    if !response.is_error {
-                                        let participants = response.participants;
-
-                                        let mut aliases: Vec<String> = Vec::new();
-                                        for p in &participants {
-                                            aliases.push(
-                                                p.participant.as_ref().unwrap().alias.clone(),
-                                            );
-                                        }
-
-                                        participant_dropdown_enabled.set(true);
-                                        participant_aliases.set(Some(aliases));
-                                    } else {
-                                        let message = format!(
-                                            "{} - {}",
-                                            response.error.as_ref().unwrap().message,
-                                            response.error.as_ref().unwrap().help.as_ref().unwrap_or(&"".to_string())
-                                        );
-                                        set_status(message);
+                                    let mut aliases: Vec<String> = Vec::new();
+                                    for p in &participants {
+                                        aliases.push(p.participant.as_ref().unwrap().alias.clone());
                                     }
+
+                                    participant_dropdown_enabled.set(true);
+                                    participant_aliases.set(Some(aliases));
+                                } else {
+                                    let message = format!(
+                                        "{} - {}",
+                                        response.error.as_ref().unwrap().message,
+                                        response
+                                            .error
+                                            .as_ref()
+                                            .unwrap()
+                                            .help
+                                            .as_ref()
+                                            .unwrap_or(&"".to_string())
+                                    );
+                                    set_status(message);
                                 }
                             }
                             Err(e) => {

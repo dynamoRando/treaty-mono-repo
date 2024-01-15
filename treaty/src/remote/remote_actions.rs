@@ -7,7 +7,7 @@ use crate::{
     },
     treaty_proto::{
         Contract, DatabaseSchema, DeleteDataResult, GetRowFromPartialDatabaseResult,
-        InsertDataResult, UpdateDataResult,
+        InsertDataResult, TreatyPorts, UpdateDataResult,
     },
 };
 
@@ -84,4 +84,6 @@ pub trait RemoteActions {
         accepted_contract: &Contract,
         own_host_info: &HostInfo,
     ) -> bool;
+
+    async fn get_remote_ports(&self, ip4_address: &str, info_port: u32) -> TreatyPorts;
 }

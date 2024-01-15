@@ -1,12 +1,12 @@
 use std::{fs, path::Path};
 
+use crate::crypt;
+use crate::db_interface::sqlite::TreatyDbError;
 use chrono::Utc;
 use rusqlite::{named_params, Connection};
 use stdext::function_name;
 use tracing::{debug, error, instrument, trace, warn};
 use treaty_types::enums::*;
-use crate::crypt;
-use crate::db_interface::sqlite::TreatyDbError;
 
 use crate::jwt::create_jwt;
 use crate::models::{
@@ -89,7 +89,8 @@ impl TreatyDb {
                 TOKEN,
                 IP4ADDRESS,
                 IP6ADDRESS,
-                PORT,
+                DB_PORT,
+                INFO_PORT,
                 LAST_COMMUNICATION_UTC,
                 HTTP_ADDR,
                 HTTP_PORT,
@@ -108,7 +109,8 @@ impl TreatyDb {
                            token: Vec<u8>,
                            ip4: String,
                            ip6: String,
-                           port: u32,
+                           db_port: u32,
+                           info_port: u32,
                            last_comm_utc: String,
                            http_addr: String,
                            http_port: u32,
@@ -120,7 +122,8 @@ impl TreatyDb {
                 token,
                 ip4,
                 ip6,
-                port,
+                db_port,
+                info_port,
                 last_comm_utc,
                 http_addr,
                 http_port,
@@ -142,6 +145,7 @@ impl TreatyDb {
                     row.get(7).unwrap(),
                     row.get(8).unwrap(),
                     row.get(9).unwrap(),
+                    row.get(10).unwrap(),
                 )
             })
             .unwrap();
@@ -525,7 +529,8 @@ impl TreatyDb {
                 TOKEN,
                 IP4ADDRESS,
                 IP6ADDRESS,
-                PORT,
+                DB_PORT,
+                INFO_PORT,
                 LAST_COMMUNICATION_UTC,
                 HTTP_ADDR,
                 HTTP_PORT,
@@ -544,7 +549,8 @@ impl TreatyDb {
                            token: Vec<u8>,
                            ip4: String,
                            ip6: String,
-                           port: u32,
+                           db_port: u32,
+                           info_port: u32,
                            last_comm_utc: String,
                            http_addr: String,
                            http_port: u32,
@@ -556,7 +562,8 @@ impl TreatyDb {
                 token,
                 ip4,
                 ip6,
-                port,
+                db_port,
+                info_port,
                 last_comm_utc,
                 http_addr,
                 http_port,
@@ -580,6 +587,7 @@ impl TreatyDb {
                     row.get(7).unwrap(),
                     row.get(8).unwrap(),
                     row.get(9).unwrap(),
+                    row.get(10).unwrap(),
                 )
             })?;
 
@@ -684,9 +692,10 @@ impl TreatyDb {
             let n = HostNetwork {
                 ip4_address: Some(h.ip4.clone()),
                 ip6_address: Some(h.ip6.clone()),
-                database_port_number: Some(h.port),
+                database_port_number: Some(h.db_port),
                 http_addr: Some(h.http_addr.clone()),
                 http_port: Some(h.http_port),
+                info_port_number: Some(h.info_port),
             };
 
             let i = Host {
@@ -772,6 +781,8 @@ impl TreatyDb {
     }
 
     pub fn configure_treaty_db(&self) -> Result<(), TreatyDbError> {
+        trace!("[{}]: Configuring Treaty db...", function_name!(),);
+
         let root = &self.dir;
         let db_name = &self.db_name;
 
@@ -859,7 +870,7 @@ impl TreatyDb {
     ) -> Result<TreatySaveContractResult, TreatyDbError> {
         let conn = self.conn()?;
 
-        trace!("save_contract called with {:?}", contract);
+        trace!("save_contract called with {:#?}", contract);
 
         if !self.has_contract(&contract.contract_guid)? {
             self.save_contract_metadata(&contract)?;
@@ -905,6 +916,7 @@ impl TreatyDb {
                             ip4_address: "".to_string(),
                             ip6_address: String::from(""),
                             database_port_number: 0,
+                            info_port_number: 0,
                             token: host_info.token,
                             internal_participant_guid: "".to_string(),
                             http_addr: "".to_string(),
@@ -1291,7 +1303,12 @@ impl TreatyDb {
         self.create_login_with_hash(login, hash)
     }
 
-    pub fn auth_for_token(&self, login: &str, pw: &str) -> Result<TokenReply, TreatyDbError> {
+    pub fn auth_for_token(
+        &self,
+        login: &str,
+        pw: &str,
+        timeout_in_minutes: Option<u32>,
+    ) -> Result<TokenReply, TreatyDbError> {
         let mut is_authorized = false;
         let mut jwt = String::from("");
         let mut expiration_utc = String::from("");
@@ -1300,7 +1317,7 @@ impl TreatyDb {
             is_authorized = true;
 
             if !self.login_has_token(login)? {
-                let token_data = self.create_token_for_login(login)?;
+                let token_data = self.create_token_for_login(login, timeout_in_minutes)?;
                 jwt = token_data.0;
                 expiration_utc = token_data.1.to_string();
             }
@@ -1366,7 +1383,8 @@ impl TreatyDb {
         TOKEN,
         IP4ADDRESS,
         IP6ADDRESS,
-        PORT,
+        DB_PORT,
+        INFO_PORT,
         LAST_COMMUNICATION_UTC,
         HTTP_ADDR,
         HTTP_PORT,
@@ -1383,7 +1401,8 @@ impl TreatyDb {
                            token: Vec<u8>,
                            ip4: String,
                            ip6: String,
-                           port: u32,
+                           db_port: u32,
+                           info_port: u32,
                            last_comm_utc: String,
                            http_addr: String,
                            http_port: u32,
@@ -1395,7 +1414,8 @@ impl TreatyDb {
                 token,
                 ip4,
                 ip6,
-                port,
+                db_port,
+                info_port,
                 last_comm_utc,
                 http_addr,
                 http_port,
@@ -1417,6 +1437,7 @@ impl TreatyDb {
                     row.get(7).unwrap(),
                     row.get(8).unwrap(),
                     row.get(9).unwrap(),
+                    row.get(10).unwrap(),
                 )
             })
             .unwrap();
@@ -1479,6 +1500,8 @@ impl TreatyDb {
             results.push(hi.unwrap());
         }
 
+        trace!("[{}]: results: {results:?}", function_name!());
+
         if !results.is_empty() {
             return Ok(Some(results.first().unwrap().clone()));
         }
@@ -1489,12 +1512,15 @@ impl TreatyDb {
     pub fn create_token_for_login(
         &self,
         login: &str,
+        timeout_in_minutes: Option<u32>,
     ) -> Result<(String, chrono::DateTime<chrono::Utc>), TreatyDbError> {
+        trace!("[{}]: login: {login:?}", function_name!());
         let host_info = self
             .treaty_get_host_info()
             .expect("no host info is set")
             .unwrap();
-        let token_data = create_jwt(&host_info.name, login);
+        trace!("[{}]: host_info: {host_info:?}", function_name!());
+        let token_data = create_jwt(&host_info.name, login, timeout_in_minutes.unwrap());
         self.save_token(login, &token_data.0, token_data.1)?;
         Ok(token_data)
     }
@@ -1673,7 +1699,8 @@ impl TreatyDb {
         TOKEN,
         IP4ADDRESS,
         IP6ADDRESS,
-        PORT,
+        DB_PORT,
+        INFO_PORT,
         LAST_COMMUNICATION_UTC,
         HOST_STATUS,
         HTTP_ADDR,
@@ -1686,7 +1713,8 @@ impl TreatyDb {
         :token,
         :ip4,
         :ip6,
-        :port,
+        :db_port,
+        :info_port,
         :last_comm,
         1,
         :http_addr,
@@ -1698,7 +1726,8 @@ impl TreatyDb {
         let host = contract.host_info.as_ref().unwrap().clone();
 
         let mut ip4 = String::from("");
-        let mut port: u32 = 0;
+        let mut db_port: u32 = 0;
+        let mut info_port: u32 = 0;
         let mut ip6 = String::from("");
         let mut http_addr = String::from("");
         let mut http_port: u32 = 0;
@@ -1709,7 +1738,7 @@ impl TreatyDb {
             }
 
             if let Some(_port) = network.database_port_number {
-                port = _port;
+                db_port = _port;
             }
 
             if let Some(_ip6) = network.ip6_address {
@@ -1723,6 +1752,10 @@ impl TreatyDb {
             if let Some(_http_port) = network.http_port {
                 http_port = _http_port;
             }
+
+            if let Some(_info_port) = network.info_port_number {
+                info_port = _info_port;
+            }
         }
 
         let conn = self.conn()?;
@@ -1733,7 +1766,8 @@ impl TreatyDb {
             ":token" : &host.token,
             ":ip4" : &ip4,
             ":ip6" : &ip6,
-            ":port" : &port,
+            ":db_port" : &db_port,
+            ":info_port": &info_port,
             ":last_comm" : Utc::now().to_string(),
             ":http_addr" : &http_addr,
             ":http_port" : &http_port,
@@ -1797,7 +1831,7 @@ impl TreatyDb {
     }
 }
 
-fn do_vecs_match<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
+pub fn do_vecs_match<T: PartialEq>(a: &Vec<T>, b: &Vec<T>) -> bool {
     let matching = a.iter().zip(b.iter()).filter(|&(a, b)| a == b).count();
     matching == a.len() && matching == b.len()
 }

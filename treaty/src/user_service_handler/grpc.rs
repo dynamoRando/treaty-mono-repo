@@ -8,31 +8,32 @@ use crate::{
     treaty_proto::{
         user_service_server::UserService, AcceptPendingActionReply, AcceptPendingActionRequest,
         AcceptPendingContractReply, AcceptPendingContractRequest, AddParticipantReply,
-        AddParticipantRequest, AuthRequest, ChangeDeletesFromHostBehaviorReply,
-        ChangeDeletesFromHostBehaviorRequest, ChangeDeletesToHostBehaviorReply,
-        ChangeDeletesToHostBehaviorRequest, ChangeHostStatusReply, ChangeHostStatusRequest,
-        ChangeUpdatesFromHostBehaviorRequest, ChangeUpdatesToHostBehaviorReply,
-        ChangeUpdatesToHostBehaviorRequest, ChangesUpdatesFromHostBehaviorReply,
-        CreateUserDatabaseReply, CreateUserDatabaseRequest, EnableCoooperativeFeaturesReply,
+        AddParticipantRequest, AuthRequestBasic, AuthRequestWebToken,
+        ChangeDeletesFromHostBehaviorReply, ChangeDeletesFromHostBehaviorRequest,
+        ChangeDeletesToHostBehaviorReply, ChangeDeletesToHostBehaviorRequest,
+        ChangeHostStatusReply, ChangeHostStatusRequest, ChangeUpdatesFromHostBehaviorRequest,
+        ChangeUpdatesToHostBehaviorReply, ChangeUpdatesToHostBehaviorRequest,
+        ChangesUpdatesFromHostBehaviorReply, CreateUserDatabaseReply, CreateUserDatabaseRequest,
+        DeleteUserDatabaseReply, DeleteUserDatabaseRequest, EnableCoooperativeFeaturesReply,
         EnableCoooperativeFeaturesRequest, ExecuteCooperativeWriteReply,
         ExecuteCooperativeWriteRequest, ExecuteReadReply, ExecuteReadRequest, ExecuteWriteReply,
         ExecuteWriteRequest, GenerateContractReply, GenerateContractRequest, GenerateHostInfoReply,
         GenerateHostInfoRequest, GetActiveContractReply, GetActiveContractRequest,
-        GetCooperativeHostsReply, GetCooperativeHostsRequest, GetDataHashReply, GetDataHashRequest,
-        GetDataLogTableStatusReply, GetDataLogTableStatusRequest, GetDatabasesReply,
-        GetDatabasesRequest, GetDeletesFromHostBehaviorReply, GetDeletesFromHostBehaviorRequest,
+        GetBackingDatabaseConfigReply, GetCooperativeHostsReply, GetDataHashReply,
+        GetDataHashRequest, GetDataLogTableStatusReply, GetDataLogTableStatusRequest,
+        GetDatabasesReply, GetDeletesFromHostBehaviorReply, GetDeletesFromHostBehaviorRequest,
         GetDeletesToHostBehaviorReply, GetDeletesToHostBehaviorRequest,
         GetLogicalStoragePolicyReply, GetLogicalStoragePolicyRequest, GetLogsByLastNumberReply,
         GetLogsByLastNumberRequest, GetParticipantsReply, GetParticipantsRequest,
         GetPendingActionsReply, GetPendingActionsRequest, GetReadRowIdsReply, GetReadRowIdsRequest,
-        GetSettingsReply, GetSettingsRequest, GetUpdatesFromHostBehaviorReply,
-        GetUpdatesFromHostBehaviorRequest, GetUpdatesToHostBehaviorReply,
-        GetUpdatesToHostBehaviorRequest, HasTableReply, HasTableRequest, HostInfoReply,
-        RejectPendingContractReply, RejectPendingContractRequest, RevokeReply,
-        SendParticipantContractReply, SendParticipantContractRequest, SetDataLogTableStatusReply,
-        SetDataLogTableStatusRequest, SetLogicalStoragePolicyReply, SetLogicalStoragePolicyRequest,
-        TestReply, TestRequest, TokenReply, TryAuthAtParticipantRequest, TryAuthAtPartipantReply,
-        VersionReply, ViewPendingContractsReply, ViewPendingContractsRequest, DeleteUserDatabaseReply, DeleteUserDatabaseRequest
+        GetSettingsReply, GetUpdatesFromHostBehaviorReply, GetUpdatesFromHostBehaviorRequest,
+        GetUpdatesToHostBehaviorReply, GetUpdatesToHostBehaviorRequest, HasTableReply,
+        HasTableRequest, HostInfoReply, RejectPendingContractReply, RejectPendingContractRequest,
+        RevokeReply, SendParticipantContractReply, SendParticipantContractRequest,
+        SetDataLogTableStatusReply, SetDataLogTableStatusRequest, SetLogicalStoragePolicyReply,
+        SetLogicalStoragePolicyRequest, TestReply, TestRequest, TokenReply,
+        TryAuthAtParticipantRequest, TryAuthAtPartipantReply, VersionReply,
+        ViewPendingContractsReply,
     },
 };
 
@@ -63,19 +64,28 @@ impl<
 
     async fn get_settings(
         &self,
-        request: Request<GetSettingsRequest>,
+        request: Request<()>,
     ) -> Result<Response<GetSettingsReply>, Status> {
         trace!("Request from {:?}", request.remote_addr());
-        let response = self.get_settings(request.into_inner()).await;
+        let response = self.get_settings().await;
+        Ok(Response::new(response))
+    }
+
+    async fn get_backing_database_config(
+        &self,
+        request: Request<()>,
+    ) -> Result<Response<GetBackingDatabaseConfigReply>, Status> {
+        trace!("Request from {:?}", request.remote_addr());
+        let response = self.get_backing_database_config().await;
         Ok(Response::new(response))
     }
 
     async fn get_cooperative_hosts(
         &self,
-        request: Request<GetCooperativeHostsRequest>,
+        request: Request<()>,
     ) -> Result<Response<GetCooperativeHostsReply>, Status> {
         trace!("Request from {:?}", request.remote_addr());
-        let response = self.get_cooperative_hosts(request.into_inner()).await;
+        let response = self.get_cooperative_hosts().await;
         Ok(Response::new(response))
     }
 
@@ -122,27 +132,21 @@ impl<
         Ok(Response::new(response))
     }
 
-    async fn get_versions(
-        &self,
-        request: Request<AuthRequest>,
-    ) -> Result<Response<VersionReply>, Status> {
+    async fn get_versions(&self, request: Request<()>) -> Result<Response<VersionReply>, Status> {
         trace!("Request from {:?}", request.remote_addr());
         // need to write an HTTP version as well
         todo!()
     }
 
-    async fn get_host_info(
-        &self,
-        request: Request<AuthRequest>,
-    ) -> Result<Response<HostInfoReply>, Status> {
+    async fn get_host_info(&self, request: Request<()>) -> Result<Response<HostInfoReply>, Status> {
         trace!("Request from {:?}", request.remote_addr());
-        let response = self.get_host_info(request.into_inner()).await;
+        let response = self.get_host_info().await;
         Ok(Response::new(response))
     }
 
     async fn revoke_token(
         &self,
-        request: Request<AuthRequest>,
+        request: Request<AuthRequestWebToken>,
     ) -> Result<Response<RevokeReply>, Status> {
         trace!("Request from {:?}", request.remote_addr());
         let response = self.revoke_token(request.into_inner()).await;
@@ -151,10 +155,15 @@ impl<
 
     async fn auth_for_token(
         &self,
-        request: Request<AuthRequest>,
+        request: Request<AuthRequestBasic>,
     ) -> Result<Response<TokenReply>, Status> {
         trace!("Request from {:?}", request.remote_addr());
-        let response = self.auth_for_token(request.into_inner()).await;
+        let response = self
+            .auth_for_token(
+                request.into_inner(),
+                Some(self.settings.jwt_valid_time_in_minutes),
+            )
+            .await;
         Ok(Response::new(response))
     }
 
@@ -178,10 +187,10 @@ impl<
 
     async fn get_databases(
         &self,
-        request: Request<GetDatabasesRequest>,
+        request: Request<()>,
     ) -> Result<Response<GetDatabasesReply>, Status> {
         trace!("Request from {:?}", request.remote_addr());
-        let response = self.get_databases(request.into_inner()).await;
+        let response = self.get_databases().await;
         Ok(Response::new(response))
     }
 
@@ -247,6 +256,17 @@ impl<
     ) -> Result<Response<DeleteUserDatabaseReply>, Status> {
         trace!("Request from {:?}", request.remote_addr());
         let response = self.delete_user_database(request.into_inner()).await;
+        Ok(Response::new(response))
+    }
+
+    async fn delete_user_database_destructively(
+        &self,
+        request: Request<DeleteUserDatabaseRequest>,
+    ) -> Result<Response<DeleteUserDatabaseReply>, Status> {
+        trace!("Request from {:?}", request.remote_addr());
+        let response = self
+            .delete_user_database_destructively(request.into_inner())
+            .await;
         Ok(Response::new(response))
     }
 
@@ -367,10 +387,10 @@ impl<
 
     async fn review_pending_contracts(
         &self,
-        request: Request<ViewPendingContractsRequest>,
+        request: Request<()>,
     ) -> Result<Response<ViewPendingContractsReply>, Status> {
         trace!("Request from {:?}", request.remote_addr());
-        let response = self.review_pending_contracts(request.into_inner()).await;
+        let response = self.review_pending_contracts().await;
         Ok(Response::new(response))
     }
 

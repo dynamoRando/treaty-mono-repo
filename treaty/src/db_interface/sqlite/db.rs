@@ -68,12 +68,11 @@ impl Db {
     }
 
     pub fn delete_database(&self) -> Result<(), TreatyDbError> {
-        todo!();
-        let r = self.conn();
-        match r {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
-        }
+        todo!("delete database function not implemented");
+    }
+
+    pub fn delete_database_forcefully(&self) -> Result<(), TreatyDbError> {
+        todo!("delete database function not implemented");
     }
 
     fn get_logical_storage_policy_for_all_user_tables(
@@ -648,7 +647,8 @@ impl Db {
                 ALIAS,
                 IP4ADDRESS,
                 IP6ADDRESS,
-                PORT,
+                DB_PORT,
+                INFO_PORT,
                 CONTRACT_STATUS,
                 ACCEPTED_CONTRACT_VERSION_ID,
                 TOKEN,
@@ -666,7 +666,8 @@ impl Db {
                                   alias: String,
                                   ip4addr: String,
                                   ip6addr: String,
-                                  port: u32,
+                                  db_port: u32,
+                                  info_port: u32,
                                   contract_status: u32,
                                   accepted_contract_version_id: String,
                                   token: Vec<u8>,
@@ -679,7 +680,8 @@ impl Db {
                 alias,
                 ip4addr,
                 ip6addr,
-                db_port: port,
+                db_port,
+                info_port,
                 contract_status: ContractStatus::from_i64(contract_status as i64),
                 accepted_contract_version: GUID::parse(&accepted_contract_version_id).unwrap(),
                 token,
@@ -708,6 +710,7 @@ impl Db {
                     row.get(8).unwrap(),
                     row.get(9).unwrap(),
                     row.get(10).unwrap(),
+                    row.get(11).unwrap(),
                 )
             })
             .unwrap();
@@ -735,7 +738,8 @@ impl Db {
                 ALIAS,
                 IP4ADDRESS,
                 IP6ADDRESS,
-                PORT,
+                DB_PORT,
+                INFO_PORT
                 CONTRACT_STATUS,
                 ACCEPTED_CONTRACT_VERSION_ID,
                 TOKEN,
@@ -758,7 +762,8 @@ impl Db {
                                   alias: String,
                                   ip4addr: String,
                                   ip6addr: String,
-                                  port: u32,
+                                  db_port: u32,
+                                  info_port: u32,
                                   contract_status: u32,
                                   accepted_contract_version_id: String,
                                   token: Vec<u8>,
@@ -771,7 +776,8 @@ impl Db {
                 alias,
                 ip4addr,
                 ip6addr,
-                db_port: port,
+                db_port,
+                info_port,
                 contract_status: ContractStatus::from_i64(contract_status as i64),
                 accepted_contract_version: GUID::parse(&accepted_contract_version_id).unwrap(),
                 token,
@@ -800,6 +806,7 @@ impl Db {
                     row.get(8).unwrap(),
                     row.get(9).unwrap(),
                     row.get(10).unwrap(),
+                    row.get(11).unwrap(),
                 )
             })
             .unwrap();
@@ -842,6 +849,8 @@ impl Db {
         let conn = self.conn()?;
         let metadata_table_name = get_metadata_table_name(table_name);
 
+        trace!("[{}]: Insert with row_id: {row_id:?}", function_name!());
+
         if !has_table(&metadata_table_name, &conn)? {
             //  need to create table
             let mut cmd = sql_text::Coop::text_create_metadata_table();
@@ -852,6 +861,9 @@ impl Db {
         let mut cmd = sql_text::Coop::text_insert_row_metadata_table();
         cmd = cmd.replace(":table_name", &metadata_table_name);
         let mut statement = conn.prepare(&cmd)?;
+
+        trace!("[{}]: row_id: {row_id:?}", function_name!());
+        trace!("[{}]: SQL: {cmd:?}", function_name!());
 
         let rows = statement
             .execute(named_params! {":row": row_id, ":hash" : hash.to_ne_bytes(), ":pid" : internal_participant_id })
@@ -1043,7 +1055,8 @@ impl Db {
             ALIAS VARCHAR(50) NOT NULL,
             IP4ADDRESS VARCHAR(25),
             IP6ADDRESS VARCHAR(25),
-            PORT INT,
+            DB_PORT INT,
+            INFO_PORT INT,
             CONTRACT_STATUS INT,
             ACCEPTED_CONTRACT_VERSION_ID CHAR(36),
             TOKEN BLOB NOT NULL,
@@ -1103,6 +1116,12 @@ impl Db {
         let conn = self.conn()?;
         let metadata_table_name = get_metadata_table_name(table_name);
 
+        trace!("[{}]: row_id: {row_id:?}", function_name!());
+        trace!(
+            "[{}]: metadata_table_name: {metadata_table_name:?}",
+            function_name!()
+        );
+
         let mut cmd = String::from(
             "DELETE FROM :table_name
              WHERE ROW_ID = :rid
@@ -1139,7 +1158,8 @@ impl Db {
             SET
                 IP4ADDRESS = ':ip4addr',
                 IP6ADDRESS = ':ip6addr',
-                PORT = ':db_port',
+                DB_PORT = ':db_port',
+                INFO_PORT = ':info_port',
                 CONTRACT_STATUS = ':contract_status',
                 ACCEPTED_CONTRACT_VERSION_ID = ':accepted_contract_version',
                 TOKEN = ':token',
@@ -1158,6 +1178,7 @@ impl Db {
                         ":ip4addr": participant.ip4addr,
                         ":ip6addr": participant.ip6addr,
                         ":db_port": participant.db_port.to_string(),
+                        ":info_port": participant.info_port.to_string(),
                         ":contract_status": &num::ToPrimitive::to_u32(&participant.contract_status).unwrap_or(0),
                         ":accepted_contract_version": &participant.accepted_contract_version.to_string(),
                         ":token": &participant.token,
@@ -1182,7 +1203,8 @@ impl Db {
                 ALIAS,
                 IP4ADDRESS,
                 IP6ADDRESS,
-                PORT,
+                DB_PORT,
+                INFO_PORT,
                 CONTRACT_STATUS,
                 ACCEPTED_CONTRACT_VERSION_ID,
                 TOKEN,
@@ -1197,6 +1219,7 @@ impl Db {
                 :ip4addr,
                 :ip6addr,
                 :db_port,
+                :info_port,
                 :contract_status,
                 :accepted_contract_version,
                 :token,
@@ -1215,6 +1238,7 @@ impl Db {
                         ":ip4addr": &participant.ip4addr,
                         ":ip6addr": &participant.ip6addr,
                         ":db_port": &participant.db_port.to_string(),
+                        ":info_port": &participant.info_port.to_string(),
                         ":contract_status": num::ToPrimitive::to_u32(&participant.contract_status).unwrap_or(0),
                         ":accepted_contract_version": &participant.accepted_contract_version.to_string(),
                         ":token": &participant.token,
@@ -1232,7 +1256,8 @@ impl Db {
         &self,
         alias: &str,
         ip4addr: &str,
-        db_port: u32,
+        db_port: Option<u32>,
+        info_port: u32,
         http_addr: String,
         http_port: u16,
         id: Option<String>,
@@ -1250,7 +1275,8 @@ impl Db {
                 alias: alias.to_string(),
                 ip4addr: ip4addr.to_string(),
                 ip6addr: String::from(""),
-                db_port,
+                db_port: db_port.unwrap_or(0),
+                info_port,
                 contract_status: ContractStatus::NotSent,
                 accepted_contract_version: GUID::parse(defaults::EMPTY_GUID).unwrap(),
                 id: db_host_id,
@@ -1266,6 +1292,7 @@ impl Db {
     }
 
     pub fn get_db_schema(&self) -> Result<DatabaseSchema, TreatyDbError> {
+        // need to de-dupe this code
         let mut cooperation_enabled = false;
         let mut db_has_participants = false;
 
@@ -1335,7 +1362,7 @@ impl Db {
                     logical_storage_policy: LogicalStoragePolicy::to_u32(policy),
                 };
 
-                let schema = self.get_schema_of_table(t.1.to_string());
+                let schema = self.get_schema_of_table(t.1.to_string())?;
 
                 // # Columns:
                 // 1. columnId
@@ -1347,11 +1374,11 @@ impl Db {
 
                 let table = t.1.clone();
                 trace!(
-                    "[{}]: schema of table: {table:?} {schema:?}",
+                    "[{}]: schema of table: {table:?} {schema:#?}",
                     function_name!()
                 );
 
-                for row in schema.unwrap().rows {
+                for row in schema.rows {
                     let mut cs = ColumnSchema {
                         column_id: String::from(""),
                         column_name: String::from(""),
@@ -1400,7 +1427,7 @@ impl Db {
                 db_schema.tables.push(ts);
             }
 
-            trace!("[{}]: {db_schema:?}", function_name!());
+            trace!("[{}]: {db_schema:#?}", function_name!());
 
             // get all remaining tables that don't have a policy defined, because we may want to set them
             let table_names = self.get_all_user_table_names_in_db()?;
@@ -1583,6 +1610,8 @@ impl Db {
             db_schema.tables.push(ts);
         }
 
+        trace!("[{}]: {db_schema:#?}", function_name!());
+
         Ok(db_schema)
     }
 
@@ -1744,7 +1773,7 @@ impl Db {
                         has_cooperative_tables = true;
                         break;
                     }
-                    LogicalStoragePolicy::ParticpantOwned => {
+                    LogicalStoragePolicy::ParticipantOwned => {
                         has_cooperative_tables = true;
                         break;
                     }
@@ -1774,7 +1803,8 @@ impl Db {
                 ALIAS,
                 IP4ADDRESS,
                 IP6ADDRESS,
-                PORT,
+                DB_PORT,
+                INFO_PORT,
                 CONTRACT_STATUS,
                 ACCEPTED_CONTRACT_VERSION_ID,
                 TOKEN,
@@ -1794,7 +1824,8 @@ impl Db {
                                   alias: String,
                                   ip4addr: String,
                                   ip6addr: String,
-                                  port: u32,
+                                  db_port: u32,
+                                  info_port: u32,
                                   contract_status: u32,
                                   accepted_contract_version_id: String,
                                   token: Vec<u8>,
@@ -1807,7 +1838,8 @@ impl Db {
                 alias,
                 ip4addr,
                 ip6addr,
-                db_port: port,
+                db_port,
+                info_port,
                 contract_status: ContractStatus::from_i64(contract_status as i64),
                 accepted_contract_version: GUID::parse(&accepted_contract_version_id).unwrap(),
                 token,
@@ -1836,6 +1868,7 @@ impl Db {
                     row.get(8).unwrap(),
                     row.get(9).unwrap(),
                     row.get(10).unwrap(),
+                    row.get(11).unwrap(),
                 )
             })
             .unwrap();
@@ -1872,7 +1905,8 @@ impl Db {
             ALIAS,
             IP4ADDRESS,
             IP6ADDRESS,
-            PORT,
+            DB_PORT,
+            INFO_PORT,
             CONTRACT_STATUS,
             PARTICIPANT_ID,
             HTTP_ADDR,
@@ -1887,7 +1921,8 @@ impl Db {
                                   alias: String,
                                   ip4: String,
                                   ip6: String,
-                                  port: u32,
+                                  db_port: u32,
+                                  info_port: Option<u32>,
                                   contract_status: u32,
                                   participant_id: String,
                                   http_addr: String,
@@ -1898,7 +1933,8 @@ impl Db {
                 alias,
                 ip4_address: ip4,
                 ip6_address: ip6,
-                database_port_number: port,
+                database_port_number: db_port,
+                info_port_number: info_port.unwrap_or_default(),
                 token: Vec::new(),
                 internal_participant_guid: internal_participant_id,
                 http_addr,
@@ -1925,6 +1961,7 @@ impl Db {
                     row.get(6).unwrap(),
                     row.get(7).unwrap(),
                     row.get(8).unwrap(),
+                    row.get(9).unwrap(),
                 )
             })
             .unwrap();
@@ -1955,7 +1992,7 @@ impl Db {
                     LogicalStoragePolicy::Mirror => {
                         cooperative_tables.push(table.clone());
                     }
-                    LogicalStoragePolicy::ParticpantOwned => {
+                    LogicalStoragePolicy::ParticipantOwned => {
                         cooperative_tables.push(table.clone());
                     }
                     LogicalStoragePolicy::Shared => {

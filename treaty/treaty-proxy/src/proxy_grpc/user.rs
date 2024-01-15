@@ -1,13 +1,14 @@
 use crate::TreatyProxy;
 use chrono::Utc;
+use stdext::function_name;
 use tonic::{Request, Response, Status};
-use tracing::{debug, warn};
+use tracing::{debug, trace, warn};
 use treaty::{
-    data_service_handler::data_service_handler_actions::DataServiceHandlerActions,
     defaults,
-    treaty_proto::{data_service_server::DataService, user_service_server::UserService, *},
+    treaty_proto::{user_service_server::UserService, *},
     user_service_handler::user_service_handler_actions::UserServiceHandlerActions,
 };
+use treaty_http_endpoints::headers::TREATY_AUTH_HEADER_METADATA_BIN;
 
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
@@ -44,34 +45,53 @@ impl ProxyUserServiceHandlerGrpc {
     ///
     /// If the above conditions are true, it will return the `core` for that account,
     /// otherwise, we will return an `AuthResult` with an error message
-    fn validate_auth_request(
+    async fn validate_auth_request(
         &self,
-        auth: &Option<AuthRequest>,
-    ) -> Result<impl UserServiceHandlerActions, AuthResult> {
-        if auth.is_some() {
-            let auth = auth.as_ref().unwrap().clone();
-            if auth.id.is_some() {
-                let id = auth.id.unwrap();
-                let result_has_core = self.proxy.get_treaty_grpc_user_handler(&id);
+        request: &tonic::metadata::MetadataMap,
+    ) -> Result<Box<dyn UserServiceHandlerActions + Send + Sync>, AuthResult> {
+        trace!("[{}]: metadata: {request:?}", function_name!());
 
-                if result_has_core.is_ok() {
-                    return Ok(result_has_core.unwrap());
+        if request.contains_key(TREATY_AUTH_HEADER_METADATA_BIN) {
+            let kv = request.get_bin(TREATY_AUTH_HEADER_METADATA_BIN);
+            if let Some(key_value) = kv {
+                let bytes = key_value.to_bytes().unwrap();
+                let metadata: AuthRequestMetadata = bincode::deserialize(&bytes).unwrap();
+                trace!("[{}: {metadata:?}]", function_name!());
+                if metadata.id.is_some() {
+                    let id = metadata.id.unwrap();
+                    let result_has_core = self.proxy.get_treaty_grpc_user_handler(&id).await;
+
+                    if result_has_core.is_ok() {
+                        trace!("[{}]: Caller is authenticated.", function_name!());
+                        return Ok(result_has_core.unwrap());
+                    } else {
+                        warn!(
+                            "[{}]: No host id found at treaty-proxy instance",
+                            function_name!()
+                        );
+                        return Err(AuthResult {
+                            is_authenticated: false,
+                            message: Some(format!(
+                                "Host Id: {id} was not found at treaty-proxy instance"
+                            )),
+                        });
+                    }
                 } else {
+                    warn!(
+                        "[{}]: No host id provided at treaty-proxy instance",
+                        function_name!()
+                    );
                     return Err(AuthResult {
                         is_authenticated: false,
-                        message: Some(format!(
-                            "Host Id: {id} was not found at treaty-proxy instance"
-                        )),
+                        message: Some("No Host Id provided for treaty-proxy instance".to_string()),
                     });
                 }
-            } else {
-                return Err(AuthResult {
-                    is_authenticated: false,
-                    message: Some("No Host Id provided for treaty-proxy instance".to_string()),
-                });
             }
         }
-
+        warn!(
+            "[{}]: No authentication provided at treaty-proxy instance",
+            function_name!()
+        );
         Err(AuthResult {
             is_authenticated: false,
             message: Some("No authentication provided".to_string()),
@@ -95,6 +115,34 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         Ok(Response::new(reply))
     }
 
+    async fn get_backing_database_config(
+        &self,
+        request: Request<()>,
+    ) -> Result<Response<GetBackingDatabaseConfigReply>, Status> {
+        debug!("Request from {:?}", request.remote_addr());
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
+
+        match auth_result {
+            Ok(core) => {
+                let response = core.get_backing_database_config().await;
+                return Ok(Response::new(response));
+            }
+            Err(_) => {
+                let reply = GetBackingDatabaseConfigReply {
+                    database_type: 0,
+                    use_schema: false,
+                    error: Some(TreatyError {
+                        message: String::from("Could not get database type"),
+                        help: None,
+                        number: 0,
+                    }),
+                };
+
+                return Ok(Response::new(reply));
+            }
+        }
+    }
+
     async fn get_logs_by_last_number(
         &self,
         request: Request<GetLogsByLastNumberRequest>,
@@ -103,7 +151,7 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         todo!()
 
         // let request = request.into_inner().clone();
-        // let auth_result = self.validate_auth_request(&request.authentication);
+        // let auth_result = self.validate_auth_request(&request.metadata()).await;
 
         // match auth_result {
         //     Ok(core) => {
@@ -112,7 +160,7 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         //     }
         //     Err(auth_result) => {
         //         let reply = GetLogsByLastNumberReply {
-        //             authentication_result: Some(auth_result),
+        //
         //             logs: Vec::new(),
         //         };
 
@@ -129,22 +177,28 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         todo!()
     }
 
+    async fn delete_user_database_destructively(
+        &self,
+        request: Request<DeleteUserDatabaseRequest>,
+    ) -> Result<Response<DeleteUserDatabaseReply>, Status> {
+        debug!("Request from {:?}", request.remote_addr());
+        todo!()
+    }
+
     async fn get_settings(
         &self,
-        request: Request<GetSettingsRequest>,
+        request: Request<()>,
     ) -> Result<Response<GetSettingsReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
-        let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
 
         match auth_result {
             Ok(core) => {
-                let response = core.get_settings(request).await;
+                let response = core.get_settings().await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GetSettingsReply {
-                    authentication_result: Some(auth_result),
                     settings_json: None,
                     error: None,
                 };
@@ -156,21 +210,18 @@ impl UserService for ProxyUserServiceHandlerGrpc {
 
     async fn get_cooperative_hosts(
         &self,
-        request: Request<GetCooperativeHostsRequest>,
+        request: Request<()>,
     ) -> Result<Response<GetCooperativeHostsReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
-
-        let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
 
         match auth_result {
             Ok(core) => {
-                let response = core.get_cooperative_hosts(request).await;
+                let response = core.get_cooperative_hosts().await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GetCooperativeHostsReply {
-                    authentication_result: Some(auth_result),
                     hosts: Vec::new(),
                     error: None,
                 };
@@ -185,18 +236,16 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<GetUpdatesFromHostBehaviorRequest>,
     ) -> Result<Response<GetUpdatesFromHostBehaviorReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
-
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.get_updates_from_host_behavior(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GetUpdatesFromHostBehaviorReply {
-                    authentication_result: Some(auth_result),
                     behavior: None,
                     error: None,
                 };
@@ -211,18 +260,16 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<GetUpdatesToHostBehaviorRequest>,
     ) -> Result<Response<GetUpdatesToHostBehaviorReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
-
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.get_updates_to_host_behavior(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GetUpdatesToHostBehaviorReply {
-                    authentication_result: Some(auth_result),
                     behavior: None,
                     error: None,
                 };
@@ -238,17 +285,16 @@ impl UserService for ProxyUserServiceHandlerGrpc {
     ) -> Result<Response<GetDeletesFromHostBehaviorReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
 
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.get_deletes_from_host_behavior(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GetDeletesFromHostBehaviorReply {
-                    authentication_result: Some(auth_result),
                     behavior: None,
                     error: None,
                 };
@@ -262,17 +308,16 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         &self,
         request: Request<GetDeletesToHostBehaviorRequest>,
     ) -> Result<Response<GetDeletesToHostBehaviorReply>, Status> {
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.get_deletes_to_host_behavior(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GetDeletesToHostBehaviorReply {
-                    authentication_result: Some(auth_result),
                     behavior: None,
                     error: None,
                 };
@@ -283,31 +328,23 @@ impl UserService for ProxyUserServiceHandlerGrpc {
     }
 
     #[allow(dead_code, unused_variables)]
-    async fn get_versions(
-        &self,
-        request: Request<AuthRequest>,
-    ) -> Result<Response<VersionReply>, Status> {
+    async fn get_versions(&self, request: Request<()>) -> Result<Response<VersionReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
         // need to write an HTTP version as well
         todo!()
     }
 
-    async fn get_host_info(
-        &self,
-        request: Request<AuthRequest>,
-    ) -> Result<Response<HostInfoReply>, Status> {
+    async fn get_host_info(&self, request: Request<()>) -> Result<Response<HostInfoReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
-        let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&Some(request.clone()));
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
 
         match auth_result {
             Ok(core) => {
-                let response = core.get_host_info(request).await;
+                let response = core.get_host_info().await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = HostInfoReply {
-                    authentication_result: Some(auth_result),
                     host_info: None,
                     error: None,
                 };
@@ -319,11 +356,11 @@ impl UserService for ProxyUserServiceHandlerGrpc {
 
     async fn revoke_token(
         &self,
-        request: Request<AuthRequest>,
+        request: Request<AuthRequestWebToken>,
     ) -> Result<Response<RevokeReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&Some(request.clone()));
 
         match auth_result {
             Ok(core) => {
@@ -342,12 +379,12 @@ impl UserService for ProxyUserServiceHandlerGrpc {
 
     async fn auth_for_token(
         &self,
-        request: Request<AuthRequest>,
+        request: Request<AuthRequestBasic>,
     ) -> Result<Response<TokenReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
 
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&Some(request.clone()));
 
         match auth_result {
             Ok(core) => {
@@ -372,17 +409,16 @@ impl UserService for ProxyUserServiceHandlerGrpc {
     ) -> Result<Response<GetActiveContractReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
 
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.get_active_contract(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GetActiveContractReply {
-                    authentication_result: Some(auth_result),
                     contract: None,
                     error: None,
                 };
@@ -398,17 +434,16 @@ impl UserService for ProxyUserServiceHandlerGrpc {
     ) -> Result<Response<GetParticipantsReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
 
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.get_participants(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GetParticipantsReply {
-                    authentication_result: Some(auth_result),
                     participants: Vec::new(),
                     is_error: true,
                     error: None,
@@ -421,21 +456,19 @@ impl UserService for ProxyUserServiceHandlerGrpc {
 
     async fn get_databases(
         &self,
-        request: Request<GetDatabasesRequest>,
+        request: Request<()>,
     ) -> Result<Response<GetDatabasesReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
 
-        let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
 
         match auth_result {
             Ok(core) => {
-                let response = core.get_databases(request).await;
+                let response = core.get_databases().await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GetDatabasesReply {
-                    authentication_result: Some(auth_result),
                     databases: Vec::new(),
                     error: None,
                 };
@@ -450,17 +483,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<AcceptPendingActionRequest>,
     ) -> Result<Response<AcceptPendingActionReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.accept_pending_action_at_participant(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = AcceptPendingActionReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     error: None,
                 };
@@ -475,17 +508,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<GetPendingActionsRequest>,
     ) -> Result<Response<GetPendingActionsReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.get_pending_actions_at_participant(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GetPendingActionsReply {
-                    authentication_result: Some(auth_result),
                     pending_statements: Vec::new(),
                     error: None,
                 };
@@ -519,17 +552,16 @@ impl UserService for ProxyUserServiceHandlerGrpc {
     ) -> Result<Response<GenerateHostInfoReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
 
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.generate_host_info(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GenerateHostInfoReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     error: None,
                 };
@@ -545,17 +577,16 @@ impl UserService for ProxyUserServiceHandlerGrpc {
     ) -> Result<Response<CreateUserDatabaseReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
 
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.create_user_database(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = CreateUserDatabaseReply {
-                    authentication_result: Some(auth_result),
                     is_created: false,
                     message: "".to_string(),
                     error: None,
@@ -572,17 +603,16 @@ impl UserService for ProxyUserServiceHandlerGrpc {
     ) -> Result<Response<EnableCoooperativeFeaturesReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
 
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.enable_coooperative_features(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = EnableCoooperativeFeaturesReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     message: "".to_string(),
                     error: None,
@@ -599,17 +629,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<ExecuteReadRequest>,
     ) -> Result<Response<ExecuteReadReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.execute_read_at_host(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = ExecuteReadReply {
-                    authentication_result: Some(auth_result),
                     total_resultsets: 0,
                     results: Vec::new(),
                     is_error: true,
@@ -627,17 +657,16 @@ impl UserService for ProxyUserServiceHandlerGrpc {
     ) -> Result<Response<ExecuteReadReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
 
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.execute_read_at_participant(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = ExecuteReadReply {
-                    authentication_result: Some(auth_result),
                     total_resultsets: 0,
                     results: Vec::new(),
                     is_error: true,
@@ -655,17 +684,16 @@ impl UserService for ProxyUserServiceHandlerGrpc {
     ) -> Result<Response<ExecuteWriteReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
 
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.execute_write_at_host(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = ExecuteWriteReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     is_error: true,
                     total_rows_affected: 0,
@@ -682,17 +710,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<ExecuteWriteRequest>,
     ) -> Result<Response<ExecuteWriteReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.execute_write_at_participant(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = ExecuteWriteReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     is_error: true,
                     total_rows_affected: 0,
@@ -709,17 +737,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<ExecuteCooperativeWriteRequest>,
     ) -> Result<Response<ExecuteCooperativeWriteReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.execute_cooperative_write_at_host(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = ExecuteCooperativeWriteReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     total_rows_affected: 0,
                     error: None,
@@ -735,17 +763,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<HasTableRequest>,
     ) -> Result<Response<HasTableReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.has_table(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = HasTableReply {
-                    authentication_result: Some(auth_result),
                     has_table: false,
                     error: None,
                 };
@@ -760,17 +788,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<SetLogicalStoragePolicyRequest>,
     ) -> Result<Response<SetLogicalStoragePolicyReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.set_logical_storage_policy(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = SetLogicalStoragePolicyReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     message: "".to_string(),
                     error: None,
@@ -786,17 +814,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<GetLogicalStoragePolicyRequest>,
     ) -> Result<Response<GetLogicalStoragePolicyReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.get_logical_storage_policy(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GetLogicalStoragePolicyReply {
-                    authentication_result: Some(auth_result),
                     policy_mode: 0,
                     error: None,
                 };
@@ -812,17 +840,16 @@ impl UserService for ProxyUserServiceHandlerGrpc {
     ) -> Result<Response<GenerateContractReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
 
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.generate_contract(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GenerateContractReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     message: "".to_string(),
                     error: None,
@@ -838,17 +865,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<AddParticipantRequest>,
     ) -> Result<Response<AddParticipantReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.add_participant(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = AddParticipantReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     message: "".to_string(),
                     error: None,
@@ -864,17 +891,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<SendParticipantContractRequest>,
     ) -> Result<Response<SendParticipantContractReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.send_participant_contract(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = SendParticipantContractReply {
-                    authentication_result: Some(auth_result),
                     is_sent: false,
                     contract_status: 0,
                     error: None,
@@ -887,22 +914,21 @@ impl UserService for ProxyUserServiceHandlerGrpc {
 
     async fn review_pending_contracts(
         &self,
-        request: Request<ViewPendingContractsRequest>,
+        request: Request<()>,
     ) -> Result<Response<ViewPendingContractsReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
-        let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
 
         debug!("review_pending_contracts: {request:?}");
 
         match auth_result {
             Ok(core) => {
-                let response = core.review_pending_contracts(request).await;
+                let response = core.review_pending_contracts().await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = ViewPendingContractsReply {
-                    authentication_result: Some(auth_result),
                     contracts: Vec::new(),
                     error: None,
                 };
@@ -917,17 +943,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<AcceptPendingContractRequest>,
     ) -> Result<Response<AcceptPendingContractReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.accept_pending_contract(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = AcceptPendingContractReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     message: "".to_string(),
                     error: None,
@@ -951,17 +977,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: tonic::Request<ChangeHostStatusRequest>,
     ) -> Result<tonic::Response<ChangeHostStatusReply>, tonic::Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.change_host_status(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = ChangeHostStatusReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     status: 0,
                     error: None,
@@ -977,17 +1003,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: tonic::Request<TryAuthAtParticipantRequest>,
     ) -> Result<tonic::Response<TryAuthAtPartipantReply>, tonic::Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.try_auth_at_participant(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = TryAuthAtPartipantReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     message: "".to_string(),
                     error: None,
@@ -1003,17 +1029,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<ChangeUpdatesFromHostBehaviorRequest>,
     ) -> Result<Response<ChangesUpdatesFromHostBehaviorReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.change_updates_from_host_behavior(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = ChangesUpdatesFromHostBehaviorReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     message: "".to_string(),
                     error: None,
@@ -1029,17 +1055,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<ChangeDeletesFromHostBehaviorRequest>,
     ) -> Result<Response<ChangeDeletesFromHostBehaviorReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.change_deletes_from_host_behavior(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = ChangeDeletesFromHostBehaviorReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     message: "".to_string(),
                     error: None,
@@ -1055,17 +1081,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<ChangeUpdatesToHostBehaviorRequest>,
     ) -> Result<Response<ChangeUpdatesToHostBehaviorReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.change_updates_to_host_behavior(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = ChangeUpdatesToHostBehaviorReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     message: "".to_string(),
                     error: None,
@@ -1081,17 +1107,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<ChangeDeletesToHostBehaviorRequest>,
     ) -> Result<Response<ChangeDeletesToHostBehaviorReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.change_deletes_to_host_behavior(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = ChangeDeletesToHostBehaviorReply {
-                    authentication_result: Some(auth_result),
                     is_successful: false,
                     message: "".to_string(),
                     error: None,
@@ -1107,17 +1133,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<GetReadRowIdsRequest>,
     ) -> Result<Response<GetReadRowIdsReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.read_row_id_at_participant(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GetReadRowIdsReply {
-                    authentication_result: Some(auth_result),
                     row_ids: Vec::new(),
                     error: None,
                 };
@@ -1132,17 +1158,17 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<GetDataHashRequest>,
     ) -> Result<Response<GetDataHashReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.get_data_hash_at_host(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GetDataHashReply {
-                    authentication_result: Some(auth_result),
                     data_hash: 0,
                     error: None,
                 };
@@ -1157,440 +1183,19 @@ impl UserService for ProxyUserServiceHandlerGrpc {
         request: Request<GetDataHashRequest>,
     ) -> Result<Response<GetDataHashReply>, Status> {
         debug!("Request from {:?}", request.remote_addr());
+
+        let auth_result = self.validate_auth_request(&request.metadata()).await;
         let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
 
         match auth_result {
             Ok(core) => {
                 let response = core.get_data_hash_at_participant(request).await;
                 return Ok(Response::new(response));
             }
-            Err(auth_result) => {
+            Err(_) => {
                 let reply = GetDataHashReply {
-                    authentication_result: Some(auth_result),
                     data_hash: 0,
                     error: None,
-                };
-
-                return Ok(Response::new(reply));
-            }
-        }
-    }
-}
-
-#[allow(dead_code, unused_variables)]
-pub struct ProxyDataServiceHandlerGrpc {
-    root_folder: String,
-    database_name: String,
-    addr_port: String,
-    proxy: TreatyProxy,
-}
-
-impl ProxyDataServiceHandlerGrpc {
-    #[allow(dead_code, unused_variables)]
-    pub fn new(
-        root_folder: String,
-        database_name: String,
-        addr_port: String,
-        proxy: TreatyProxy,
-    ) -> Self {
-        Self {
-            root_folder,
-            database_name,
-            addr_port,
-            proxy,
-        }
-    }
-
-    /// Checks to see if the auth request:
-    /// - Exists
-    /// - Exists and has a host id
-    /// - Exists, has a host id, and we have an account with that host id
-    ///
-    /// If the above conditions are true, it will return the `core` for that account,
-    /// otherwise, we will return an `AuthResult` with an error message
-    #[allow(dead_code, unused_variables)]
-    fn validate_auth_request(
-        &self,
-        auth: &Option<AuthRequest>,
-    ) -> Result<impl DataServiceHandlerActions, AuthResult> {
-        if auth.is_some() {
-            let auth = auth.as_ref().unwrap().clone();
-            let un = auth.user_name.clone();
-            if auth.id.is_some() {
-                let id = auth.id.unwrap();
-                let result_has_core = self.proxy.get_treaty_data_handler(&id);
-
-                if result_has_core.is_ok() {
-                    return Ok(result_has_core.unwrap());
-                } else {
-                    return Err(AuthResult {
-                        is_authenticated: false,
-                        message: Some(format!(
-                            "Host Id: {id} was not found at treaty-proxy instance"
-                        )),
-                    });
-                }
-            } else {
-                return Err(AuthResult {
-                    is_authenticated: false,
-                    message: Some("No Host Id provided for treaty-proxy instance".to_string()),
-                });
-            }
-        }
-
-        Err(AuthResult {
-            is_authenticated: false,
-            message: Some("No authentication provided".to_string()),
-        })
-    }
-}
-
-#[tonic::async_trait]
-impl DataService for ProxyDataServiceHandlerGrpc {
-    async fn is_online(
-        &self,
-        request: Request<TestRequest>,
-    ) -> Result<Response<TestReply>, Status> {
-        debug!("Request from {:?}", request.remote_addr());
-
-        let item = request.into_inner().request_echo_message;
-
-        Ok(Response::new(TestReply {
-            reply_time_utc: Utc::now().to_rfc2822(),
-            reply_echo_message: item,
-            treaty_version: defaults::VERSION.to_string(),
-        }))
-    }
-
-    async fn create_partial_database(
-        &self,
-        request: Request<CreatePartialDatabaseRequest>,
-    ) -> Result<Response<CreatePartialDatabaseResult>, Status> {
-        debug!("Request from {:?}", request.remote_addr());
-
-        let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
-
-        match auth_result {
-            Ok(core) => {
-                let response = core.create_partial_database(request).await;
-                return Ok(Response::new(response));
-            }
-            Err(auth_result) => {
-                let reply = CreatePartialDatabaseResult {
-                    authentication_result: Some(auth_result),
-                    is_successful: false,
-                    database_name: "".to_string(),
-                    database_id: "".to_string(),
-                    is_error: true,
-                    error: None,
-                };
-
-                return Ok(Response::new(reply));
-            }
-        }
-    }
-
-    async fn create_table_in_database(
-        &self,
-        request: Request<CreateTableRequest>,
-    ) -> Result<Response<CreateTableResult>, Status> {
-        debug!("Request from {:?}", request.remote_addr());
-
-        let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
-
-        match auth_result {
-            Ok(core) => {
-                let response = core.create_table_in_database(request).await;
-                return Ok(Response::new(response));
-            }
-            Err(auth_result) => {
-                let reply = CreateTableResult {
-                    authentication_result: Some(auth_result),
-                    is_successful: false,
-                    database_name: "".to_string(),
-                    result_message: "".to_string(),
-                    table_name: "".to_string(),
-                    table_id: "".to_string(),
-                    database_id: "".to_string(),
-                    is_error: true,
-                    error: None,
-                };
-
-                return Ok(Response::new(reply));
-            }
-        }
-    }
-
-    async fn insert_command_into_table(
-        &self,
-        request: Request<InsertDataRequest>,
-    ) -> Result<Response<InsertDataResult>, Status> {
-        debug!("Request from {:?}", request.remote_addr());
-
-        let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
-
-        match auth_result {
-            Ok(core) => {
-                let response = core.insert_command_into_table(request).await;
-                return Ok(Response::new(response));
-            }
-            Err(auth_result) => {
-                let reply = InsertDataResult {
-                    authentication_result: Some(auth_result),
-                    is_successful: false,
-                    data_hash: 0,
-                    message: "".to_string(),
-                    row_id: 0,
-                    is_error: true,
-                    error: None,
-                };
-
-                return Ok(Response::new(reply));
-            }
-        }
-    }
-
-    async fn update_command_into_table(
-        &self,
-        request: Request<UpdateDataRequest>,
-    ) -> Result<Response<UpdateDataResult>, Status> {
-        debug!("Request from {:?}", request.remote_addr());
-
-        let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
-
-        match auth_result {
-            Ok(core) => {
-                let response = core.update_command_into_table(request).await;
-                return Ok(Response::new(response));
-            }
-            Err(auth_result) => {
-                let reply = UpdateDataResult {
-                    authentication_result: Some(auth_result),
-                    is_successful: false,
-                    message: "".to_string(),
-                    rows: Vec::new(),
-                    update_status: 0,
-                    is_error: true,
-                    error: None,
-                };
-
-                return Ok(Response::new(reply));
-            }
-        }
-    }
-
-    async fn delete_command_into_table(
-        &self,
-        request: Request<DeleteDataRequest>,
-    ) -> Result<Response<DeleteDataResult>, Status> {
-        debug!("Request from {:?}", request.remote_addr());
-
-        let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
-
-        match auth_result {
-            Ok(core) => {
-                let response = core.delete_command_into_table(request).await;
-                return Ok(Response::new(response));
-            }
-            Err(auth_result) => {
-                let reply = DeleteDataResult {
-                    authentication_result: Some(auth_result),
-                    is_successful: false,
-                    message: "".to_string(),
-                    rows: Vec::new(),
-                    is_error: true,
-                    error: None,
-                };
-
-                return Ok(Response::new(reply));
-            }
-        }
-    }
-
-    async fn get_row_from_partial_database(
-        &self,
-        request: Request<GetRowFromPartialDatabaseRequest>,
-    ) -> Result<Response<GetRowFromPartialDatabaseResult>, Status> {
-        debug!("Request from {:?}", request.remote_addr());
-
-        let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
-
-        match auth_result {
-            Ok(core) => {
-                let response = core.get_row_from_partial_database(request).await;
-                return Ok(Response::new(response));
-            }
-            Err(auth_result) => {
-                let reply = GetRowFromPartialDatabaseResult {
-                    authentication_result: Some(auth_result),
-                    is_successful: false,
-                    row: None,
-                    result_message: "".to_string(),
-                    error: None,
-                };
-
-                return Ok(Response::new(reply));
-            }
-        }
-    }
-
-    async fn save_contract(
-        &self,
-        request: Request<SaveContractRequest>,
-    ) -> Result<Response<SaveContractResult>, Status> {
-        debug!("Request from {:?}", request.remote_addr());
-
-        let request = request.into_inner().clone();
-
-        let auth = AuthRequest {
-            user_name: "".to_string(),
-            pw: "".to_string(),
-            pw_hash: Vec::new(),
-            token: Vec::new(),
-            jwt: "".to_string(),
-            id: request.id.clone(),
-        };
-
-        let auth_result = self.validate_auth_request(&Some(auth));
-
-        match auth_result {
-            Ok(core) => {
-                let response = core.save_contract(request).await;
-                return Ok(Response::new(response));
-            }
-            Err(_) => {
-                let reply = SaveContractResult {
-                    is_saved: false,
-                    contract_status: 0,
-                    participant_info: None,
-                    is_error: true,
-                    error: None,
-                };
-
-                return Ok(Response::new(reply));
-            }
-        }
-    }
-
-    async fn accept_contract(
-        &self,
-        request: Request<ParticipantAcceptsContractRequest>,
-    ) -> Result<Response<ParticipantAcceptsContractResult>, Status> {
-        debug!("Request from {:?}", request.remote_addr());
-
-        let request = request.into_inner().clone();
-
-        let id = request.id.as_ref().unwrap().clone();
-
-        let auth = AuthRequest {
-            user_name: "".to_string(),
-            pw: "".to_string(),
-            pw_hash: Vec::new(),
-            token: Vec::new(),
-            jwt: "".to_string(),
-            id: Some(id),
-        };
-
-        let auth_result = self.validate_auth_request(&Some(auth));
-
-        match auth_result {
-            Ok(core) => {
-                let response = core.accept_contract(request).await;
-                return Ok(Response::new(response));
-            }
-            Err(_) => {
-                let reply = ParticipantAcceptsContractResult {
-                    contract_acceptance_is_acknowledged: false,
-                    is_error: true,
-                    error: None,
-                };
-
-                return Ok(Response::new(reply));
-            }
-        }
-    }
-
-    async fn update_row_data_hash_for_host(
-        &self,
-        request: Request<UpdateRowDataHashForHostRequest>,
-    ) -> Result<Response<UpdateRowDataHashForHostResult>, Status> {
-        debug!("Request from {:?}", request.remote_addr());
-
-        let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
-
-        match auth_result {
-            Ok(core) => {
-                let response = core.update_row_data_hash_for_host(request).await;
-                return Ok(Response::new(response));
-            }
-            Err(auth_result) => {
-                let reply = UpdateRowDataHashForHostResult {
-                    authentication_result: Some(auth_result),
-                    is_successful: false,
-                    error: None,
-                };
-
-                return Ok(Response::new(reply));
-            }
-        }
-    }
-
-    async fn notify_host_of_removed_row(
-        &self,
-        request: Request<NotifyHostOfRemovedRowRequest>,
-    ) -> Result<Response<NotifyHostOfRemovedRowResult>, Status> {
-        debug!(
-            "notify_host_of_removed_row: Request from {:?}",
-            request.remote_addr()
-        );
-
-        let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
-
-        match auth_result {
-            Ok(core) => {
-                let response = core.notify_host_of_removed_row(request).await;
-                return Ok(Response::new(response));
-            }
-            Err(auth_result) => {
-                let reply = NotifyHostOfRemovedRowResult {
-                    authentication_result: Some(auth_result),
-                    is_successful: false,
-                    error: None,
-                };
-
-                warn!("notify_host_of_removed_row: {reply:?}");
-
-                return Ok(Response::new(reply));
-            }
-        }
-    }
-
-    async fn try_auth(
-        &self,
-        request: Request<TryAuthRequest>,
-    ) -> Result<Response<TryAuthResult>, Status> {
-        debug!("Request from {:?}", request.remote_addr());
-
-        let request = request.into_inner().clone();
-        let auth_result = self.validate_auth_request(&request.authentication);
-
-        match auth_result {
-            Ok(core) => {
-                let response = core.try_auth(request).await;
-                return Ok(Response::new(response));
-            }
-            Err(auth_result) => {
-                let reply = TryAuthResult {
-                    authentication_result: Some(auth_result),
                 };
 
                 return Ok(Response::new(reply));

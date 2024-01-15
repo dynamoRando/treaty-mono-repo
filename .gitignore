@@ -2,3 +2,4 @@
 .DS_STORE
 treaty/proto/protoc-gen-doc
 .vscode
+*.env

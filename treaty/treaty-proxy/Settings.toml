@@ -1,8 +1,11 @@
 backing_database_name = "Proxy.db"
 client_addr_port = "0.0.0.0:50051"
 db_addr_port = "0.0.0.0:50052"
+info_addr_port = "0.0.0.0:50059"
 http_addr = "0.0.0.0"
 http_port = "50055"
 database_type = 1 
 proxy_http_addr = "0.0.0.0"
 proxy_http_port = "50040"
+danger_accept_invalid_certs = false
+tls_sni = true

@@ -6,15 +6,13 @@ use yew::{AttrValue, Callback, UseStateHandle};
 
 use crate::{
     log::log_to_console,
-    request::{self, clear_status, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, set_status, get_client},
 };
 
 pub fn write(db_name: String, text: String, state: UseStateHandle<Option<String>>, endpoint: &str) {
-    let token = get_token();
-    let auth = token.auth();
-
+    let client = get_client();
+    
     let request = ExecuteWriteRequest {
-        authentication: Some(auth),
         database_name: db_name,
         sql_statement: text,
         database_type: 1,
@@ -22,7 +20,7 @@ pub fn write(db_name: String, text: String, state: UseStateHandle<Option<String>
     };
 
     let write_request_json = serde_json::to_string(&request).unwrap();
-    let url = format!("{}{}", token.addr, endpoint);
+    let url = format!("{}{}", client.user_addr_port(), endpoint);
 
     let callback = Callback::from(move |response: Result<AttrValue, String>| {
         if let Ok(ref x) = response {
@@ -31,32 +29,21 @@ pub fn write(db_name: String, text: String, state: UseStateHandle<Option<String>
 
             let write_reply: ExecuteWriteReply = serde_json::from_str(x).unwrap();
 
-            let is_authenticated = write_reply
-                .authentication_result
-                .as_ref()
-                .unwrap()
-                .is_authenticated;
-            update_token_login_status(is_authenticated);
+            let mut result_message = String::new();
 
-            if is_authenticated {
-                let mut result_message = String::new();
+            result_message += &format!("Is result successful: {}", write_reply.is_successful);
 
-                result_message += &format!("Is result successful: {}", write_reply.is_successful);
+            result_message += "\n";
+            result_message += &format!("Total rows affected: {}", write_reply.total_rows_affected);
 
+            if write_reply.is_error {
                 result_message += "\n";
-                result_message +=
-                    &format!("Total rows affected: {}", write_reply.total_rows_affected);
-
-                if write_reply.is_error {
-                    result_message += "\n";
-                    result_message +=
-                        &format!("Error Message: {}", write_reply.error.unwrap().message);
-                }
-
-                let sql_table_text = result_message.clone();
-
-                state.set(Some(sql_table_text));
+                result_message += &format!("Error Message: {}", write_reply.error.unwrap().message);
             }
+
+            let sql_table_text = result_message.clone();
+
+            state.set(Some(sql_table_text));
         } else {
             set_status(response.err().unwrap());
         }
@@ -72,11 +59,9 @@ pub fn cooperative_write(
     state: UseStateHandle<Option<String>>,
     endpoint: &str,
 ) {
-    let token = get_token();
-    let auth = token.auth();
+    let client = get_client();
 
     let request = ExecuteCooperativeWriteRequest {
-        authentication: Some(auth),
         database_name: db_name,
         sql_statement: text,
         database_type: 1,
@@ -86,7 +71,7 @@ pub fn cooperative_write(
     };
 
     let write_request_json = serde_json::to_string(&request).unwrap();
-    let url = format!("{}{}", token.addr, endpoint);
+    let url = format!("{}{}", client.user_addr_port(), endpoint);
 
     let callback = Callback::from(move |response: Result<AttrValue, String>| {
         if let Ok(ref x) = response {
@@ -95,23 +80,19 @@ pub fn cooperative_write(
 
             let write_reply: ExecuteCooperativeWriteReply = serde_json::from_str(x).unwrap();
 
-            if write_reply.authentication_result.unwrap().is_authenticated {
-                let mut result_message = String::new();
+            let mut result_message = String::new();
 
-                result_message = result_message
-                    + &format!("Is result successful: {}", write_reply.is_successful);
+            result_message =
+                result_message + &format!("Is result successful: {}", write_reply.is_successful);
 
-                result_message += "\n";
-                result_message = result_message
-                    + &format!("Total rows affected: {}", write_reply.total_rows_affected);
-                result_message += "\n";
+            result_message += "\n";
+            result_message = result_message
+                + &format!("Total rows affected: {}", write_reply.total_rows_affected);
+            result_message += "\n";
 
-                let sql_table_text = result_message;
+            let sql_table_text = result_message;
 
-                state.set(Some(sql_table_text));
-            } else {
-                set_status(response.err().unwrap());
-            }
+            state.set(Some(sql_table_text));
         }
     });
 

@@ -99,10 +99,9 @@ async fn execute(
     match result_id {
         Ok(id) => match id {
             Some(id) => {
-                let result_core = proxy.get_treaty_grpc_user_handler(&id);
+                let result_core = proxy.get_treaty_grpc_user_handler(&id).await;
                 match result_core {
                     Ok(core) => {
-                        let core = Box::new(core);
                         let result_json_reply = process_request(request, core).await;
                         match result_json_reply {
                             Ok(reply) => ExecuteReply {

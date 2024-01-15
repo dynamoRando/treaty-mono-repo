@@ -4,22 +4,20 @@ use yew::{AttrValue, Callback, UseStateHandle};
 
 use crate::{
     log::log_to_console,
-    request::{self, clear_status, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, set_status, get_client},
 };
 
 pub fn read(db_name: String, text: String, state: UseStateHandle<Option<String>>, endpoint: &str) {
-    let token = get_token();
-    let auth = token.auth();
+    let client = get_client();
 
     let request = ExecuteReadRequest {
-        authentication: Some(auth),
         database_name: db_name.into(),
         sql_statement: text.into(),
         database_type: 1,
     };
 
     let read_request_json = serde_json::to_string(&request).unwrap();
-    let url = format!("{}{}", token.addr, endpoint);
+    let url = format!("{}{}", client.user_addr_port(), endpoint);
 
     let callback = Callback::from(move |response: Result<AttrValue, String>| {
         if let Ok(ref x) = response {
@@ -28,14 +26,6 @@ pub fn read(db_name: String, text: String, state: UseStateHandle<Option<String>>
 
             let read_reply: ExecuteReadReply = serde_json::from_str(x).unwrap();
 
-            let is_authenticated = read_reply
-                .authentication_result
-                .as_ref()
-                .unwrap()
-                .is_authenticated;
-            update_token_login_status(is_authenticated);
-
-            if is_authenticated {
                 let result = read_reply.results.first().unwrap();
                 if !result.error.is_some() {
                     let rows = result.clone().rows;
@@ -49,7 +39,7 @@ pub fn read(db_name: String, text: String, state: UseStateHandle<Option<String>>
 
                     state.set(Some(message));
                 }
-            }
+            
         } else {
             set_status(response.err().unwrap());
         }

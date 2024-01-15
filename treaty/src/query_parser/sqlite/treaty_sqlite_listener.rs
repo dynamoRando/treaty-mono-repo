@@ -7,7 +7,6 @@ use super::{
     sqliteparser::{self, SQLiteParserContext, SQLiteParserContextType},
 };
 
-
 #[derive(Clone, Debug)]
 pub struct TreatySqliteListener {
     pub statement_type: Box<DmlData>,

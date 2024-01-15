@@ -1,5 +1,3 @@
-use treaty_types::enums::DeletesToHostBehavior;
-use num_traits::FromPrimitive;
 use crate::request;
 use crate::{
     log::log_to_console,
@@ -8,11 +6,15 @@ use crate::{
         common::{select_database::SelectDatabase, select_table::SelectTable},
     },
     request::treaty::{
-        clear_status, get_database, get_treaty_token, set_status, update_token_login_status,
+        clear_status, get_database, get_treaty_token, set_status,
     },
 };
-use treaty_types::types::treaty_proto::{GetDeletesToHostBehaviorReply, GetDeletesToHostBehaviorRequest};
+use num_traits::FromPrimitive;
+use treaty_types::enums::DeletesToHostBehavior;
 use treaty_types::proxy::request_type::RequestType;
+use treaty_types::types::treaty_proto::{
+    GetDeletesToHostBehaviorReply, GetDeletesToHostBehaviorRequest,
+};
 use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
 mod change_behavior;
 
@@ -56,7 +58,6 @@ pub fn DeletesToHost() -> Html {
                 let token = get_treaty_token();
 
                 let request = GetDeletesToHostBehaviorRequest {
-                    authentication: Some(token.auth()),
                     database_name: active_database.to_string(),
                     table_name,
                 };
@@ -72,19 +73,11 @@ pub fn DeletesToHost() -> Html {
                             let reply: GetDeletesToHostBehaviorReply =
                                 serde_json::from_str(&response).unwrap();
 
-                            let is_authenticated = reply
-                                .authentication_result
-                                .as_ref()
+                            let behavior = reply.behavior.unwrap();
+                            let behavior_val = DeletesToHostBehavior::from_u32(behavior)
                                 .unwrap()
-                                .is_authenticated;
-                            update_token_login_status(is_authenticated);
-
-                            if is_authenticated {
-                                let behavior = reply.behavior.unwrap();
-                                let behavior_val =
-                                    DeletesToHostBehavior::from_u32(behavior).unwrap().to_string();
-                                behavior_type_state.set(behavior_val);
-                            }
+                                .to_string();
+                            behavior_type_state.set(behavior_val);
                         }
                         Err(error_message) => {
                             set_status(error_message);

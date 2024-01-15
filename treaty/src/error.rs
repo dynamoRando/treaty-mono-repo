@@ -18,6 +18,8 @@ pub enum TreatyErrorKind {
     TableNotFoundInDatabase = 3,
     LogicalStoragePolicyNotSet = 4,
     DbAlreadyExists = 5,
+    MultipleParticipantAlias = 6,
+    NoRowsFound = 7,
 }
 
 #[derive(Error, Debug, Clone)]
@@ -32,10 +34,20 @@ pub enum TreatyDbError {
     LogicalStoragePolicyNotSet(String),
     #[error("Database `{0}` already exists")]
     DbAlreadyExists(String),
+    #[error("Multiple participant aliases found for `{0}`")]
+    MultipleParticipantAlias(String),
+    #[error("No rows found for SQL `{0}`")]
+    NoRowsFound(String),
 }
 
 impl From<rusqlite::Error> for TreatyDbError {
     fn from(error: rusqlite::Error) -> Self {
+        TreatyDbError::General(error.to_string())
+    }
+}
+
+impl From<tokio_postgres::error::Error> for TreatyDbError {
+    fn from(error: tokio_postgres::error::Error) -> Self {
         TreatyDbError::General(error.to_string())
     }
 }
@@ -102,8 +114,10 @@ impl From<TreatyDbError> for TreatyError {
             }
             TreatyDbError::LogicalStoragePolicyNotSet(_) => {
                 TreatyErrorKind::LogicalStoragePolicyNotSet
-            },
-            TreatyDbError::DbAlreadyExists(_) => TreatyErrorKind::DbAlreadyExists
+            }
+            TreatyDbError::DbAlreadyExists(_) => TreatyErrorKind::DbAlreadyExists,
+            TreatyDbError::MultipleParticipantAlias(_) => TreatyErrorKind::MultipleParticipantAlias,
+            TreatyDbError::NoRowsFound(_) => TreatyErrorKind::NoRowsFound,
         };
 
         Self {

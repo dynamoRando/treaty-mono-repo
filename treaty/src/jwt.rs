@@ -1,17 +1,24 @@
 use chrono::{DateTime, Duration, Utc};
-
 use hmac::{Hmac, Mac};
 use jwt::{AlgorithmType, Header, SignWithKey, Token};
+use rand::distributions::{Alphanumeric, DistString};
 use sha2::Sha384;
 use std::collections::BTreeMap;
 
-pub fn create_jwt(host_name: &str, login: &str) -> (String, DateTime<Utc>) {
-    // this duration should be a config item
-    let expiration = Utc::now() + Duration::minutes(20);
+pub fn create_jwt(
+    host_name: &str,
+    login: &str,
+    valid_time_in_minutes: u32,
+) -> (String, DateTime<Utc>) {
+    let expiration = Utc::now() + Duration::minutes(valid_time_in_minutes as i64);
     let exp_string = expiration.to_rfc3339();
 
     // this secret should be stored in a config file: "treaty_item"
-    let key: Hmac<Sha384> = Hmac::new_from_slice(b"treaty_item").unwrap();
+    // let key: Hmac<Sha384> = Hmac::new_from_slice(b"treaty_item").unwrap();
+
+    let rand_string = Alphanumeric.sample_string(&mut rand::thread_rng(), 16);
+    let bytes = rand_string.as_bytes();
+    let key: Hmac<Sha384> = Hmac::new_from_slice(bytes).unwrap();
     let header = Header {
         algorithm: AlgorithmType::Hs384,
         ..Default::default()

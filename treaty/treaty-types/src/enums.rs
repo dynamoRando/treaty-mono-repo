@@ -4,6 +4,11 @@ use num_derive::{FromPrimitive, ToPrimitive};
 use serde_derive::Deserialize;
 use serde_derive::Serialize;
 
+pub enum CommunicationType {
+    Grpc,
+    Http,
+}
+
 #[derive(Debug, PartialEq, Copy, Clone, ToPrimitive)]
 pub enum ContractStatus {
     Unknown = 0,
@@ -63,17 +68,24 @@ impl ContractStatus {
 /// # Types
 /// * 0 - Unknown
 /// * 1 - Sqlite
-/// * 2 - Mysql
-/// * 3 - Postgres
-/// * 4 - Sqlserver
+/// * 2 - Postgres
+///
+/// # Implementation Differences
+/// Note one of the important differences in implementation of Treaty is if the backing database can support multiple schemas in one database.
+/// Examples of database systems that can support multiple schemas are Postgres and MS SQL Server, and those that can not are Sqlite and MySQL.
+///
+/// For database systems that can hold multiple schemas, the backing table structures that Treaty needs are kept in the `treaty` schema, and
+/// the user tables are defined in that system's default schema (`public` for Postgres, `dbo` for MS SQL Server). Note that this can be overridden
+/// by specifying the value of `use_treaty_schema` in the Postgres settings struct.
+///
+/// For database systems that can't have multiple schemas in a single database, we keep Treaty structures in the `Treaty` database, and then
+/// define the needed structures in the user defined database.
 #[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize, Default)]
 pub enum DatabaseType {
     #[default]
     Unknown = 0,
     Sqlite = 1,
-    Mysql = 2,
-    Postgres = 3,
-    Sqlserver = 4,
+    Postgres = 2,
 }
 
 // https://enodev.fr/posts/rusticity-convert-an-integer-to-an-enum.html
@@ -82,9 +94,7 @@ impl DatabaseType {
         match value {
             0 => DatabaseType::Unknown,
             1 => DatabaseType::Sqlite,
-            2 => DatabaseType::Mysql,
-            3 => DatabaseType::Postgres,
-            4 => DatabaseType::Sqlserver,
+            2 => DatabaseType::Postgres,
             _ => {
                 error!("Unknown value: {value}");
                 DatabaseType::Unknown
@@ -96,9 +106,7 @@ impl DatabaseType {
         match value {
             0 => DatabaseType::Unknown,
             1 => DatabaseType::Sqlite,
-            2 => DatabaseType::Mysql,
-            3 => DatabaseType::Postgres,
-            4 => DatabaseType::Sqlserver,
+            2 => DatabaseType::Postgres,
             _ => {
                 error!("Unknown value: {value}");
                 DatabaseType::Unknown
@@ -110,9 +118,7 @@ impl DatabaseType {
         match db_type {
             DatabaseType::Unknown => 0,
             DatabaseType::Sqlite => 1,
-            DatabaseType::Mysql => 2,
-            DatabaseType::Postgres => 3,
-            DatabaseType::Sqlserver => 4,
+            DatabaseType::Postgres => 2,
         }
     }
 }
@@ -125,6 +131,19 @@ pub enum DeletesFromHostBehavior {
     DeleteWithLog = 3,
     Ignore = 4,
     QueueForReviewAndLog = 5,
+}
+
+impl DeletesFromHostBehavior {
+    pub fn to_u32(behavior: DeletesFromHostBehavior) -> u32 {
+        match behavior {
+            DeletesFromHostBehavior::Unknown => 0,
+            DeletesFromHostBehavior::AllowRemoval => 1,
+            DeletesFromHostBehavior::QueueForReview => 2,
+            DeletesFromHostBehavior::DeleteWithLog => 3,
+            DeletesFromHostBehavior::Ignore => 4,
+            DeletesFromHostBehavior::QueueForReviewAndLog => 5,
+        }
+    }
 }
 
 impl fmt::Display for DeletesFromHostBehavior {
@@ -211,7 +230,7 @@ impl HostStatus {
 /// # Types
 /// * 0 - None - This is the default and when a database has no participants. Data is kept at the host.
 /// * 1 - HostOnly - Data is only kept at the host.
-/// * 2 - ParticpantOwned - Data is kept at the participant. Hashes of the data are kept at the host. If the participant
+/// * 2 - ParticipantOwned - Data is kept at the participant. Hashes of the data are kept at the host. If the participant
 /// changes the data, the hash will no longer match unless the host has configured the table to accept changes.
 /// * 3 - Shared - Data is at the host, and changes are automatically pushed to the participant. This is essentially SQL replication.
 /// If data is deleted at the host, it is not automatically deleted at the participant but rather a record marker (tombstone) showing
@@ -239,7 +258,7 @@ impl HostStatus {
 pub enum LogicalStoragePolicy {
     None = 0,
     HostOnly = 1,
-    ParticpantOwned = 2,
+    ParticipantOwned = 2,
     Shared = 3,
     Mirror = 4,
 }
@@ -249,7 +268,7 @@ impl LogicalStoragePolicy {
         match value {
             0 => LogicalStoragePolicy::None,
             1 => LogicalStoragePolicy::HostOnly,
-            2 => LogicalStoragePolicy::ParticpantOwned,
+            2 => LogicalStoragePolicy::ParticipantOwned,
             3 => LogicalStoragePolicy::Shared,
             4 => LogicalStoragePolicy::Mirror,
             _ => {
@@ -263,7 +282,7 @@ impl LogicalStoragePolicy {
         match value {
             0 => LogicalStoragePolicy::None,
             1 => LogicalStoragePolicy::HostOnly,
-            2 => LogicalStoragePolicy::ParticpantOwned,
+            2 => LogicalStoragePolicy::ParticipantOwned,
             3 => LogicalStoragePolicy::Shared,
             4 => LogicalStoragePolicy::Mirror,
             _ => {
@@ -277,7 +296,7 @@ impl LogicalStoragePolicy {
         match policy {
             LogicalStoragePolicy::None => 0,
             LogicalStoragePolicy::HostOnly => 1,
-            LogicalStoragePolicy::ParticpantOwned => 2,
+            LogicalStoragePolicy::ParticipantOwned => 2,
             LogicalStoragePolicy::Shared => 3,
             LogicalStoragePolicy::Mirror => 4,
         }
@@ -298,6 +317,7 @@ pub enum TreatyDatabaseType {
     System = 1,
     Host = 2,
     Partial = 3,
+    SystemAndHost = 4,
 }
 #[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, ToPrimitive)]
 #[repr(u32)]
@@ -321,22 +341,33 @@ use substring::Substring;
 use tracing::error;
 use tracing::trace;
 
+/// These types are loosely mapped to their Sqlite/Postgres counterparts.
+/// Note that these conversion are not precise, meaning that
+/// there exists truncation issues in production - this will need
+/// to be addressed.
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub enum ColumnType {
     #[default]
     Unknown = 0,
+    /// Sqlite: INT, Postgres: int2, int8, int4
     Int = 1,
+    /// Sqlite: INT, Postgres: bool
     Bit = 2,
     Char = 3,
+    /// Sqlite: DATETIME, Postgres: timestamp
     DateTime = 4,
     Decimal = 5,
+    /// Sqlite: VARCHAR, Postgres: varchar, text, name, bpchar
     Varchar = 6,
+    /// Sqlite: BLOB, Postgres: bytea
     Binary = 7,
+    /// Sqlite: BLOB, Postgres: bytea
     Varbinary = 8,
     Text = 9,
 }
 
 impl ColumnType {
+    /// Returns the string representation of the column, roughly native to Sqlite
     pub fn data_type_as_string_sqlite(&self) -> String {
         match self {
             ColumnType::Unknown => {
@@ -355,9 +386,13 @@ impl ColumnType {
         }
     }
 
+    /// Takes a string representation of the column and
+    /// returns the u32 representation of it.
+    ///
+    /// This function can panic.
     pub fn data_type_to_enum_u32(desc: String) -> u32 {
         trace!("{desc:?}");
-        let ct = ColumnType::try_parse(&desc).unwrap();
+        let ct = ColumnType::try_parse(&desc).expect("Unknown type: {desc:?}");
         ColumnType::to_u32(ct)
     }
 
@@ -401,7 +436,10 @@ impl ColumnType {
             return Some(ColumnType::Char);
         }
 
-        if string_data_type.contains("datetime") {
+        if string_data_type.contains("datetime")
+            || string_data_type.contains("timestamp without time zone")
+            || string_data_type.contains("timestamp")
+        {
             return Some(ColumnType::DateTime);
         }
 
@@ -413,7 +451,7 @@ impl ColumnType {
             return Some(ColumnType::Varbinary);
         }
 
-        if string_data_type.contains("blob") {
+        if string_data_type.contains("blob") || string_data_type.contains("bytea") {
             return Some(ColumnType::Varbinary);
         }
 
@@ -674,4 +712,63 @@ impl PartialDataStatus {
             _ => PartialDataStatus::Unknown,
         }
     }
+}
+
+/// Maps to the proto `AuthRequestAuthor` enum.
+///
+/// Values are:
+/// - 0 - Unknown
+/// - 1 - User
+/// - 2 - Data
+/// - 3 - Participant
+#[derive(Debug, PartialEq, Copy, Clone, ToPrimitive)]
+pub enum AuthRequestAuthor {
+    Unknown = 0,
+    /// The request was sent by a user or user client.
+    /// This auth usually is either `AuthRequestBasic` or `AuthRequestWebToken`.
+    User = 1,
+    /// The request was sent by a Treaty data service.
+    /// This auth is usually `AuthRequestBinary`.
+    Data = 2,
+    /// The request was sent by a participant of a database.
+    /// This is functionally the same as above (verified by `AuthRequestBinary`) but
+    /// the authorization is not held by the Treaty instance; instead by the target
+    /// participant database (in the accompanying `AuthRequestMetadata` struct.)
+    Participant = 3,
+}
+
+impl Default for AuthRequestAuthor {
+    fn default() -> Self {
+        Self::Unknown
+    }
+}
+
+impl AuthRequestAuthor {
+    pub fn from_u32(value: u32) -> AuthRequestAuthor {
+        match value {
+            0 => AuthRequestAuthor::Unknown,
+            1 => AuthRequestAuthor::User,
+            2 => AuthRequestAuthor::Data,
+            3 => AuthRequestAuthor::Participant,
+            _ => {
+                error!("Unknown value: {value}");
+                AuthRequestAuthor::Unknown
+            }
+        }
+    }
+}
+
+/// Explains the type of authentication provided.
+///
+/// Values:
+/// - 0 - Unknown
+/// - 1 - Basic authentication, in binary format
+/// - 2 - Web Token, in binary format
+/// - 3 - Binary Token, in binary format
+#[derive(Debug, PartialEq, Copy, Clone, ToPrimitive)]
+pub enum AuthRequestMethod {
+    Unknown = 0,
+    BasicBinary = 1,
+    WebTokenBinary = 2,
+    BinaryTokenBinary = 3,
 }

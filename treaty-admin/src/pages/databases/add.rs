@@ -5,7 +5,7 @@ use yew::{function_component, html, use_node_ref, use_state_eq, AttrValue, Callb
 
 use crate::{
     log::log_to_console,
-    request::{self, clear_status, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, set_status, get_client},
 };
 
 #[function_component]
@@ -21,15 +21,14 @@ pub fn Create() -> Html {
             let last_created_result = last_created_result.clone();
             let db_name = ui_db_name.cast::<HtmlInputElement>().unwrap().value();
 
-            let token = get_token();
+            let client = get_client();
 
             let request = CreateUserDatabaseRequest {
-                authentication: Some(token.auth()),
                 database_name: db_name,
             };
 
             let json_request = serde_json::to_string(&request).unwrap();
-            let url = format!("{}{}", token.addr, NEW_DATABASE);
+            let url = format!("{}{}", client.user_addr_port(), NEW_DATABASE);
 
             let cb = {
                 let last_created_result = last_created_result;
@@ -40,16 +39,7 @@ pub fn Create() -> Html {
 
                         let reply: CreateUserDatabaseReply = serde_json::from_str(x).unwrap();
 
-                        let is_authenticated = reply
-                            .authentication_result
-                            .as_ref()
-                            .unwrap()
-                            .is_authenticated;
-                        update_token_login_status(is_authenticated);
-
-                        if is_authenticated {
-                            last_created_result.set(reply.is_created.to_string());
-                        }
+                        last_created_result.set(reply.is_created.to_string());
                     } else {
                         set_status(response.err().unwrap());
                     }

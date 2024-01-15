@@ -1,50 +1,62 @@
-
 use treaty_types::enums::*;
 
 use crate::{
-    
     error::LogErrorActions,
     models::{
         CdsHosts, CoopDatabaseContract, CoopDatabaseParticipant, CoopDatabaseParticipantData,
         DataInfo, HostInfo, TreatySaveContractResult,
     },
+    settings::HttpTlsClientOptions,
+    treaty_proto::{AuthRequestAuthor, AuthRequestBinary, AuthRequestMetadata, TreatyPorts},
 };
 use chrono::Utc;
 use endianness::{read_i32, ByteOrder};
 use guid_create::GUID;
 use stdext::function_name;
-use tracing::trace;
+use tracing::{error, trace, warn};
 
 use crate::treaty_proto::{
-    AuthRequest, Contract, DatabaseSchema, DeleteDataRequest, DeleteDataResult,
+    Contract, DatabaseSchema, DeleteDataRequest, DeleteDataResult,
     GetRowFromPartialDatabaseRequest, GetRowFromPartialDatabaseResult, Host, InsertDataRequest,
     InsertDataResult, NotifyHostOfRemovedRowRequest, NotifyHostOfRemovedRowResult, Participant,
     ParticipantAcceptsContractRequest, ParticipantAcceptsContractResult, RowParticipantAddress,
-    SaveContractRequest, SaveContractResult, Telemetry, TryAuthRequest, TryAuthResult,
-    UpdateDataRequest, UpdateDataResult, UpdateRowDataHashForHostRequest,
-    UpdateRowDataHashForHostResult,
+    SaveContractRequest, SaveContractResult, Telemetry, TryAuthResult, UpdateDataRequest,
+    UpdateDataResult, UpdateRowDataHashForHostRequest, UpdateRowDataHashForHostResult,
 };
 
-use treaty_http_endpoints::data::{
-    GET_ROW_AT_PARTICIPANT, INSERT_ROW_AT_PARTICIPANT, NOTIFY_HOST_OF_REMOVED_ROW,
-    NOTIFY_HOST_OF_UPDATED_HASH, PARTICIPANT_ACCEPTS_CONTRACT, REMOVE_ROW_AT_PARTICIPANT,
-    SAVE_CONTRACT, TRY_AUTH, UPDATE_ROW_AT_PARTICIPANT,
+use treaty_http_endpoints::{
+    data::{
+        GET_ROW_AT_PARTICIPANT, INSERT_ROW_AT_PARTICIPANT, NOTIFY_HOST_OF_REMOVED_ROW,
+        NOTIFY_HOST_OF_UPDATED_HASH, REMOVE_ROW_AT_PARTICIPANT, TRY_AUTH,
+        UPDATE_ROW_AT_PARTICIPANT,
+    },
+    headers::{TREATY_AUTH_HEADER, TREATY_AUTH_HEADER_AUTHOR, TREATY_AUTH_HEADER_METADATA},
 };
 
 use super::remote_actions::RemoteActions;
 use async_trait::async_trait;
+use treaty_http_endpoints::info::{PARTICIPANT_ACCEPTS_CONTRACT, SAVE_CONTRACT};
 
 #[derive(Debug, Clone)]
 pub struct RemoteHttp {
     pub own_http_addr: String,
     pub own_http_port: u32,
+    pub use_tls: bool,
+    pub opt_tls_settings: Option<HttpTlsClientOptions>,
 }
 
 impl RemoteHttp {
-    pub fn new(addr: &str, port: u32) -> Self {
+    pub fn new(
+        addr: &str,
+        port: u32,
+        use_tls: bool,
+        opt_tls_settings: Option<HttpTlsClientOptions>,
+    ) -> Self {
         Self {
             own_http_addr: addr.into(),
             own_http_port: port,
+            use_tls,
+            opt_tls_settings,
         }
     }
 }
@@ -57,7 +69,10 @@ impl RemoteActions for RemoteHttp {
         own_host_info: &HostInfo,
         data_info: &DataInfo,
     ) -> bool {
-        let auth = get_auth_request(own_host_info, Some(host.host_id.clone()));
+        let auth = get_auth_request_binary(own_host_info);
+
+        let meta = get_auth_metadata(Some(host.host_id.clone()), Some(data_info.db_name.clone()));
+
         let telemetry = get_telemetry(own_host_info, "".to_string());
 
         let chost = Host {
@@ -74,7 +89,6 @@ impl RemoteActions for RemoteHttp {
 
         if !data_info.is_deleted {
             let request = UpdateRowDataHashForHostRequest {
-                authentication: Some(auth),
                 telemetry: Some(telemetry),
                 host_info: Some(chost),
                 database_name: data_info.db_name.to_string(),
@@ -92,14 +106,26 @@ impl RemoteActions for RemoteHttp {
 
             trace!("sending request to treaty at: {}", addr_port);
 
-            let url = format!("http://{addr_port}{NOTIFY_HOST_OF_UPDATED_HASH}");
-            let result = send_message(request_json, url).await;
+            let url = if self.use_tls {
+                format!("https://{addr_port}{NOTIFY_HOST_OF_UPDATED_HASH}")
+            } else {
+                format!("http://{addr_port}{NOTIFY_HOST_OF_UPDATED_HASH}")
+            };
+
+            let result = send_message(
+                request_json,
+                url,
+                Some(auth),
+                Some(meta),
+                true,
+                self.opt_tls_settings.clone(),
+            )
+            .await;
             let result: UpdateRowDataHashForHostResult = serde_json::from_str(&result).unwrap();
             result.log_any_err(function_name!());
             result.is_successful
         } else {
             let request = NotifyHostOfRemovedRowRequest {
-                authentication: Some(auth),
                 telemetry: Some(telemetry),
                 host_info: Some(chost),
                 database_name: data_info.db_name.to_string(),
@@ -115,8 +141,21 @@ impl RemoteActions for RemoteHttp {
 
             trace!("sending request to treaty at: {}", addr_port);
 
-            let url = format!("http://{addr_port}{NOTIFY_HOST_OF_REMOVED_ROW}");
-            let result = send_message(request_json, url).await;
+            let url = if self.use_tls {
+                format!("https://{addr_port}{NOTIFY_HOST_OF_REMOVED_ROW}")
+            } else {
+                format!("http://{addr_port}{NOTIFY_HOST_OF_REMOVED_ROW}")
+            };
+
+            let result = send_message(
+                request_json,
+                url,
+                Some(auth),
+                Some(meta),
+                true,
+                self.opt_tls_settings.clone(),
+            )
+            .await;
             let result: NotifyHostOfRemovedRowResult = serde_json::from_str(&result).unwrap();
             result.log_any_err(function_name!());
             result.is_successful
@@ -130,7 +169,12 @@ impl RemoteActions for RemoteHttp {
         row_id: u32,
     ) -> GetRowFromPartialDatabaseResult {
         let telemetry = get_telemetry(&own_host_info, "".to_string());
-        let auth = get_auth_request(&own_host_info, Some(participant.participant.id.to_string()));
+        let auth = get_auth_request_binary(&own_host_info);
+
+        let meta = get_auth_metadata(
+            Some(participant.participant.id.to_string()),
+            Some(participant.db_name.clone()),
+        );
 
         let row_address = RowParticipantAddress {
             database_name: participant.db_name.clone(),
@@ -139,7 +183,6 @@ impl RemoteActions for RemoteHttp {
         };
 
         let request = GetRowFromPartialDatabaseRequest {
-            authentication: Some(auth),
             row_address: Some(row_address),
             telemetry: Some(telemetry),
         };
@@ -153,8 +196,21 @@ impl RemoteActions for RemoteHttp {
 
         trace!("sending request to treaty at: {}", addr_port);
 
-        let url = format!("http://{addr_port}{GET_ROW_AT_PARTICIPANT}");
-        let result = send_message(request_json, url).await;
+        let url = if self.use_tls {
+            format!("https://{addr_port}{GET_ROW_AT_PARTICIPANT}")
+        } else {
+            format!("http://{addr_port}{GET_ROW_AT_PARTICIPANT}")
+        };
+
+        let result = send_message(
+            request_json,
+            url,
+            Some(auth),
+            Some(meta),
+            false,
+            self.opt_tls_settings.clone(),
+        )
+        .await;
         let reply: GetRowFromPartialDatabaseResult = serde_json::from_str(&result).unwrap();
         reply.log_any_err(function_name!());
         reply
@@ -168,10 +224,12 @@ impl RemoteActions for RemoteHttp {
         table_name: &str,
         sql: &str,
     ) -> InsertDataResult {
-        let auth = get_auth_request(own_host_info, Some(participant.id.to_string()));
+        trace!("[{}]: host info: {own_host_info:?}", function_name!());
+        let auth = get_auth_request_binary(own_host_info);
+
+        let meta = get_auth_metadata(Some(participant.id.to_string()), Some(db_name.to_owned()));
 
         let request = InsertDataRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             cmd: sql.to_string(),
@@ -183,8 +241,21 @@ impl RemoteActions for RemoteHttp {
 
         trace!("sending request to treaty at: {}", addr_port);
 
-        let url = format!("http://{addr_port}{INSERT_ROW_AT_PARTICIPANT}");
-        let result = send_message(request_json, url).await;
+        let url = if self.use_tls {
+            format!("https://{addr_port}{INSERT_ROW_AT_PARTICIPANT}")
+        } else {
+            format!("http://{addr_port}{INSERT_ROW_AT_PARTICIPANT}")
+        };
+
+        let result = send_message(
+            request_json,
+            url,
+            Some(auth),
+            Some(meta),
+            false,
+            self.opt_tls_settings.clone(),
+        )
+        .await;
         let reply: InsertDataResult = serde_json::from_str(&result).unwrap();
         reply.log_any_err(function_name!());
         reply
@@ -199,10 +270,11 @@ impl RemoteActions for RemoteHttp {
         sql: &str,
         where_clause: &str,
     ) -> UpdateDataResult {
-        let auth = get_auth_request(own_host_info, Some(participant.id.to_string()));
+        let auth = get_auth_request_binary(own_host_info);
+
+        let meta = get_auth_metadata(Some(participant.id.to_string()), Some(db_name.to_owned()));
 
         let request = UpdateDataRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             cmd: sql.to_string(),
@@ -215,8 +287,21 @@ impl RemoteActions for RemoteHttp {
 
         trace!("sending request to treaty at: {}", addr_port);
 
-        let url = format!("http://{addr_port}{UPDATE_ROW_AT_PARTICIPANT}");
-        let result = send_message(request_json, url).await;
+        let url = if self.use_tls {
+            format!("https://{addr_port}{UPDATE_ROW_AT_PARTICIPANT}")
+        } else {
+            format!("http://{addr_port}{UPDATE_ROW_AT_PARTICIPANT}")
+        };
+
+        let result = send_message(
+            request_json,
+            url,
+            Some(auth),
+            Some(meta),
+            false,
+            self.opt_tls_settings.clone(),
+        )
+        .await;
         let reply: UpdateDataResult = serde_json::from_str(&result).unwrap();
         reply.log_any_err(function_name!());
         reply
@@ -227,22 +312,35 @@ impl RemoteActions for RemoteHttp {
         participant: CoopDatabaseParticipant,
         own_host_info: &HostInfo,
     ) -> bool {
-        let auth = get_auth_request(own_host_info, Some(participant.id.to_string()));
-        let request = TryAuthRequest {
-            authentication: Some(auth),
-        };
-
-        let request_json = serde_json::to_string(&request).unwrap();
-
         let addr_port = format!("{}:{}", participant.http_addr, participant.http_port);
 
         trace!("sending request to treaty at: {}", addr_port);
 
-        let url = format!("http://{addr_port}{TRY_AUTH}");
-        let result = send_message(request_json, url).await;
-        let reply: TryAuthResult = serde_json::from_str(&result).unwrap();
+        let url = if self.use_tls {
+            format!("https://{addr_port}{TRY_AUTH}")
+        } else {
+            format!("http://{addr_port}{TRY_AUTH}")
+        };
 
-        reply.authentication_result.unwrap().is_authenticated
+        // we shouldn't supply credentials here because the interceptor will take care of this for us
+        let result = send_message(
+            String::from(""),
+            url,
+            None,
+            None,
+            false,
+            self.opt_tls_settings.clone(),
+        )
+        .await;
+
+        match serde_json::from_str::<TryAuthResult>(&result) {
+            Ok(reply) => return reply.is_authenticated,
+            Err(e) => {
+                error!("{e:?}");
+            }
+        }
+
+        false
     }
 
     async fn notify_host_of_removed_row(
@@ -253,7 +351,8 @@ impl RemoteActions for RemoteHttp {
         table_name: &str,
         row_id: u32,
     ) -> bool {
-        let auth = get_auth_request(own_host_info, Some(host.host_id.clone()));
+        let auth = get_auth_request_binary(own_host_info);
+        let meta = get_auth_metadata(Some(host.host_id.clone()), Some(db_name.to_owned()));
         let telemetry = get_telemetry(own_host_info, "".to_string());
 
         let chost = Host {
@@ -264,7 +363,6 @@ impl RemoteActions for RemoteHttp {
         };
 
         let request = NotifyHostOfRemovedRowRequest {
-            authentication: Some(auth),
             telemetry: Some(telemetry),
             host_info: Some(chost),
             database_name: db_name.to_string(),
@@ -280,8 +378,21 @@ impl RemoteActions for RemoteHttp {
 
         trace!("sending request to treaty at: {}", addr_port);
 
-        let url = format!("http://{addr_port}{NOTIFY_HOST_OF_REMOVED_ROW}");
-        let result = send_message(request_json, url).await;
+        let url = if self.use_tls {
+            format!("https://{addr_port}{NOTIFY_HOST_OF_REMOVED_ROW}")
+        } else {
+            format!("http://{addr_port}{NOTIFY_HOST_OF_REMOVED_ROW}")
+        };
+
+        let result = send_message(
+            request_json,
+            url,
+            Some(auth),
+            Some(meta),
+            true,
+            self.opt_tls_settings.clone(),
+        )
+        .await;
         let reply: NotifyHostOfRemovedRowResult = serde_json::from_str(&result).unwrap();
         reply.log_any_err(function_name!());
         reply.is_successful
@@ -296,10 +407,10 @@ impl RemoteActions for RemoteHttp {
         sql: &str,
         where_clause: &str,
     ) -> DeleteDataResult {
-        let auth = get_auth_request(own_host_info, Some(participant.id.to_string()));
+        let auth = get_auth_request_binary(own_host_info);
+        let meta = get_auth_metadata(Some(participant.id.to_string()), Some(db_name.to_owned()));
 
         let request = DeleteDataRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             cmd: sql.to_string(),
@@ -312,8 +423,21 @@ impl RemoteActions for RemoteHttp {
 
         trace!("sending request to treaty at: {}", addr_port);
 
-        let url = format!("http://{addr_port}{REMOVE_ROW_AT_PARTICIPANT}");
-        let result = send_message(request_json, url).await;
+        let url = if self.use_tls {
+            format!("https://{addr_port}{REMOVE_ROW_AT_PARTICIPANT}")
+        } else {
+            format!("http://{addr_port}{REMOVE_ROW_AT_PARTICIPANT}")
+        };
+
+        let result = send_message(
+            request_json,
+            url,
+            Some(auth),
+            Some(meta),
+            false,
+            self.opt_tls_settings.clone(),
+        )
+        .await;
         let reply: DeleteDataResult = serde_json::from_str(&result).unwrap();
         reply.log_any_err(function_name!());
         reply
@@ -333,6 +457,7 @@ impl RemoteActions for RemoteHttp {
             ip4_address: self.own_http_addr.clone(),
             ip6_address: String::from(""),
             database_port_number: 0,
+            info_port_number: 0,
             token: own_host_info.token.clone(),
             internal_participant_guid: "".to_string(),
             http_addr: self.own_http_addr.clone(),
@@ -369,8 +494,21 @@ impl RemoteActions for RemoteHttp {
 
         trace!("sending request to treaty at: {}", addr_port);
 
-        let url = format!("http://{addr_port}{PARTICIPANT_ACCEPTS_CONTRACT}");
-        let result = send_message(request_json, url).await;
+        let url = if self.use_tls {
+            format!("https://{addr_port}{PARTICIPANT_ACCEPTS_CONTRACT}")
+        } else {
+            format!("http://{addr_port}{PARTICIPANT_ACCEPTS_CONTRACT}")
+        };
+
+        let result = send_message(
+            request_json,
+            url,
+            None,
+            None,
+            true,
+            self.opt_tls_settings.clone(),
+        )
+        .await;
         let reply: ParticipantAcceptsContractResult = serde_json::from_str(&result).unwrap();
         reply.log_any_err(function_name!());
         reply.contract_acceptance_is_acknowledged
@@ -391,6 +529,7 @@ impl RemoteActions for RemoteHttp {
             ContractStatus::Pending,
             &self.own_http_addr,
             self.own_http_port,
+            self.own_http_port,
         );
 
         let request = SaveContractRequest {
@@ -404,8 +543,20 @@ impl RemoteActions for RemoteHttp {
 
         trace!("sending request to treaty at: {}", addr_port);
 
-        let url = format!("http://{addr_port}{SAVE_CONTRACT}");
-        let result = send_message(request_json, url).await;
+        let url = if self.use_tls {
+            format!("https://{addr_port}{SAVE_CONTRACT}")
+        } else {
+            format!("http://{addr_port}{SAVE_CONTRACT}")
+        };
+        let result = send_message(
+            request_json,
+            url,
+            None,
+            None,
+            false,
+            self.opt_tls_settings.clone(),
+        )
+        .await;
         let reply: SaveContractResult = serde_json::from_str(&result).unwrap();
         reply.log_any_err(function_name!());
         /*
@@ -426,6 +577,10 @@ impl RemoteActions for RemoteHttp {
             contract_status: ContractStatus::from_u32(reply.contract_status),
             participant_information: reply.participant_info,
         }
+    }
+
+    async fn get_remote_ports(&self, ip4addr: &str, info_port: u32) -> TreatyPorts {
+        todo!()
     }
 }
 
@@ -455,31 +610,99 @@ fn is_little_endian() -> bool {
     }
 }
 
-async fn send_message(json_message: String, url: String) -> String {
-    let client = reqwest::Client::new();
+async fn send_message(
+    json_message: String,
+    url: String,
+    auth: Option<AuthRequestBinary>,
+    meta: Option<AuthRequestMetadata>,
+    send_as_participant: bool,
+    opt_tls: Option<HttpTlsClientOptions>,
+) -> String {
+    let client = match opt_tls {
+        Some(opts) => {
+            if opts.danger_accept_invalid_certs {
+                warn!("[{}]: WARNING - ACCEPT INVALID CERTS!", function_name!());
+            }
 
-    trace!("{json_message}");
-    trace!("{url}");
+            if !opts.tls_sni {
+                warn!(
+                    "[{}]: WARNING - IGNORING TLS Server Name Indicator",
+                    function_name!()
+                );
+            }
 
-    client
-        .post(url)
-        .header("Content-Type", "application/json")
-        .body(json_message)
-        .send()
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap()
+            reqwest::Client::builder()
+                .danger_accept_invalid_certs(opts.danger_accept_invalid_certs)
+                .tls_sni(opts.tls_sni)
+                .build()
+                .unwrap()
+        }
+        None => reqwest::Client::new(),
+    };
+
+    trace!("[{}]: {json_message}", function_name!());
+    trace!("[{}]: {url}", function_name!());
+
+    let author = if send_as_participant {
+        AuthRequestAuthor { author_type: 3 }
+    } else {
+        AuthRequestAuthor { author_type: 2 }
+    };
+
+    let result = if auth.is_some() && meta.is_none() {
+        client
+            .post(url)
+            .header("Content-Type", "application/json")
+            .header(TREATY_AUTH_HEADER, serde_json::to_string(&auth).unwrap())
+            .header(
+                TREATY_AUTH_HEADER_AUTHOR,
+                serde_json::to_string(&author).unwrap(),
+            )
+            .body(json_message)
+            .send()
+            .await
+    } else if auth.is_some() && meta.is_some() {
+        client
+            .post(url)
+            .header("Content-Type", "application/json")
+            .header(TREATY_AUTH_HEADER, serde_json::to_string(&auth).unwrap())
+            .header(
+                TREATY_AUTH_HEADER_METADATA,
+                serde_json::to_string(&meta).unwrap(),
+            )
+            .header(
+                TREATY_AUTH_HEADER_AUTHOR,
+                serde_json::to_string(&author).unwrap(),
+            )
+            .body(json_message)
+            .send()
+            .await
+    } else {
+        client
+            .post(url)
+            .header("Content-Type", "application/json")
+            .body(json_message)
+            .send()
+            .await
+    };
+
+    match result {
+        Ok(msg) => {
+            return msg.text().await.unwrap();
+        }
+        Err(e) => error!("{e:?}"),
+    }
+
+    String::from("")
 }
 
-fn get_auth_request(own_host_info: &HostInfo, id: Option<String>) -> AuthRequest {
-    AuthRequest {
+fn get_auth_request_binary(own_host_info: &HostInfo) -> AuthRequestBinary {
+    AuthRequestBinary {
         user_name: own_host_info.name.clone(),
-        pw: String::from(""),
-        pw_hash: Vec::new(),
         token: own_host_info.token.clone(),
-        jwt: String::from(""),
-        id,
     }
+}
+
+fn get_auth_metadata(id: Option<String>, db_name: Option<String>) -> AuthRequestMetadata {
+    AuthRequestMetadata { id, db_name }
 }

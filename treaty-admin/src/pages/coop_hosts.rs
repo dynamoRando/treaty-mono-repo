@@ -2,15 +2,14 @@ use treaty_http_endpoints::client::{CHANGE_HOST_STATUS_NAME, GET_COOP_HOSTS};
 use treaty_types::{
     enums::HostStatus,
     types::treaty_proto::{
-        ChangeHostStatusReply, ChangeHostStatusRequest, GetCooperativeHostsReply,
-        GetCooperativeHostsRequest, HostInfoStatus,
+        ChangeHostStatusReply, ChangeHostStatusRequest, GetCooperativeHostsReply, HostInfoStatus,
     },
 };
 use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
 
 use crate::{
     log::log_to_console,
-    request::{self, clear_status, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, set_status, get_client},
 };
 
 #[function_component]
@@ -23,14 +22,8 @@ pub fn CooperativeHosts() -> Html {
     let onclick = {
         let hosts_state = hosts_state.clone();
         Callback::from(move |_| {
-            let token = get_token();
-            let url = format!("{}{}", token.addr, GET_COOP_HOSTS);
-
-            let request = GetCooperativeHostsRequest {
-                authentication: Some(token.auth()),
-            };
-
-            let json_request = serde_json::to_string(&request).unwrap();
+            let client = get_client();
+            let url = format!("{}{}", client.user_addr_port(), GET_COOP_HOSTS);
 
             let hosts_state = hosts_state.clone();
 
@@ -41,23 +34,14 @@ pub fn CooperativeHosts() -> Html {
 
                     let coop_response: GetCooperativeHostsReply = serde_json::from_str(x).unwrap();
 
-                    let is_authenticated = coop_response
-                        .authentication_result
-                        .as_ref()
-                        .unwrap()
-                        .is_authenticated;
-                    update_token_login_status(is_authenticated);
-
-                    if is_authenticated {
-                        let hosts = coop_response.hosts;
-                        hosts_state.set(hosts);
-                    }
+                    let hosts = coop_response.hosts;
+                    hosts_state.set(hosts);
                 } else {
                     set_status(response.err().unwrap());
                 }
             });
 
-            request::post(url, json_request, cb)
+            request::post(url, "".to_string(), cb)
         })
     };
 
@@ -120,10 +104,9 @@ pub fn CooperativeHosts() -> Html {
                                                     let name = name.clone();
                                                     Callback::from(move |_|{
                                                         let name = name.clone();
-                                                        let token = get_token();
-                                                        let url = format!("{}{}", token.addr, CHANGE_HOST_STATUS_NAME);
+                                                        let client = get_client();
+                                                        let url = format!("{}{}", client.user_addr_port(), CHANGE_HOST_STATUS_NAME);
                                                         let request = ChangeHostStatusRequest {
-                                                            authentication: Some(token.auth()),
                                                             host_id: id.clone(),
                                                             host_alias: name.clone(),
                                                             status: HostStatus::to_u32(HostStatus::Allow)
@@ -139,10 +122,8 @@ pub fn CooperativeHosts() -> Html {
                                                                 log_to_console(x.to_string());
 
                                                                 let reply: ChangeHostStatusReply = serde_json::from_str(x).unwrap();
-                                                                let is_authenticated = reply.authentication_result.as_ref().unwrap().is_authenticated;
-                                                                update_token_login_status(is_authenticated);
 
-                                                                if is_authenticated && reply.is_successful {
+                                                                if  reply.is_successful {
                                                                     let message = format!("{}{}{}", "Host status for ", name.clone(), " changed to allow.");
                                                                     set_status(message);
                                                                 }
@@ -164,10 +145,9 @@ pub fn CooperativeHosts() -> Html {
                                                     let name = name.clone();
                                                     Callback::from(move |_|{
                                                         let name = name.clone();
-                                                        let token = get_token();
-                                                        let url = format!("{}{}", token.addr, CHANGE_HOST_STATUS_NAME);
+                                                        let client = get_client();
+                                                        let url = format!("{}{}", client.user_addr_port(), CHANGE_HOST_STATUS_NAME);
                                                         let request = ChangeHostStatusRequest {
-                                                            authentication: Some(token.auth()),
                                                             host_id: id.clone(),
                                                             host_alias: name.clone(),
                                                             status: HostStatus::to_u32(HostStatus::Deny)
@@ -183,10 +163,8 @@ pub fn CooperativeHosts() -> Html {
                                                                 log_to_console(x.to_string());
 
                                                                 let reply: ChangeHostStatusReply = serde_json::from_str(x).unwrap();
-                                                                let is_authenticated = reply.authentication_result.as_ref().unwrap().is_authenticated;
-                                                                update_token_login_status(is_authenticated);
 
-                                                                if is_authenticated && reply.is_successful {
+                                                                if reply.is_successful {
                                                                     let message = format!("{}{}{}", "Host status for ", name.clone(), " changed to deny.");
                                                                     set_status(message);
                                                                 }

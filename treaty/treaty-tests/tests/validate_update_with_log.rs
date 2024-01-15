@@ -1,16 +1,15 @@
 use tracing::trace;
-use treaty_types::enums::DatabaseType;
-use treaty_types::enums::UpdatesFromHostBehavior;
 use treaty_tests::common_contract_setup::main_and_participant_setup;
 use treaty_tests::harness::get_treaty_client;
 use treaty_tests::harness::CoreTestConfig;
 use treaty_tests::harness::TreatyClientConfig;
+use treaty_types::enums::DatabaseType;
+use treaty_types::enums::UpdatesFromHostBehavior;
 
-pub fn test_core(config: CoreTestConfig) {
-    go(config)
+pub async fn test_core(config: CoreTestConfig) {
+    go(config).await
 }
 
-#[tokio::main]
 async fn go(config: CoreTestConfig) {
     let result = main_and_participant_setup(config.clone()).await;
     assert!(result);
@@ -174,13 +173,13 @@ async fn main_read_updated_row_should_succed(
 }
 
 pub mod http {
+    use crate::test_core;
     use treaty_tests::harness::init_trace_to_screen;
+    use treaty_tests::runner::{RunnerConfig, TestRunner};
 
-    #[test]
-    fn test() {
-        use crate::test_core;
-        use treaty_tests::runner::{RunnerConfig, TestRunner};
-        init_trace_to_screen(false);
+    #[tokio::test]
+    async fn test() {
+        init_trace_to_screen(false, None);
 
         let test_name = "updates_from_host_queue_with_log_http";
         let contract = String::from("insert read remote row");
@@ -191,7 +190,21 @@ pub mod http {
             use_internal_logging: false,
         };
 
-        TestRunner::run_http_test_multi(config, test_core);
+        TestRunner::run_http_test_multi(config, test_core).await;
+    }
+
+    #[tokio::test]
+    async fn postgres() {
+        let test_name = "updates_from_host_queue_with_log_http_postgres";
+        init_trace_to_screen(false, Some(String::from("validate_update_with_log=trace")));
+
+        let config = RunnerConfig {
+            test_name: test_name.to_string(),
+            contract_desc: Some(String::from("contract")),
+            use_internal_logging: false,
+        };
+
+        TestRunner::run_http_test_postgres_multi(config, test_core).await;
     }
 }
 
@@ -202,9 +215,9 @@ pub mod grpc {
         runner::{RunnerConfig, TestRunner},
     };
 
-    #[test]
-    fn test() {
-        init_trace_to_screen(false);
+    #[tokio::test]
+    async fn test() {
+        init_trace_to_screen(false, None);
 
         let test_name = "updates_from_host_queue_with_log_grpc";
         let contract = String::from("insert read remote row");
@@ -214,12 +227,26 @@ pub mod grpc {
             use_internal_logging: false,
         };
 
-        TestRunner::run_grpc_test_multi(config, test_core);
+        TestRunner::run_grpc_test_multi(config, test_core).await;
     }
 
-    #[test]
-    fn proxy() {
-        init_trace_to_screen(false);
+    #[tokio::test]
+    async fn postgres() {
+        let test_name = "updates_from_host_queue_with_log_postgres_grpc";
+        init_trace_to_screen(false, Some(String::from("validate_update_with_log=trace")));
+
+        let config = RunnerConfig {
+            test_name: test_name.to_string(),
+            contract_desc: Some(String::from("contract")),
+            use_internal_logging: false,
+        };
+
+        TestRunner::run_grpc_test_postgres_multi(config, test_core).await;
+    }
+
+    #[tokio::test]
+    async fn proxy() {
+        init_trace_to_screen(false, None);
 
         let test_name = "updates_from_host_queue_with_log_grpc-proxy";
 
@@ -229,6 +256,34 @@ pub mod grpc {
             use_internal_logging: false,
         };
 
-        TestRunner::run_grpc_proxy_test_multi(config, test_core);
+        TestRunner::run_grpc_proxy_test_multi(config, test_core).await;
+    }
+
+    #[tokio::test]
+    pub async fn postgres_sqlite() {
+        let test_name = "updates_from_host_queue_with_log_grpc_postgres_sqlite";
+        init_trace_to_screen(false, Some(String::from("validate_update_with_log=trace")));
+
+        let config = RunnerConfig {
+            test_name: test_name.to_string(),
+            contract_desc: Some("".to_string()),
+            use_internal_logging: false,
+        };
+
+        TestRunner::run_grpc_test_postgres_to_sqlite_multi(config, test_core).await;
+    }
+
+    #[tokio::test]
+    pub async fn sqlite_postgres() {
+        let test_name = "updates_from_host_queue_with_log_grpc_sqlite_postgres";
+        init_trace_to_screen(false, Some(String::from("validate_update_with_log=trace")));
+
+        let config = RunnerConfig {
+            test_name: test_name.to_string(),
+            contract_desc: Some("".to_string()),
+            use_internal_logging: false,
+        };
+
+        TestRunner::run_grpc_test_sqlite_to_postgres_multi(config, test_core).await;
     }
 }

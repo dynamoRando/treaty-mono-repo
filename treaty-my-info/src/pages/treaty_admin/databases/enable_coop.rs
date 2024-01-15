@@ -1,11 +1,13 @@
-use treaty_types::types::treaty_proto::{EnableCoooperativeFeaturesReply, EnableCoooperativeFeaturesRequest};
+use treaty_types::types::treaty_proto::{
+    EnableCoooperativeFeaturesReply, EnableCoooperativeFeaturesRequest,
+};
 use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
 
 use crate::{log::log_to_console, pages::treaty_admin::common::select_database::SelectDatabase};
 
 use crate::request::{
     self,
-    treaty::{clear_status, get_treaty_token, set_status, update_token_login_status},
+    treaty::{clear_status, get_treaty_token, set_status},
 };
 use treaty_types::proxy::request_type::RequestType;
 
@@ -24,7 +26,6 @@ pub fn EnableCoop() -> Html {
             let token = get_treaty_token();
 
             let request = EnableCoooperativeFeaturesRequest {
-                authentication: Some(token.auth()),
                 database_name: (*active_database).clone(),
             };
 
@@ -36,17 +37,12 @@ pub fn EnableCoop() -> Html {
                     clear_status();
 
                     let reply: EnableCoooperativeFeaturesReply = serde_json::from_str(x).unwrap();
-                    let is_authenticated = reply.authentication_result.unwrap().is_authenticated;
-                    update_token_login_status(is_authenticated);
 
-                    if is_authenticated {
-                        let message = format!(
-                            "{}{}",
-                            "Last cooperation enable request for database was: ",
-                            reply.is_successful
-                        );
-                        enable_result.set(message);
-                    }
+                    let message = format!(
+                        "{}{}",
+                        "Last cooperation enable request for database was: ", reply.is_successful
+                    );
+                    enable_result.set(message);
                 } else {
                     set_status(response.err().unwrap());
                 }

@@ -1,28 +1,42 @@
-use treaty_types::enums::DatabaseType;
-use treaty_types::enums::LogicalStoragePolicy;
+use stdext::function_name;
+use tracing::debug;
 use treaty_tests::harness::get_treaty_client;
 use treaty_tests::harness::CoreTestConfig;
 use treaty_tests::harness::TreatyClientConfig;
+use treaty_types::enums::DatabaseType;
+use treaty_types::enums::LogicalStoragePolicy;
 
-pub fn test_core(config: CoreTestConfig) {
+pub async fn test_core(config: CoreTestConfig) {
     let db = config.test_db_name.clone();
 
-    let policy = LogicalStoragePolicy::ParticpantOwned;
+    let policy = LogicalStoragePolicy::ParticipantOwned;
     let i_policy = LogicalStoragePolicy::to_u32(policy);
-    let response = client(&db, config.main_client, i_policy);
+    let response = client(&db, config.main_client, i_policy).await;
     assert_eq!(i_policy, response);
 }
 
-#[tokio::main]
 async fn client(db_name: &str, client: TreatyClientConfig, policy_num: u32) -> u32 {
-
     let database_type = DatabaseType::to_u32(DatabaseType::Sqlite);
 
     let mut client = get_treaty_client(&client).await;
 
-    let create_db_is_successful = client.create_user_database(db_name).await.unwrap();
+    let db_config = client.get_backing_db_config().await.unwrap();
+    let db_type = db_config.database_type;
+    let db_type = DatabaseType::from_u32(db_type);
+    let use_schema = db_config.use_schema;
 
-    assert!(create_db_is_successful);
+    debug!(
+        "[{}]: Test backing database type: {db_type:?} ########",
+        function_name!()
+    );
+
+    if (db_type == DatabaseType::Postgres && use_schema == false) || db_type == DatabaseType::Sqlite
+    {
+        let create_db_is_successful = client.create_user_database(db_name).await.unwrap();
+        assert!(create_db_is_successful);
+        // we skip this check otherwise because the treaty data and the user database are the same
+        // in other systems, see the `common_contract_setup.rs` file for more details
+    }
 
     let enable_coop_features_is_successful =
         client.enable_cooperative_features(db_name).await.unwrap();
@@ -87,8 +101,8 @@ pub mod http {
     use crate::test_core;
     use treaty_tests::runner::{RunnerConfig, TestRunner};
 
-    #[test]
-    fn test() {
+    #[tokio::test]
+    async fn test() {
         let test_name = "get_set_logical_storage_policy_http";
 
         let config = RunnerConfig {
@@ -97,15 +111,17 @@ pub mod http {
             use_internal_logging: false,
         };
 
-        TestRunner::run_http_test(config, test_core);
+        TestRunner::run_http_test(config, test_core).await;
     }
 }
 
 pub mod grpc {
     use crate::test_core;
+    use treaty_tests::harness::init_trace_to_screen;
     use treaty_tests::runner::{RunnerConfig, TestRunner};
-    #[test]
-    fn test() {
+
+    #[tokio::test]
+    async fn test() {
         let test_name = "get_set_logical_storage_policy_grpc";
 
         let config = RunnerConfig {
@@ -114,11 +130,28 @@ pub mod grpc {
             use_internal_logging: false,
         };
 
-        TestRunner::run_grpc_test(config, test_core);
+        TestRunner::run_grpc_test(config, test_core).await;
     }
 
-    #[test]
-    fn proxy() {
+    #[tokio::test]
+    async fn postgres() {
+        let test_name = "get_set_logical_storage_policy_grpc_postgres";
+        init_trace_to_screen(
+            false,
+            Some(String::from("get_set_logical_storage_policy=trace")),
+        );
+
+        let config = RunnerConfig {
+            test_name: test_name.to_string(),
+            contract_desc: Some(String::from("contract")),
+            use_internal_logging: false,
+        };
+
+        TestRunner::run_grpc_test_postgres(config, test_core).await;
+    }
+
+    #[tokio::test]
+    async fn proxy() {
         // treaty_test_harness::init_log_to_screen_fern(tracing::LevelFilter::Debug);
 
         let test_name = "get_set_logical_storage_policy_grpc-proxy";
@@ -129,6 +162,6 @@ pub mod grpc {
             use_internal_logging: false,
         };
 
-        TestRunner::run_grpc_proxy_test(config, test_core);
+        TestRunner::run_grpc_proxy_test(config, test_core).await;
     }
 }

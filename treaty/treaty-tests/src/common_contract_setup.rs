@@ -12,11 +12,12 @@ pub async fn main_and_participant_setup(config: CoreTestConfig) -> bool {
     let mc = config.main_client.clone();
     let pc = config.participant_client.as_ref().unwrap().clone();
     let pdb = config.participant_db_addr.as_ref().unwrap().clone();
+    let pi = config.participant_info_addr.as_ref().unwrap().clone();
     let db = config.test_db_name.clone();
     let contract = config.contract_desc.as_ref().unwrap().clone();
     let participant_id = config.participant_id;
 
-    let client_sent_contract = client(&db, &mc, &pdb, &contract, participant_id).await;
+    let client_sent_contract = client(&db, &mc, &pdb, &pi, &contract, participant_id).await;
 
     assert!(client_sent_contract);
 
@@ -35,6 +36,7 @@ pub async fn client(
     db_name: &str,
     config: &TreatyClientConfig,
     participant_db_addr: &ServiceAddr,
+    participant_info_addr: &ServiceAddr,
     contract_desc: &str,
     participant_id: Option<String>,
 ) -> bool {
@@ -42,16 +44,54 @@ pub async fn client(
 
     let mut client = get_treaty_client(config).await;
 
-    let response = client.create_user_database(db_name).await.unwrap();
+    let db_config = client.get_backing_db_config().await.unwrap();
 
-    assert!(response);
+    let db_type = db_config.database_type;
+    let db_type = DatabaseType::from_u32(db_type);
+    let use_schema = db_config.use_schema;
 
-    // this should be false
-    let response = client.create_user_database(db_name).await.unwrap();
-    assert!(!response);
+    debug!(
+        "[{}]: ######## COMMON CONTRACT SETUP: Test backing database type: {db_type:?} ########",
+        function_name!()
+    );
+    if (db_type == DatabaseType::Postgres && use_schema == false) || db_type == DatabaseType::Sqlite
+    {
+        let response = client.create_user_database(db_name).await.unwrap();
+        debug!(
+            "[{}]: ######## COMMON CONTRACT SETUP: Creating User Database: Should be true ########",
+            function_name!()
+        );
+        assert!(response);
+
+        // this should be false
+        let response = client.create_user_database(db_name).await.unwrap();
+        debug!(
+        "[{}]: ######## COMMON CONTRACT SETUP: Creating User Database: Should be false ########",
+        function_name!()
+    );
+        assert!(!response);
+    } else {
+        debug!(
+            "[{}]: ######## COMMON CONTRACT SETUP: Skipping create user database ########",
+            function_name!()
+        );
+        /*
+        We skip testing for creating a user database because of the difference in implementation for a database system
+        that can hold multiple schemas and one that cannot. In a database system that can not hold multiple schemas (MySQL, Sqlite),
+        the `Treaty` schema and the user database we're testing against are two different databases, and we want to make sure
+        that we can create the user database successfully, and that if we try to re-create the user database we don't overwrite
+        blindly that database.
+
+        In a database system that can have multiple schemas in one database (Postgres, MS SQL Server), we keep the `Treaty` schema
+        in the actual user database itself, and keep the user defined tables in the default schema (`public` for Postgres, `dbo` for MS SQL Server).
+        */
+    }
 
     let response = client.enable_cooperative_features(db_name).await.unwrap();
-
+    debug!(
+        "[{}]: ######## COMMON CONTRACT SETUP: Enable cooperative features ########",
+        function_name!()
+    );
     assert!(response);
 
     let response = client
@@ -61,6 +101,10 @@ pub async fn client(
 
     assert!(response);
 
+    debug!(
+        "[{}]: ######## COMMON CONTRACT SETUP: Create EMPLOYEE TABLE ########",
+        function_name!()
+    );
     let create_table_statement =
         String::from("CREATE TABLE IF NOT EXISTS EMPLOYEE (Id INT, Name TEXT);");
 
@@ -71,10 +115,72 @@ pub async fn client(
 
     assert!(result);
 
-    let logical_storage_policy = LogicalStoragePolicy::ParticpantOwned;
+    let logical_storage_policy = LogicalStoragePolicy::ParticipantOwned;
 
+    debug!(
+        "[{}]: ######## COMMON CONTRACT SETUP: Set logical storage policy for EMPLOYEE ########",
+        function_name!()
+    );
     let result = client
         .set_logical_storage_policy(db_name, "EMPLOYEE", logical_storage_policy)
+        .await
+        .unwrap();
+
+    assert!(result);
+
+    debug!(
+        "[{}]: ######## COMMON CONTRACT SETUP: Create SHARED_ENTRIES TABLE ########",
+        function_name!()
+    );
+
+    let create_table_statement =
+        String::from("CREATE TABLE IF NOT EXISTS SHARED_ENTRIES (Id INT, Notes TEXT);");
+
+    let result = client
+        .execute_write_at_host(db_name, &create_table_statement, database_type, "")
+        .await
+        .unwrap();
+
+    assert!(result);
+
+    let logical_storage_policy = LogicalStoragePolicy::Shared;
+
+    debug!(
+        "[{}]: ######## COMMON CONTRACT SETUP: Set logical storage policy for SHARED_ENTRIES ########",
+        function_name!()
+    );
+
+    let result = client
+        .set_logical_storage_policy(db_name, "SHARED_ENTRIES", logical_storage_policy)
+        .await
+        .unwrap();
+
+    assert!(result);
+
+    debug!(
+        "[{}]: ######## COMMON CONTRACT SETUP: Create MIRRORED_ENTRIES TABLE ########",
+        function_name!()
+    );
+
+    let create_table_statement =
+        String::from("CREATE TABLE IF NOT EXISTS MIRRORED_ENTRIES (Id INT, Notes TEXT);");
+
+    let result = client
+        .execute_write_at_host(db_name, &create_table_statement, database_type, "")
+        .await
+        .unwrap();
+
+    assert!(result);
+
+    let logical_storage_policy = LogicalStoragePolicy::Mirror;
+
+    debug!(
+        "[{}]: ######## COMMON CONTRACT SETUP: Set logical storage policy for MIRRORED_ENTRIES ########",
+        function_name!()
+    );
+
+    let result = client
+        .set_logical_storage_policy(db_name, "MIRRORED_ENTRIES", logical_storage_policy)
         .await
         .unwrap();
 
@@ -95,12 +201,17 @@ pub async fn client(
 
     assert!(schema.database_name == db_name);
 
+    debug!(
+        "[{}]: ######## COMMON CONTRACT SETUP: Add Participant ########",
+        function_name!()
+    );
     let result = client
         .add_participant(
             db_name,
             "participant",
             &participant_db_addr.ip4_addr,
-            participant_db_addr.port,
+            Some(participant_db_addr.port),
+            participant_info_addr.port,
             &participant_db_addr.ip4_addr.clone(),
             participant_db_addr.port as u16,
             participant_id,
@@ -110,6 +221,10 @@ pub async fn client(
 
     assert!(result);
 
+    debug!(
+        "[{}]: ######## COMMON CONTRACT SETUP: Send Participant Contract ########",
+        function_name!()
+    );
     let result = client
         .send_participant_contract(db_name, "participant")
         .await
@@ -147,6 +262,10 @@ pub async fn participant(config: &TreatyClientConfig, contract_desc: &str) -> bo
 
     let mut accepted_contract = false;
 
+    debug!(
+        "[{}]: ######## COMMON CONTRACT SETUP: Accept Contract ########",
+        function_name!()
+    );
     if has_contract {
         accepted_contract = client.accept_pending_contract("tester").await.unwrap();
         assert!(accepted_contract);
@@ -158,6 +277,10 @@ pub async fn participant(config: &TreatyClientConfig, contract_desc: &str) -> bo
 pub async fn io(db_name: &str, config: &TreatyClientConfig) -> bool {
     let mut client = get_treaty_client(config).await;
 
+    debug!(
+        "[{}]: ######## COMMON CONTRACT SETUP: Execute Cooperative Write At Host ########",
+        function_name!()
+    );
     let result = client
         .execute_cooperative_write_at_host(
             db_name,
@@ -170,6 +293,10 @@ pub async fn io(db_name: &str, config: &TreatyClientConfig) -> bool {
 
     assert!(result);
 
+    debug!(
+        "[{}]: ######## COMMON CONTRACT SETUP: Read data back ########",
+        function_name!()
+    );
     let data = client
         .execute_read_at_host(
             db_name,
@@ -179,7 +306,7 @@ pub async fn io(db_name: &str, config: &TreatyClientConfig) -> bool {
         .await
         .unwrap();
 
-    trace!("{data:?}");
+    trace!("{data:#?}");
 
     let value = data
         .rows

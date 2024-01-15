@@ -7,7 +7,7 @@ use yew::{function_component, html, use_node_ref, use_state_eq, AttrValue, Callb
 
 use crate::{
     log::log_to_console,
-    request::{self, get_token, set_status, update_token_login_status},
+    request::{self, set_status, get_client},
 };
 
 #[function_component]
@@ -30,13 +30,12 @@ pub fn Logs() -> Html {
                 .trim()
                 .parse()
                 .unwrap();
-            let token = get_token();
+            let client = get_client();
             let request = GetLogsByLastNumberRequest {
-                authentication: Some(token.auth()),
                 number_of_logs: num_logs,
             };
 
-            let url = format!("{}{}", token.addr, GET_LAST_LOGS);
+            let url = format!("{}{}", client.user_addr_port(), GET_LAST_LOGS);
             let body = serde_json::to_string(&request).unwrap();
 
             let cb = Callback::from(move |response: Result<AttrValue, String>| {
@@ -45,12 +44,7 @@ pub fn Logs() -> Html {
 
                     let reply: GetLogsByLastNumberReply = serde_json::from_str(x).unwrap();
 
-                    let is_authenticated = reply.authentication_result.unwrap().is_authenticated;
-                    update_token_login_status(is_authenticated);
-
-                    if is_authenticated {
-                        logs.set(reply.logs);
-                    }
+                    logs.set(reply.logs);
                 } else {
                     set_status(response.err().unwrap());
                 }

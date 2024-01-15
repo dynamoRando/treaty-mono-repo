@@ -6,7 +6,7 @@ There are few things that I want to implement into `treaty` in the future, time 
 # Future
 
 ## Native SQL based protocols
-Having an intermediate API between your application and a database means that you lose the native features of the underlying database system. I hope in the future to natively implement database protocols such as Postgres and MySQL so that native features of the underlying DBMS is not lost.
+Having an intermediate API between your application and a database means that you lose the native features of the underlying database system. I hope in the future to natively implement database protocols such as Postgres so that native features of the underlying DBMS is not lost.
 
 ## Alternative data storage
 Treaty was originally designed against SQL focused databases. There may be in the future a chance to also implement Treaty in a No-SQL like fashion, starting with a key-value orientation. 
@@ -59,7 +59,6 @@ And Treaty would just simply know what to do with the structs (where to be saved
     - Right now both websites are written in Yew, which doesn't have standard SSR (versus CSR).
 - Offer a TUI for admin of a treaty instance. 
     - This would be a REPL interface, similiar to `psql` or `ksqldb` 
-- Offer support for MySQL and Postgres.
 
 ## Post 1.0 -
 - Potentially offer a NoSQL alternative storage, likely in a Key-Value fashion. Potentially define data contracts in a markup file, either YAML or TOML.

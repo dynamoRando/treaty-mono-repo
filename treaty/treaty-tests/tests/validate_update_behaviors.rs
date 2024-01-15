@@ -1,16 +1,16 @@
+use stdext::function_name;
 use tracing::trace;
-use treaty_types::enums::DatabaseType;
-use treaty_types::enums::UpdatesFromHostBehavior;
-use treaty_types::enums::UpdatesToHostBehavior;
 use treaty_tests::common_contract_setup::main_and_participant_setup;
 use treaty_tests::harness::get_treaty_client;
 use treaty_tests::harness::CoreTestConfig;
+use treaty_types::enums::DatabaseType;
+use treaty_types::enums::UpdatesFromHostBehavior;
+use treaty_types::enums::UpdatesToHostBehavior;
 
-pub fn test_core(config: CoreTestConfig) {
-    go(config)
+pub async fn test_core(config: CoreTestConfig) {
+    go(config).await
 }
 
-#[tokio::main]
 async fn go(config: CoreTestConfig) {
     let result = main_and_participant_setup(config.clone()).await;
     assert!(result);
@@ -25,6 +25,11 @@ async fn go(config: CoreTestConfig) {
 
     // check that we can change update_to_host_behavior, and validate that behavior
     {
+        trace!(
+            "[{}]: test_step: change to UpdatesToHostBehavior::SendDataHashChange",
+            function_name!()
+        );
+
         let new_behavior = UpdatesToHostBehavior::SendDataHashChange;
         let change_ok = pc
             .change_updates_to_host_behavior(&db_name, "EMPLOYEE", new_behavior)
@@ -32,6 +37,11 @@ async fn go(config: CoreTestConfig) {
             .unwrap();
 
         assert!(change_ok);
+
+        trace!(
+            "[{}]: test_step: update participant employee name",
+            function_name!()
+        );
 
         // lets update and make sure data hashes match
         let statement = String::from("UPDATE EMPLOYEE SET NAME = 'TESTER' WHERE ID = 999");
@@ -57,6 +67,11 @@ async fn go(config: CoreTestConfig) {
         let row = results.rows.first().unwrap();
         let value = &row.values[1].value.clone();
 
+        trace!(
+            "[{}]: test_step: validate main can read the participant",
+            function_name!()
+        );
+
         trace!("{value:?}");
 
         let expected_value = "TESTER".as_bytes().to_vec();
@@ -68,6 +83,8 @@ async fn go(config: CoreTestConfig) {
         let mut row_id_at_participant: u32;
         let mut participant_data_hash: u64;
         let mut host_data_hash: u64;
+
+        trace!("[{}]: test_step: validate hashes match", function_name!());
 
         let row_ids = pc
             .get_row_id_at_participant(&db_name, "EMPLOYEE", "NAME = 'TESTER'")
@@ -86,6 +103,7 @@ async fn go(config: CoreTestConfig) {
             .await
             .unwrap();
 
+        trace!("[{}]: test_step: validate hashes match", function_name!());
         assert_eq!(participant_data_hash, host_data_hash);
 
         // change to not send updates back to host, this means that data hashes should not match
@@ -97,6 +115,10 @@ async fn go(config: CoreTestConfig) {
             .await
             .unwrap();
 
+        trace!(
+            "[{}]: test_step: change behavior to do nothing",
+            function_name!()
+        );
         assert!(change_ok);
 
         let statement = String::from("UPDATE EMPLOYEE SET NAME = 'FOOBAR' WHERE ID = 999");
@@ -287,13 +309,13 @@ async fn go(config: CoreTestConfig) {
 }
 
 pub mod http {
+    use crate::test_core;
     use treaty_tests::harness::init_trace_to_screen;
+    use treaty_tests::runner::{RunnerConfig, TestRunner};
 
-    #[test]
-    fn test() {
-        use crate::test_core;
-        use treaty_tests::runner::{RunnerConfig, TestRunner};
-        init_trace_to_screen(false);
+    #[tokio::test]
+    async fn test() {
+        init_trace_to_screen(false, None);
 
         let test_name = "get_update_from_part_http";
         let contract = String::from("insert read remote row");
@@ -304,7 +326,21 @@ pub mod http {
             use_internal_logging: false,
         };
 
-        TestRunner::run_http_test_multi(config, test_core);
+        TestRunner::run_http_test_multi(config, test_core).await;
+    }
+
+    #[tokio::test]
+    async fn postgres() {
+        let test_name = "get_update_from_part_http_postgres";
+        init_trace_to_screen(false, Some(String::from("validate_update_behaviors=trace")));
+
+        let config = RunnerConfig {
+            test_name: test_name.to_string(),
+            contract_desc: Some(String::from("contract")),
+            use_internal_logging: false,
+        };
+
+        TestRunner::run_http_test_postgres_multi(config, test_core).await;
     }
 }
 
@@ -315,9 +351,9 @@ pub mod grpc {
         runner::{RunnerConfig, TestRunner},
     };
 
-    #[test]
-    fn test() {
-        init_trace_to_screen(false);
+    #[tokio::test]
+    async fn test() {
+        init_trace_to_screen(false, None);
 
         let test_name = "get_update_from_part_gprc";
         let contract = String::from("");
@@ -327,12 +363,26 @@ pub mod grpc {
             use_internal_logging: false,
         };
 
-        TestRunner::run_grpc_test_multi(config, test_core);
+        TestRunner::run_grpc_test_multi(config, test_core).await;
     }
 
-    #[test]
-    fn proxy() {
-        init_trace_to_screen(false);
+    #[tokio::test]
+    async fn postgres() {
+        let test_name = "validate_update_part_postgres_grpc";
+        init_trace_to_screen(false, Some(String::from("validate_update_behaviors=trace")));
+
+        let config = RunnerConfig {
+            test_name: test_name.to_string(),
+            contract_desc: Some(String::from("contract")),
+            use_internal_logging: false,
+        };
+
+        TestRunner::run_grpc_test_postgres_multi(config, test_core).await;
+    }
+
+    #[tokio::test]
+    async fn proxy() {
+        init_trace_to_screen(false, None);
 
         let test_name = "get_update_from_part_gprc-proxy";
 
@@ -342,6 +392,34 @@ pub mod grpc {
             use_internal_logging: false,
         };
 
-        TestRunner::run_grpc_proxy_test_multi(config, test_core);
+        TestRunner::run_grpc_proxy_test_multi(config, test_core).await;
+    }
+
+    #[tokio::test]
+    pub async fn postgres_sqlite() {
+        let test_name = "get_update_from_part_grpc_postgres_sqlite";
+        init_trace_to_screen(false, Some(String::from("validate_update_behaviors=trace")));
+
+        let config = RunnerConfig {
+            test_name: test_name.to_string(),
+            contract_desc: Some("".to_string()),
+            use_internal_logging: false,
+        };
+
+        TestRunner::run_grpc_test_postgres_to_sqlite_multi(config, test_core).await;
+    }
+
+    #[tokio::test]
+    pub async fn sqlite_postgres() {
+        let test_name = "get_update_from_part_grpc_sqlite_postgres";
+        init_trace_to_screen(false, Some(String::from("validate_update_behaviors=trace")));
+
+        let config = RunnerConfig {
+            test_name: test_name.to_string(),
+            contract_desc: Some("".to_string()),
+            use_internal_logging: false,
+        };
+
+        TestRunner::run_grpc_test_sqlite_to_postgres_multi(config, test_core).await;
     }
 }

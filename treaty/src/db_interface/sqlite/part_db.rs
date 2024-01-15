@@ -370,6 +370,60 @@ impl PartDb {
 
         self.write(&cmd)?;
 
+        let logical_storage_policy =
+            LogicalStoragePolicy::from_u32(table_schema.logical_storage_policy);
+        match logical_storage_policy {
+            LogicalStoragePolicy::None => {}
+            LogicalStoragePolicy::HostOnly => {}
+            LogicalStoragePolicy::ParticipantOwned => {}
+            LogicalStoragePolicy::Shared => {
+                trace!("[{}]: LogicalStoragePolicy is Shared, defaulting table {} to UpdatesFromHostBehavior::QueueForReview", 
+            function_name!(),
+        table_name);
+
+                let behavior = UpdatesFromHostBehavior::QueueForReview;
+                let behavior = UpdatesFromHostBehavior::to_u32(behavior);
+
+                self.treaty
+                    .change_updates_from_host_behavior(&self.db_name, &table_name, behavior)
+                    .unwrap();
+
+                let behavior = DeletesFromHostBehavior::QueueForReview;
+                let behavior = DeletesFromHostBehavior::to_u32(behavior);
+
+                trace!("[{}]: LogicalStoragePolicy is Shared, defaulting table {} to DeletesFromHostBehavior::QueueForReview", 
+            function_name!(),
+        table_name);
+
+                self.treaty
+                    .change_deletes_from_host_behavior(&self.db_name, &table_name, behavior)
+                    .unwrap();
+            }
+            LogicalStoragePolicy::Mirror => {
+                trace!("[{}]: LogicalStoragePolicy is Mirror, defaulting table {} to UpdatesFromHostBehavior::OverwriteWithLog", 
+            function_name!(),
+        table_name);
+
+                let behavior = UpdatesFromHostBehavior::OverwriteWithLog;
+                let behavior = UpdatesFromHostBehavior::to_u32(behavior);
+
+                self.treaty
+                    .change_updates_from_host_behavior(&self.db_name, &table_name, behavior)
+                    .unwrap();
+
+                let behavior = DeletesFromHostBehavior::DeleteWithLog;
+                let behavior = DeletesFromHostBehavior::to_u32(behavior);
+
+                trace!("[{}]: LogicalStoragePolicy is Mirror, defaulting table {} to DeletesFromHostBehavior::DeleteWithLog", 
+            function_name!(),
+        table_name);
+
+                self.treaty
+                    .change_deletes_from_host_behavior(&self.db_name, &table_name, behavior)
+                    .unwrap();
+            }
+        }
+
         Ok(())
     }
 
@@ -401,7 +455,7 @@ impl PartDb {
                 if rows > 0 {
                     let cmd = String::from("select last_insert_rowid()");
                     row_id = get_scalar_as_u32(cmd, &conn)?;
-                    trace!("[{}]: {row_id:?}", function_name!());
+                    trace!("[{}]: last inserted row_id: {row_id:?}", function_name!());
                 }
             }
             Err(e) => {
@@ -679,7 +733,7 @@ impl PartDb {
             db_name.to_string()
         };
 
-        let db_path = Path::new(&self.dir).join(&db_part_name);
+        let db_path = Path::new(&self.dir).join(db_part_name);
         trace!("[{}]: {db_path:?}", function_name!());
         Ok(Connection::open(db_path)?)
     }
@@ -794,7 +848,7 @@ impl PartDb {
         select_cmd = select_cmd.replace(":where_clause", where_clause);
 
         let c = &self.conn()?;
-        let mut stmt = get_statement(&select_cmd, &c)?;
+        let mut stmt = get_statement(&select_cmd, c)?;
         let mut rows = stmt.query([]).unwrap();
 
         // for every row that we find that we're going to change, we want to insert a copy of it into the data_log_table
@@ -847,7 +901,6 @@ impl PartDb {
 
         drop(rows);
         drop(stmt);
-        drop(c);
 
         Ok(true)
     }
@@ -991,7 +1044,10 @@ impl PartDb {
             row_ids.push(id.unwrap());
         }
 
-        trace!("[{}]: {row_ids:?}", function_name!());
+        trace!(
+            "[{}]: row_ids as part of delete: {row_ids:?}",
+            function_name!()
+        );
 
         let total_rows = execute_write(&conn, original_cmd)?;
 

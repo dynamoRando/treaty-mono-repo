@@ -2,11 +2,11 @@ use crate::{
     log::log_to_console,
     request::{
         self,
-        treaty::{get_treaty_token, set_status, update_token_login_status},
+        treaty::{get_treaty_token, set_status},
     },
 };
-use treaty_types::types::treaty_proto::{GetSettingsReply, GetSettingsRequest};
 use treaty_types::proxy::request_type::RequestType;
+use treaty_types::types::treaty_proto::GetSettingsReply;
 use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
 
 #[function_component]
@@ -18,11 +18,6 @@ pub fn Settings() -> Html {
         Callback::from(move |_| {
             let settings = settings.clone();
             let token = get_treaty_token();
-            let request = GetSettingsRequest {
-                authentication: Some(token.auth()),
-            };
-
-            let body = serde_json::to_string(&request).unwrap();
 
             let cb = Callback::from(move |response: Result<AttrValue, String>| {
                 if let Ok(ref x) = response {
@@ -30,18 +25,13 @@ pub fn Settings() -> Html {
 
                     let reply: GetSettingsReply = serde_json::from_str(x).unwrap();
 
-                    let is_authenticated = reply.authentication_result.unwrap().is_authenticated;
-                    update_token_login_status(is_authenticated);
-
-                    if is_authenticated {
-                        settings.set(reply.settings_json.unwrap());
-                    }
+                    settings.set(reply.settings_json.unwrap());
                 } else {
                     set_status(response.err().unwrap());
                 }
             });
 
-            request::post(RequestType::GetSettings, &body, cb);
+            request::post(RequestType::GetSettings, "", cb);
         })
     };
 

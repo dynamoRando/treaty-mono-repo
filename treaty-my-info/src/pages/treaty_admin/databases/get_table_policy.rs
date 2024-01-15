@@ -1,11 +1,13 @@
 use crate::{log::log_to_console, pages::treaty_admin::databases::columns::ColumnProps};
 
-use treaty_types::types::treaty_proto::{GetLogicalStoragePolicyReply, GetLogicalStoragePolicyRequest};
+use treaty_types::types::treaty_proto::{
+    GetLogicalStoragePolicyReply, GetLogicalStoragePolicyRequest,
+};
 use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
 
 use crate::request::{
     self,
-    treaty::{clear_status, get_treaty_token, set_status, update_token_login_status},
+    treaty::{clear_status, get_treaty_token, set_status},
 };
 use treaty_types::proxy::request_type::RequestType;
 
@@ -29,27 +31,18 @@ pub fn GetTablePolicy(ColumnProps { table }: &ColumnProps) -> Html {
 
             let reply: GetLogicalStoragePolicyReply = serde_json::from_str(x).unwrap();
 
-            let is_authenticated = reply
-                .authentication_result
-                .as_ref()
-                .unwrap()
-                .is_authenticated;
-            update_token_login_status(is_authenticated);
+            let policy_value = reply.policy_mode;
 
-            if is_authenticated {
-                let policy_value = reply.policy_mode;
+            let policy_name = match policy_value {
+                0 => "None",
+                1 => "Host Only",
+                2 => "Participant Owned",
+                3 => "Shared",
+                4 => "Mirror",
+                _ => "Unknown",
+            };
 
-                let policy_name = match policy_value {
-                    0 => "None",
-                    1 => "Host Only",
-                    2 => "Participant Owned",
-                    3 => "Shared",
-                    4 => "Mirror",
-                    _ => "Unknown",
-                };
-
-                table_policy.set(Some(policy_name));
-            }
+            table_policy.set(Some(policy_name));
         } else {
             set_status(response.err().unwrap());
         }
@@ -58,7 +51,6 @@ pub fn GetTablePolicy(ColumnProps { table }: &ColumnProps) -> Html {
     let token = get_treaty_token();
 
     let request = GetLogicalStoragePolicyRequest {
-        authentication: Some(token.auth()),
         database_name,
         table_name: table_name.clone(),
     };

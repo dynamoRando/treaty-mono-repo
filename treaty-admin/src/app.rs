@@ -20,7 +20,7 @@ use crate::pages::page_not_found::PageNotFound;
 use crate::pages::participants::Participants;
 use crate::pages::settings::Settings;
 use crate::pages::sql::sqlx::Sql;
-use crate::request::{get_status, get_token};
+use crate::request::{get_status, get_client};
 
 #[derive(Routable, PartialEq, Eq, Clone, Debug)]
 pub enum Route {
@@ -50,7 +50,7 @@ pub enum Route {
 }
 
 fn check_and_set_login_status(is_logged_in_state: UseStateHandle<bool>) {
-    let is_logged_in = get_token().is_logged_in;
+    let is_logged_in = get_client().is_logged_in();
     is_logged_in_state.set(is_logged_in);
 }
 

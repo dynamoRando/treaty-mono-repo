@@ -1,16 +1,17 @@
+use stdext::function_name;
+use tracing::debug;
 use tracing::trace;
-use treaty_types::enums::DatabaseType;
-use treaty_types::enums::DeletesFromHostBehavior;
-use treaty_types::enums::DeletesToHostBehavior;
 use treaty_tests::common_contract_setup::main_and_participant_setup;
 use treaty_tests::harness::get_treaty_client;
 use treaty_tests::harness::CoreTestConfig;
+use treaty_types::enums::DatabaseType;
+use treaty_types::enums::DeletesFromHostBehavior;
+use treaty_types::enums::DeletesToHostBehavior;
 
-pub fn test_core(config: CoreTestConfig) {
-    go(config)
+pub async fn test_core(config: CoreTestConfig) {
+    go(config).await
 }
 
-#[tokio::main]
 async fn go(config: CoreTestConfig) {
     let result = main_and_participant_setup(config.clone()).await;
     assert!(result);
@@ -37,6 +38,10 @@ async fn go(config: CoreTestConfig) {
     let behavior: DeletesFromHostBehavior = num::FromPrimitive::from_u32(behavior).unwrap();
 
     assert_eq!(behavior, new_behavior);
+    debug!(
+        "[{}]: Assert: Reset behavior to Ignore passed.",
+        function_name!()
+    );
 
     let cmd = String::from("DELETE FROM EMPLOYEE WHERE Id = 999");
     let should_fail = mc
@@ -45,6 +50,10 @@ async fn go(config: CoreTestConfig) {
         .unwrap();
 
     assert!(!should_fail);
+    debug!(
+        "[{}]: Assert: Execute Cooperative Write Failed.",
+        function_name!()
+    );
 
     // reset
     let new_behavior = DeletesFromHostBehavior::AllowRemoval;
@@ -59,6 +68,11 @@ async fn go(config: CoreTestConfig) {
         .await
         .unwrap();
 
+    debug!(
+        "[{}]: Assert: Reset behavior to DoNothing passed.",
+        function_name!()
+    );
+
     let behavior = pc
         .get_deletes_to_host_behavior(&db_name, "EMPLOYEE")
         .await
@@ -69,6 +83,10 @@ async fn go(config: CoreTestConfig) {
     let behavior: DeletesToHostBehavior = num::FromPrimitive::from_u32(behavior).unwrap();
 
     assert_eq!(behavior, new_behavior);
+    debug!(
+        "[{}]: Assert: Reset behavior to DoNothing passed.",
+        function_name!()
+    );
 
     // actually delete at particpant, so we dont have the row
     let statement = String::from("DELETE FROM EMPLOYEE WHERE ID = 999");
@@ -88,9 +106,12 @@ async fn go(config: CoreTestConfig) {
         .await;
     // we should expect to get zero rows back, but we don't
 
+    let total_rows = &read_result.as_ref().unwrap().rows.len();
+    trace!("Total rows: {}", total_rows);
     trace!("{read_result:?}");
 
     assert!(!read_result.unwrap().rows.is_empty());
+    debug!("[{}]: Assert: Rows Is Not Empty.", function_name!());
 
     // lets check a normal situation, reset and add a record
     let cmd = "INSERT INTO EMPLOYEE (ID, NAME) VALUES (999, 'TESTER')";
@@ -122,7 +143,11 @@ async fn go(config: CoreTestConfig) {
 
     trace!("{read_result:?}");
 
+    let total_rows = &read_result.as_ref().unwrap().rows.len();
+    trace!("Total rows: {}", total_rows);
+
     assert!(read_result.unwrap().rows.is_empty());
+    debug!("[{}]: Assert: Rows Is Empty.", function_name!());
 
     // reset with record
     let cmd = "INSERT INTO EMPLOYEE (ID, NAME) VALUES (999, 'TESTER')";
@@ -149,6 +174,7 @@ async fn go(config: CoreTestConfig) {
         .unwrap();
 
     assert!(!should_fail);
+    debug!("[{}]: Assert: Delete Should Fail.", function_name!());
 
     // participant gets and approves pending delete
     let pending_deletes = pc
@@ -164,6 +190,7 @@ async fn go(config: CoreTestConfig) {
     }
 
     assert!(has_statement);
+    debug!("[{}]: Assert: Statement is queued.", function_name!());
 
     let accept_delete_result = pc
         .accept_pending_action_at_participant(&db_name, "EMPLOYEE", statement_row_id)
@@ -226,13 +253,13 @@ async fn go(config: CoreTestConfig) {
 }
 
 pub mod http {
+    use crate::test_core;
     use treaty_tests::harness::init_trace_to_screen;
+    use treaty_tests::runner::{RunnerConfig, TestRunner};
 
-    #[test]
-    fn test() {
-        use crate::test_core;
-        use treaty_tests::runner::{RunnerConfig, TestRunner};
-        init_trace_to_screen(false);
+    #[tokio::test]
+    async fn test() {
+        init_trace_to_screen(false, None);
 
         let test_name = "validate_delete_http";
         let contract = String::from("insert read remote row");
@@ -243,20 +270,37 @@ pub mod http {
             use_internal_logging: false,
         };
 
-        TestRunner::run_http_test_multi(config, test_core);
+        TestRunner::run_http_test_multi(config, test_core).await;
+    }
+
+    #[tokio::test]
+    async fn postgres() {
+        let test_name = "validate_delete_http_postgres";
+        init_trace_to_screen(false, Some(String::from("validate_delete_behaviors=trace")));
+
+        let config = RunnerConfig {
+            test_name: test_name.to_string(),
+            contract_desc: Some(String::from("contract")),
+            use_internal_logging: false,
+        };
+
+        TestRunner::run_http_test_postgres_multi(config, test_core).await;
     }
 }
 
 pub mod grpc {
     use crate::test_core;
-    use treaty_tests::{runner::{RunnerConfig, TestRunner}, harness::init_trace_to_screen};
+    use treaty_tests::{
+        harness::init_trace_to_screen,
+        runner::{RunnerConfig, TestRunner},
+    };
 
-    #[test]
-    fn test() {
+    #[tokio::test]
+    async fn test() {
         let test_name = "validate_delete_grpc";
         let contract = String::from("");
 
-        init_trace_to_screen(false);
+        init_trace_to_screen(false, Some(String::from("validate_delete_behaviors=trace")));
 
         let config = RunnerConfig {
             test_name: test_name.to_string(),
@@ -264,13 +308,27 @@ pub mod grpc {
             use_internal_logging: false,
         };
 
-        TestRunner::run_grpc_test_multi(config, test_core);
+        TestRunner::run_grpc_test_multi(config, test_core).await;
     }
 
-    #[test]
-    fn proxy() {
+    #[tokio::test]
+    async fn postgres() {
+        let test_name = "validate_delete_postgres_grpc";
+        init_trace_to_screen(false, Some(String::from("validate_delete_behaviors=trace")));
+
+        let config = RunnerConfig {
+            test_name: test_name.to_string(),
+            contract_desc: Some(String::from("contract")),
+            use_internal_logging: false,
+        };
+
+        TestRunner::run_grpc_test_postgres_multi(config, test_core).await;
+    }
+
+    #[tokio::test]
+    async fn proxy() {
         let test_name = "validate_delete_grpc-proxy";
-        init_trace_to_screen(false);
+        init_trace_to_screen(false, None);
 
         let config = RunnerConfig {
             test_name: test_name.to_string(),
@@ -278,6 +336,34 @@ pub mod grpc {
             use_internal_logging: false,
         };
 
-        TestRunner::run_grpc_proxy_test_multi(config, test_core);
+        TestRunner::run_grpc_proxy_test_multi(config, test_core).await;
+    }
+
+    #[tokio::test]
+    pub async fn postgres_sqlite() {
+        let test_name = "validate_delete_grpc_postgres_sqlite";
+        init_trace_to_screen(false, Some(String::from("validate_delete_behaviors=trace")));
+
+        let config = RunnerConfig {
+            test_name: test_name.to_string(),
+            contract_desc: Some("".to_string()),
+            use_internal_logging: false,
+        };
+
+        TestRunner::run_grpc_test_postgres_to_sqlite_multi(config, test_core).await;
+    }
+
+    #[tokio::test]
+    pub async fn sqlite_postgres() {
+        let test_name = "validate_delete_grpc_sqlite_postgres";
+        init_trace_to_screen(false, Some(String::from("validate_delete_behaviors=trace")));
+
+        let config = RunnerConfig {
+            test_name: test_name.to_string(),
+            contract_desc: Some("".to_string()),
+            use_internal_logging: false,
+        };
+
+        TestRunner::run_grpc_test_sqlite_to_postgres_multi(config, test_core).await;
     }
 }

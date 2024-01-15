@@ -1,12 +1,10 @@
-pub mod contract;
 pub mod io;
 use rocket::{get, http::Status, post, serde::json::Json, State};
 
 use crate::{
     alt_transport::http::HttpServer,
-    data_service_handler::data_service_handler_actions::DataServiceHandlerActions,
     defaults,
-    treaty_proto::{TestReply, TestRequest, TryAuthRequest, TryAuthResult},
+    treaty_proto::{TestReply, TestRequest, TryAuthResult},
 };
 
 #[get("/data/status")]
@@ -25,13 +23,10 @@ pub fn version(request: Json<TestRequest>) -> (Status, Json<TestReply>) {
     (Status::Ok, Json(response))
 }
 
-#[post("/data/try-auth", format = "application/json", data = "<request>")]
-pub async fn try_auth(
-    request: Json<TryAuthRequest>,
-    x: &State<HttpServer>,
-) -> (Status, Json<TryAuthResult>) {
-    let core = x.data();
-    let result = core.try_auth(request.into_inner()).await;
+#[post("/data/try-auth", format = "application/json")]
+pub async fn try_auth(x: &State<HttpServer>) -> (Status, Json<TryAuthResult>) {
+    let core = x.data().await;
+    let result = core.try_auth().await;
 
     (Status::Ok, Json(result))
 }

@@ -73,6 +73,6 @@ pub fn host_to_markdown_table(host: &Host) -> String {
     } else {
         kv.insert(token_label.to_string(), "(MISSING)".to_string());
     }
-   
+
     build_table(kv)
 }

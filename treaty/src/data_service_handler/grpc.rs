@@ -9,10 +9,8 @@ use crate::{
         CreatePartialDatabaseResult, CreateTableRequest, CreateTableResult, DeleteDataRequest,
         DeleteDataResult, GetRowFromPartialDatabaseRequest, GetRowFromPartialDatabaseResult,
         InsertDataRequest, InsertDataResult, NotifyHostOfRemovedRowRequest,
-        NotifyHostOfRemovedRowResult, ParticipantAcceptsContractRequest,
-        ParticipantAcceptsContractResult, SaveContractRequest, SaveContractResult, TestReply,
-        TestRequest, TryAuthRequest, TryAuthResult, UpdateDataRequest, UpdateDataResult,
-        UpdateRowDataHashForHostRequest, UpdateRowDataHashForHostResult,
+        NotifyHostOfRemovedRowResult, TestReply, TestRequest, TryAuthResult, UpdateDataRequest,
+        UpdateDataResult, UpdateRowDataHashForHostRequest, UpdateRowDataHashForHostResult,
     },
 };
 
@@ -83,24 +81,6 @@ impl<D: DbiActions + Clone + Sync + Send + 'static> DataService for DataServiceH
         Ok(Response::new(response))
     }
 
-    async fn save_contract(
-        &self,
-        request: Request<SaveContractRequest>,
-    ) -> Result<Response<SaveContractResult>, Status> {
-        trace!("Request from {:?}", request.remote_addr());
-        let response = self.save_contract(request.into_inner()).await;
-        Ok(Response::new(response))
-    }
-
-    async fn accept_contract(
-        &self,
-        request: Request<ParticipantAcceptsContractRequest>,
-    ) -> Result<Response<ParticipantAcceptsContractResult>, Status> {
-        trace!("Request from {:?}", request.remote_addr());
-        let response = self.accept_contract(request.into_inner()).await;
-        Ok(Response::new(response))
-    }
-
     async fn update_row_data_hash_for_host(
         &self,
         request: Request<UpdateRowDataHashForHostRequest>,
@@ -128,12 +108,9 @@ impl<D: DbiActions + Clone + Sync + Send + 'static> DataService for DataServiceH
         Ok(Response::new(response))
     }
 
-    async fn try_auth(
-        &self,
-        request: Request<TryAuthRequest>,
-    ) -> Result<Response<TryAuthResult>, Status> {
+    async fn try_auth(&self, request: Request<()>) -> Result<Response<TryAuthResult>, Status> {
         trace!("Request from {:?}", request.remote_addr());
-        let response = self.try_auth(request.into_inner()).await;
+        let response = self.try_auth().await;
         Ok(Response::new(response))
     }
 }

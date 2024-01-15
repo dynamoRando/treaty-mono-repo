@@ -5,6 +5,9 @@ pub(crate) mod dbi;
 // a sqlite native implementation of the database interface trait
 #[allow(dead_code, unused_variables)]
 pub(crate) mod sqlite;
+// a sqlite native implementation of the database interface trait
+#[allow(dead_code, unused_variables)]
+pub(crate) mod postgres;
 
 /*
 
@@ -17,7 +20,6 @@ to return.
 The module `dbi` is the actual database interface that returns information to the transport
 layer (gRPC, Http, etc).
 
-This module also contains each (hopeful) native implementation of the database interface: Sqlite, MySql,
-Postgres, and so on.
+This module also contains each (hopeful) native implementation of the database interface: Sqlite, Postgres, and so on.
 
  */

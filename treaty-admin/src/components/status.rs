@@ -1,6 +1,6 @@
 use yew::prelude::*;
 
-use crate::request::get_token;
+use crate::request::get_client;
 
 #[derive(Properties, PartialEq, Debug)]
 pub struct StatusProps {
@@ -12,7 +12,7 @@ pub struct StatusProps {
 pub fn Status(props: &StatusProps) -> Html {
     let is_logged_in_state = props.is_logged_in.clone();
     let text = &*props.status_message.clone();
-    let addr = get_token().addr;
+    let addr = get_client().user_addr_port();
 
     html!(
         <div>

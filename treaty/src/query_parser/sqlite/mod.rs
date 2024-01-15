@@ -1,8 +1,8 @@
-use treaty_types::enums::DmlType;
 use antlr_rust::{
     common_token_stream::CommonTokenStream, token_factory::CommonTokenFactory, InputStream,
 };
 use tracing::trace;
+use treaty_types::enums::DmlType;
 
 use self::{
     sqlitelexer::SQLiteLexer,
@@ -18,7 +18,7 @@ mod treaty_insert_sqlite_listener;
 mod treaty_sqlite_listener;
 
 pub fn get_table_names(cmd: &str) -> Vec<String> {
-    let tf = CommonTokenFactory::default();
+    let tf = CommonTokenFactory;
     let input = InputStream::new(cmd);
     let lexer = SQLiteLexer::new_with_token_factory(input, &tf);
     let token_source = CommonTokenStream::new(lexer);
@@ -41,7 +41,7 @@ pub fn get_table_names(cmd: &str) -> Vec<String> {
 
 #[allow(dead_code)]
 pub fn get_table_name(cmd: &str) -> String {
-    let tf = CommonTokenFactory::default();
+    let tf = CommonTokenFactory;
     let input = InputStream::new(cmd);
     let lexer = SQLiteLexer::new_with_token_factory(input, &tf);
     let token_source = CommonTokenStream::new(lexer);
@@ -68,7 +68,7 @@ pub fn determine_statement_type(sql_text: String) -> DmlType {
 
     trace!("{}", sql_text);
 
-    let tf = CommonTokenFactory::default();
+    let tf = CommonTokenFactory;
     let input = InputStream::new(text);
     let lexer = SQLiteLexer::new_with_token_factory(input, &tf);
     let token_source = CommonTokenStream::new(lexer);
@@ -90,7 +90,7 @@ pub fn determine_statement_type(sql_text: String) -> DmlType {
 }
 
 pub fn get_values_from_insert_statement(insert_statement: &str) -> Vec<String> {
-    let tf = CommonTokenFactory::default();
+    let tf = CommonTokenFactory;
     let input = InputStream::new(insert_statement);
     let lexer = SQLiteLexer::new_with_token_factory(input, &tf);
     let token_source = CommonTokenStream::new(lexer);
@@ -116,9 +116,9 @@ pub mod tests {
 
     pub mod parse_insert_for_values {
         #[cfg(test)]
-        use treaty_types::enums::DatabaseType;
-        #[cfg(test)]
         use crate::query_parser::get_values_from_insert_statement;
+        #[cfg(test)]
+        use treaty_types::enums::DatabaseType;
 
         #[test]
         pub fn test() {
@@ -133,9 +133,9 @@ pub mod tests {
 
     pub mod determine_statement_type {
         #[cfg(test)]
-        use treaty_types::enums::DmlType;
-        #[cfg(test)]
         use crate::query_parser::sqlite::determine_statement_type;
+        #[cfg(test)]
+        use treaty_types::enums::DmlType;
 
         #[test]
         pub fn unknown() {
@@ -175,9 +175,9 @@ pub mod tests {
 
     pub mod determine_table_name {
         #[cfg(test)]
-        use treaty_types::enums::DatabaseType;
-        #[cfg(test)]
         use crate::query_parser::get_table_name;
+        #[cfg(test)]
+        use treaty_types::enums::DatabaseType;
 
         #[test]
         pub fn unknown() {

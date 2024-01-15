@@ -19,9 +19,14 @@ pub mod user_service_handler;
 #[doc(hidden)]
 pub mod data_service_handler;
 
+// handler for the transport implementation of a data service.
+// a data service is the API to be consumed by _other_ treaty instances.
+#[doc(hidden)]
+pub mod info_service_handler;
+
 // database interface (dbi):
 //  contains the structs and traits that abstract communications to a
-//  database (sqlite, mysql, postgres). this is analogous to a repo (repository)
+//  database (sqlite, postgres). this is analogous to a repo (repository)
 //  in a business line application
 #[allow(dead_code)]
 pub(crate) mod db_interface;
@@ -67,7 +72,7 @@ pub(crate) mod query_parser;
 #[allow(dead_code)]
 pub(crate) mod remote;
 
-// module for non-gRPC implentations: Http (and hopefully Websockets, Postgres, MySQL)
+// module for non-gRPC implentations: Http (and hopefully Websockets, Postgres)
 #[allow(dead_code)]
 #[doc(hidden)]
 pub mod alt_transport;

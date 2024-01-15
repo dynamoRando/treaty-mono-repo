@@ -359,7 +359,7 @@ Moving on, we also note that our `treaty-client` makes a distinction about read/
 
 This line instructs our client to execute our SQL statement against our Host database, which is another concept unique to treaty: Host and Partial databases. A _Host_ database is the main backing database that usually will power a software application. A _Partial_ database is a database hosted by a Treaty instance elsewhere on the network (or as a data account in `treaty-proxy`.) A Partial database is what our Participants have. It contains a copy of our full database schema (for transparency) and the supporting table structures to hold information that they have authority over. This is all tied together by the concept of a _database contract_, which we will generate one in a few moments. For now, just be aware that within Treaty, logically there are different types of databases: Host and Partial. 
 
-> Note: there are also different database _implementations_ for Treaty: right now only Sqlite, but hopefully in the future MySQL and Postgres.
+> Note: there are also different database _implementations_ for Treaty: right now only Sqlite and Postgres.
 
 Let's move on:
 
@@ -386,7 +386,7 @@ Let's move on:
         .await
         .unwrap();
 
-    let logical_storage_policy = LogicalStoragePolicy::ParticpantOwned;
+    let logical_storage_policy = LogicalStoragePolicy::ParticipantOwned;
 
     client
         .set_logical_storage_policy(db_name, "LISTS", logical_storage_policy)

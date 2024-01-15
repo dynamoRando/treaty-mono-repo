@@ -2,7 +2,6 @@ use crate::treaty_proto::{
     AcceptPendingActionReply, AcceptPendingActionRequest, GetPendingActionsReply,
     GetPendingActionsRequest,
 };
-use crate::user_service_handler::user_service_handler_actions::UserServiceHandlerActions;
 use rocket::{http::Status, post, serde::json::Json, State};
 
 use crate::alt_transport::http::HttpServer;
@@ -16,7 +15,7 @@ pub async fn accept_pending_action_at_participant(
     request: Json<AcceptPendingActionRequest>,
     x: &State<HttpServer>,
 ) -> (Status, Json<AcceptPendingActionReply>) {
-    let core = x.user();
+    let core = x.user().await;
     let result = core
         .accept_pending_action_at_participant(request.into_inner())
         .await;
@@ -33,7 +32,7 @@ pub async fn get_pending_actions_at_participant(
     request: Json<GetPendingActionsRequest>,
     x: &State<HttpServer>,
 ) -> (Status, Json<GetPendingActionsReply>) {
-    let core = x.user();
+    let core = x.user().await;
     let result = core
         .get_pending_actions_at_participant(request.into_inner())
         .await;

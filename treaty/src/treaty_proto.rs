@@ -1,3 +1,19 @@
+/// Responds with information about the backing database technology used at this Treaty instance.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetBackingDatabaseConfigReply {
+    /// The backing database type. This corresponds to the DatabaseType enum.
+    #[prost(uint32, tag = "1")]
+    pub database_type: u32,
+    /// Specifies if the database technology is using a schema for Treaty settings instead of a
+    /// seperate database, if applicable. Default is false.
+    #[prost(bool, tag = "2")]
+    pub use_schema: bool,
+    /// An error if Treaty was unable to return the database information.
+    #[prost(message, optional, tag = "3")]
+    pub error: ::core::option::Option<TreatyError>,
+}
 /// A message describing an error in the system. This usually refers to a SQL database error.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -51,11 +67,8 @@ pub struct TreatyLogEntry {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetLogsByLastNumberRequest {
-    /// Authentication.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The last number of logs to fetch.
-    #[prost(uint32, tag = "2")]
+    #[prost(uint32, tag = "1")]
     pub number_of_logs: u32,
 }
 /// Responds with the total requested number of logs.
@@ -63,62 +76,35 @@ pub struct GetLogsByLastNumberRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetLogsByLastNumberReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// A list of log entries.
-    #[prost(message, repeated, tag = "2")]
+    #[prost(message, repeated, tag = "1")]
     pub logs: ::prost::alloc::vec::Vec<TreatyLogEntry>,
     /// An error if Treaty was unable to fetch logs.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
-}
-/// Requests the current settings from Treaty. These are the values from the "Settings.toml" file.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetSettingsRequest {
-    /// Authentication.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
 }
 /// Responds with the current Settings.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetSettingsReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The settings in JSON format.
-    #[prost(string, optional, tag = "2")]
+    #[prost(string, optional, tag = "1")]
     pub settings_json: ::core::option::Option<::prost::alloc::string::String>,
     /// An error if Treaty was unable to return the settings.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
-}
-/// Requests a list of hosts that this Treaty instance is cooperating with.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetCooperativeHostsRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
 }
 /// Responds with a list of hosts that this Treaty instance is cooperating with.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetCooperativeHostsReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The list of hosts this Treaty instance is cooperating with.
-    #[prost(message, repeated, tag = "2")]
+    #[prost(message, repeated, tag = "1")]
     pub hosts: ::prost::alloc::vec::Vec<HostInfoStatus>,
     /// An error if Treaty was unable to return the list of Hosts.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests the current "DeletesToHost" behavior for the specified database and table.
@@ -126,14 +112,11 @@ pub struct GetCooperativeHostsReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetDeletesToHostBehaviorRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
 }
 /// Responds with the current "DeletesToHost" behavior.
@@ -141,15 +124,12 @@ pub struct GetDeletesToHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetDeletesToHostBehaviorReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The current behavior for the requested database and table.
     /// This value is defined in the /treaty/treaty-types/enums.rs file.
-    #[prost(uint32, optional, tag = "2")]
+    #[prost(uint32, optional, tag = "1")]
     pub behavior: ::core::option::Option<u32>,
     /// An error if Treaty was unable to return the current behavior.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests the current "DeletesFromHost" behavior for the specified database and table.
@@ -157,14 +137,11 @@ pub struct GetDeletesToHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetDeletesFromHostBehaviorRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
 }
 /// Responds with the current "DeletesFromHost" behavior for the specified database and table.
@@ -172,15 +149,12 @@ pub struct GetDeletesFromHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetDeletesFromHostBehaviorReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The current behavior for the requested database and table.
     /// This value is defined in the /treaty/treaty-types/enum.rs file.
-    #[prost(uint32, optional, tag = "2")]
+    #[prost(uint32, optional, tag = "1")]
     pub behavior: ::core::option::Option<u32>,
     /// An error if Treaty was unable to return the current behavior.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests the current "UpdatesToHost" behavior for the specified database and table.
@@ -188,14 +162,11 @@ pub struct GetDeletesFromHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUpdatesToHostBehaviorRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
 }
 /// Responds with the current "UpdatesToHost" behavior for the specified database and table.
@@ -203,15 +174,12 @@ pub struct GetUpdatesToHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUpdatesToHostBehaviorReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The current behavior for the for the requested database and table.
     /// This value is defined in the /treaty/treaty-types/enum.rs file.
-    #[prost(uint32, optional, tag = "2")]
+    #[prost(uint32, optional, tag = "1")]
     pub behavior: ::core::option::Option<u32>,
     /// An error if Treaty was unable to return the current behavior.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests the current "UpdatesFromHost" behavior for the specified database and table.
@@ -219,14 +187,11 @@ pub struct GetUpdatesToHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUpdatesFromHostBehaviorRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
 }
 /// Responds with the current "UpdatesFromHost" behavior for the specified database and table.
@@ -234,15 +199,12 @@ pub struct GetUpdatesFromHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetUpdatesFromHostBehaviorReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The current behavior for the requested database and table.
     /// This value is defined in the /treaty/treaty-types/enum.rs file.
-    #[prost(uint32, optional, tag = "2")]
+    #[prost(uint32, optional, tag = "1")]
     pub behavior: ::core::option::Option<u32>,
     /// An error if Treaty was unable to return the current behavior.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Replies with the current version of Treaty at this instance,.
@@ -250,14 +212,11 @@ pub struct GetUpdatesFromHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct VersionReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The version of Treaty.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "1")]
     pub versions: ::core::option::Option<Versions>,
     /// An error if Treaty was unable to return the current version numbers.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// The version of Treaty.
@@ -273,14 +232,11 @@ pub struct Versions {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct HostInfoReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The host information.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "1")]
     pub host_info: ::core::option::Option<Host>,
     /// An error if Treaty was unable to return the current host information.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Replies with the result of attempting to revoke the current Json Web Token.
@@ -308,11 +264,8 @@ pub struct TokenReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetActiveContractRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
 }
 /// Replies with the active contract for the specified database.
@@ -320,14 +273,11 @@ pub struct GetActiveContractRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetActiveContractReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The active database contract.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "1")]
     pub contract: ::core::option::Option<Contract>,
     /// An error if Treaty was unable to return the Active Contract for the specified database.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests a list of participants for the specified database.
@@ -335,11 +285,8 @@ pub struct GetActiveContractReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetParticipantsRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
 }
 /// Replies with the list of Participants for the specified database.
@@ -347,40 +294,26 @@ pub struct GetParticipantsRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetParticipantsReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// A list of participants for the specified database.
-    #[prost(message, repeated, tag = "2")]
+    #[prost(message, repeated, tag = "1")]
     pub participants: ::prost::alloc::vec::Vec<ParticipantStatus>,
     /// If the request has an error.
-    #[prost(bool, tag = "3")]
+    #[prost(bool, tag = "2")]
     pub is_error: bool,
     /// An error if Treaty was unable to return the list of participants for the specified database.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
-}
-/// Requests a list of the databases at Treaty.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetDatabasesRequest {
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
 }
 /// Replies with the list of databses at Tretay.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetDatabasesReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The databases hosted at this Treaty instance.
-    #[prost(message, repeated, tag = "2")]
+    #[prost(message, repeated, tag = "1")]
     pub databases: ::prost::alloc::vec::Vec<DatabaseSchema>,
     /// An error if Treaty was unable to return the list of databases.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests to accept a pending action at a Participant.
@@ -388,17 +321,14 @@ pub struct GetDatabasesReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AcceptPendingActionRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
     /// The row id.
-    #[prost(uint32, tag = "4")]
+    #[prost(uint32, tag = "3")]
     pub row_id: u32,
 }
 /// Replies with the result of accepting a pending action at a Participant.
@@ -406,14 +336,11 @@ pub struct AcceptPendingActionRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AcceptPendingActionReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the acceptance of the action is successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// An error if Treaty was unable to accept the action.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests a list of pending actions at a Participant.
@@ -421,17 +348,14 @@ pub struct AcceptPendingActionReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetPendingActionsRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
     /// The type of action we are interested in (UPDATE or DELETE)
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub action: ::prost::alloc::string::String,
 }
 /// Replies with a list of pending actions (statements).
@@ -439,14 +363,11 @@ pub struct GetPendingActionsRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetPendingActionsReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// A list of pending statements to be executed.
-    #[prost(message, repeated, tag = "2")]
+    #[prost(message, repeated, tag = "1")]
     pub pending_statements: ::prost::alloc::vec::Vec<PendingStatement>,
     /// An error if Treaty was unable to get the list of pending actions.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// A statement that is queued to be executed at a Treaty instance.
@@ -475,17 +396,14 @@ pub struct PendingStatement {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SetDataLogTableStatusRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
     /// If a data log should be enabled.
-    #[prost(bool, tag = "4")]
+    #[prost(bool, tag = "3")]
     pub use_data_log: bool,
 }
 /// Replies with the result of configuring a data log.
@@ -493,14 +411,11 @@ pub struct SetDataLogTableStatusRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SetDataLogTableStatusReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful or not.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// An error if Treaty was unable to set the requested status of data logging.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests the status of data logging for the specified table.
@@ -508,14 +423,11 @@ pub struct SetDataLogTableStatusReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetDataLogTableStatusRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
 }
 /// Replies with the status of data logging for the specified table.
@@ -523,14 +435,11 @@ pub struct GetDataLogTableStatusRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetDataLogTableStatusReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If data logging was configured or not.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub use_data_log: bool,
     /// An error if Treaty was unable to get the status of data logging.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests the row ids for the specified WHERE clause.
@@ -538,17 +447,14 @@ pub struct GetDataLogTableStatusReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetReadRowIdsRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
     /// The WHERE clause.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub where_clause: ::prost::alloc::string::String,
 }
 /// Replies with a list of row ids for the request.
@@ -556,14 +462,11 @@ pub struct GetReadRowIdsRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetReadRowIdsReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The list of row ids.
-    #[prost(uint32, repeated, tag = "2")]
+    #[prost(uint32, repeated, tag = "1")]
     pub row_ids: ::prost::alloc::vec::Vec<u32>,
     /// An error if Treaty was unable to get the list of affected row ids.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests the saved data hash for the specified row id.
@@ -571,17 +474,14 @@ pub struct GetReadRowIdsReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetDataHashRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
     /// The row id.
-    #[prost(uint32, tag = "4")]
+    #[prost(uint32, tag = "3")]
     pub row_id: u32,
 }
 /// Returns the requested data hash.
@@ -589,14 +489,11 @@ pub struct GetDataHashRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetDataHashReply {
-    /// The authentiation result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The requested data hash.
-    #[prost(uint64, tag = "2")]
+    #[prost(uint64, tag = "1")]
     pub data_hash: u64,
     /// An error if Treaty was unable to get the requested data hash.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Request to change the "DeletesToHost" behavior.
@@ -604,18 +501,15 @@ pub struct GetDataHashReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChangeDeletesToHostBehaviorRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
     /// The "DeletesToHost" before setting.
     /// This value is defined in the /treaty/treaty-types/enums.rs file.
-    #[prost(uint32, tag = "4")]
+    #[prost(uint32, tag = "3")]
     pub behavior: u32,
 }
 /// Replies with the result of the request to change the "DeletesToHost" behavior.
@@ -623,17 +517,14 @@ pub struct ChangeDeletesToHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChangeDeletesToHostBehaviorReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// A message if any additional information is needed. This value can be empty.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
     /// An error if Treaty was unable to get the requested data hash.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// A request to change the "UpdatesToHostBehavior".
@@ -641,18 +532,15 @@ pub struct ChangeDeletesToHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChangeUpdatesToHostBehaviorRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
     /// The behavior to change to.
     /// This value is defined in the /treaty/treaty-types/enums.rs file.
-    #[prost(uint32, tag = "4")]
+    #[prost(uint32, tag = "3")]
     pub behavior: u32,
 }
 /// Replies with the result of attempting to change the "UpdatesToHost" behavior.
@@ -660,17 +548,14 @@ pub struct ChangeUpdatesToHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChangeUpdatesToHostBehaviorReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// A message if any additional information is needed. This value can be empty.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
     /// An error if Treaty was unable to set the behavior.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Request to change the "DeletesFromHost" behavior.
@@ -678,18 +563,15 @@ pub struct ChangeUpdatesToHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChangeDeletesFromHostBehaviorRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
     /// The behavior to change to.
     /// This value is defined in the /treaty/treaty-types/enums.rs file.
-    #[prost(uint32, tag = "4")]
+    #[prost(uint32, tag = "3")]
     pub behavior: u32,
 }
 /// Replies with the result of changing the "DeletesFromHost" behavior.
@@ -697,17 +579,14 @@ pub struct ChangeDeletesFromHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChangeDeletesFromHostBehaviorReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful or not.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// A message if any additional information is available. This value can be empty.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
     /// An error if Treaty was unable to change the behavior.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Request to change the "UpdatesFromHost" behavior.
@@ -715,18 +594,15 @@ pub struct ChangeDeletesFromHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChangeUpdatesFromHostBehaviorRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
     /// The behavior to change to.
     /// This value is defined in the /treaty/treaty-types/enums.rs file.
-    #[prost(uint32, tag = "4")]
+    #[prost(uint32, tag = "3")]
     pub behavior: u32,
 }
 /// Replies with the result of changing the "UpdatesFromHost" behavior.
@@ -734,17 +610,14 @@ pub struct ChangeUpdatesFromHostBehaviorRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChangesUpdatesFromHostBehaviorReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful or not.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// A message with any additional information. This value can be empty.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
     /// An error if Treaty was unable to change the behavior.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// A request to attempt to authenticate at the specified Participant. This tests to make sure that we
@@ -753,17 +626,14 @@ pub struct ChangesUpdatesFromHostBehaviorReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TryAuthAtParticipantRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The participant id.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub participant_id: ::prost::alloc::string::String,
     /// The participant alias.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub participant_alias: ::prost::alloc::string::String,
     /// The database name.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub db_name: ::prost::alloc::string::String,
 }
 /// Replies with the result of attempting to autenticate at the specified Participant.
@@ -771,17 +641,14 @@ pub struct TryAuthAtParticipantRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TryAuthAtPartipantReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the result was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// A message with any additional information. This value can be empty.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
     /// An error if Treaty was unable to attempt authentication.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Request to change the status of a Host to ALLOW/DENY.
@@ -789,18 +656,15 @@ pub struct TryAuthAtPartipantReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChangeHostStatusRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The host alias.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub host_alias: ::prost::alloc::string::String,
     /// The host id.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub host_id: ::prost::alloc::string::String,
     /// The status to change for the host.
     /// This value is defined in the /treaty/treaty-types/enums.rs file.
-    #[prost(uint32, tag = "4")]
+    #[prost(uint32, tag = "3")]
     pub status: u32,
 }
 /// Replies with the result of changing the host status.
@@ -809,17 +673,14 @@ pub struct ChangeHostStatusRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ChangeHostStatusReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// The status the value was changed to. This echoes what was sent.
-    #[prost(uint32, tag = "3")]
+    #[prost(uint32, tag = "2")]
     pub status: u32,
     /// An error if Treaty was unable to change the host status.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Request to generate host information for Treaty.
@@ -832,11 +693,8 @@ pub struct ChangeHostStatusReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GenerateHostInfoRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The friendly host name to use.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub host_name: ::prost::alloc::string::String,
 }
 /// Replies with the result of attempting to generate host information.
@@ -844,14 +702,11 @@ pub struct GenerateHostInfoRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GenerateHostInfoReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If creating host information was successful or not.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// An error if Treaty was unable to generate host information.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests to send the active database contract ot the specified participant.
@@ -859,14 +714,11 @@ pub struct GenerateHostInfoReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SendParticipantContractRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The name of the database.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The alias of the participant.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub participant_alias: ::prost::alloc::string::String,
 }
 /// Replies with the result of sending the active contract to the participant.
@@ -874,18 +726,15 @@ pub struct SendParticipantContractRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SendParticipantContractReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the contract was sent.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_sent: bool,
     /// The current status of the contract at the participant.
     /// This is an echo of what the Participant thinks the contract status is.
-    #[prost(uint32, tag = "3")]
+    #[prost(uint32, tag = "2")]
     pub contract_status: u32,
     /// An error if Treaty was unable to send the active contract to the Participant.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// A message representing the results of a SQL query.
@@ -911,11 +760,8 @@ pub struct StatementResultset {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateUserDatabaseRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
 }
 /// Delete user database.
@@ -923,11 +769,8 @@ pub struct CreateUserDatabaseRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteUserDatabaseRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
 }
 /// Replies with the result of deleting a database.
@@ -935,17 +778,14 @@ pub struct DeleteUserDatabaseRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteUserDatabaseReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the database was deleted.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_deleted: bool,
     /// A message describing any details if needed. This field can be blank.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
     /// An error if Treaty was unable to delete the requested database.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Replies with the result of creating a database.
@@ -953,17 +793,14 @@ pub struct DeleteUserDatabaseReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateUserDatabaseReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the database was created.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_created: bool,
     /// A message describing any details if needed. This field can be blank.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
     /// An error if Treaty was unable to create the requested database.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests to execute the specified SELECT statement.
@@ -971,17 +808,14 @@ pub struct CreateUserDatabaseReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExecuteReadRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The SELECT SQL statement.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub sql_statement: ::prost::alloc::string::String,
-    /// The datababase type (Sqlite, MySQL, Postgres)
-    #[prost(uint32, tag = "4")]
+    /// The datababase type (Sqlite, Postgres)
+    #[prost(uint32, tag = "3")]
     pub database_type: u32,
 }
 /// Replies with the result of the SELECT statement.
@@ -989,20 +823,17 @@ pub struct ExecuteReadRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExecuteReadReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The total number of result-sets.
-    #[prost(uint64, tag = "2")]
+    #[prost(uint64, tag = "1")]
     pub total_resultsets: u64,
     /// The results of the query.
-    #[prost(message, repeated, tag = "3")]
+    #[prost(message, repeated, tag = "2")]
     pub results: ::prost::alloc::vec::Vec<StatementResultset>,
     /// Denotes if there was an error executing the query.
-    #[prost(bool, tag = "4")]
+    #[prost(bool, tag = "3")]
     pub is_error: bool,
     /// An error if Treaty was unable to execute the SELECT statement provided.
-    #[prost(message, optional, tag = "5")]
+    #[prost(message, optional, tag = "4")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests to execute the provided INSERT/UPDATE/DELETE statement.
@@ -1010,22 +841,19 @@ pub struct ExecuteReadReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExecuteWriteRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The INSERT/UPDATE/DELETE statement to execute.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub sql_statement: ::prost::alloc::string::String,
-    /// The database type (Sqlite, MySQL, Postgres).
-    #[prost(uint32, tag = "4")]
+    /// The database type (Sqlite, Postgres).
+    #[prost(uint32, tag = "3")]
     pub database_type: u32,
     /// The WHERE clause of the statement, if applicable.
     /// ℹ️ Note: If the "sql_statement" includes a WHERE clause, duplicate the contents here. Otherwise, leave the string empty.
     /// This is needed because of a limitation with Treaty's implementation of Antlr. In the future, hopefully this field will not be needed.
-    #[prost(string, tag = "5")]
+    #[prost(string, tag = "4")]
     pub where_clause: ::prost::alloc::string::String,
 }
 /// Replies with the results of the provided INSERT/UPDATE/DELETE statement.
@@ -1033,20 +861,17 @@ pub struct ExecuteWriteRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExecuteWriteReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the statement executed without error.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// The total number of rows the statement affected, if applicable.
-    #[prost(uint32, tag = "3")]
+    #[prost(uint32, tag = "2")]
     pub total_rows_affected: u32,
     /// Denotes if there was an error executing the statement.
-    #[prost(bool, tag = "4")]
+    #[prost(bool, tag = "3")]
     pub is_error: bool,
     /// An error if Treaty was uanble to execute the INSERT/UPDATE/DELETE statement provided.
-    #[prost(message, optional, tag = "5")]
+    #[prost(message, optional, tag = "4")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests to find out if the specified table exists.
@@ -1054,14 +879,11 @@ pub struct ExecuteWriteReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct HasTableRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
 }
 /// Replies if the specified table exists.
@@ -1069,14 +891,11 @@ pub struct HasTableRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct HasTableReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the table exists or not.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub has_table: bool,
     /// An error if Treaty was uanble to determine if the specified table exists or not.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// A request to generate a contract for the specified database.
@@ -1088,22 +907,19 @@ pub struct HasTableReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GenerateContractRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// A host name to identify this Treaty instance to others.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub host_name: ::prost::alloc::string::String,
     /// A general description for the contract.
     /// This will be made visible to Participants.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub description: ::prost::alloc::string::String,
     /// The name of the database this contract is for.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub database_name: ::prost::alloc::string::String,
     /// The Remote Delete Behavior for this Host for this contract.
     /// This value is defined in the /treaty/treaty-types/enums.rs file.
-    #[prost(uint32, tag = "5")]
+    #[prost(uint32, tag = "4")]
     pub remote_delete_behavior: u32,
 }
 /// Replies with the status of generating a contract for the specified database.
@@ -1111,17 +927,14 @@ pub struct GenerateContractRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GenerateContractReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If contract generation was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// A message providing any additional details. This value can be empty.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
     /// An error if Treaty was unable to generate the contract.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests Treaty to set the specified Logical Storage Policy for the specified table.
@@ -1129,18 +942,15 @@ pub struct GenerateContractReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SetLogicalStoragePolicyRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
     /// The policy to set the table to.
     /// This value is defined in the /treaty/treaty-types/enums.rs file.
-    #[prost(uint32, tag = "4")]
+    #[prost(uint32, tag = "3")]
     pub policy_mode: u32,
 }
 /// Replies with the result of setting the Logical Storage Policy for the specified table.
@@ -1148,17 +958,14 @@ pub struct SetLogicalStoragePolicyRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SetLogicalStoragePolicyReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// A message providing any additional information. This value can be empty.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
     /// An error if Treaty was unable to generate the contract.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Request the current Logical Storage Policy for the specified table.
@@ -1166,14 +973,11 @@ pub struct SetLogicalStoragePolicyReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetLogicalStoragePolicyRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
 }
 /// Replies with the current Logical Storage Policy for the specified table.
@@ -1181,15 +985,12 @@ pub struct GetLogicalStoragePolicyRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetLogicalStoragePolicyReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// The current Logical Storage policy for the requested table.
     /// This value is defined in the /treaty/treaty-types/enums.rs file.
-    #[prost(uint32, tag = "2")]
+    #[prost(uint32, tag = "1")]
     pub policy_mode: u32,
     /// An error if Treaty was unable to get the Logical Storage Policy for the specified table.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests Treaty to execute the specified INSERT/UPDATE/DELETE statement both at the
@@ -1201,28 +1002,25 @@ pub struct GetLogicalStoragePolicyReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExecuteCooperativeWriteRequest {
-    /// The authentaction request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The name of the database.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The INSERT/UPDATE/DELETE statement to execute at the Participant.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub sql_statement: ::prost::alloc::string::String,
-    /// The type of database: Sqlite, MySQL, Postgres.
+    /// The type of database: Sqlite, Postgres.
     /// This value is defined in the /treaty/treaty-types/enums.rs file.
-    #[prost(uint32, tag = "4")]
+    #[prost(uint32, tag = "3")]
     pub database_type: u32,
     /// The participant alias this statement is for.
-    #[prost(string, tag = "5")]
+    #[prost(string, tag = "4")]
     pub alias: ::prost::alloc::string::String,
     /// The participant id this statement is for.
-    #[prost(string, tag = "6")]
+    #[prost(string, tag = "5")]
     pub participant_id: ::prost::alloc::string::String,
     /// The WHERE clause of the INSERT/UPDATE/STATEMENT. For technical reasons this needs to be the same as in the "sql_statement" field
     /// if applicable. This field can be empty.
-    #[prost(string, tag = "7")]
+    #[prost(string, tag = "6")]
     pub where_clause: ::prost::alloc::string::String,
 }
 /// Replies with the result of Cooperative Write.
@@ -1230,17 +1028,14 @@ pub struct ExecuteCooperativeWriteRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ExecuteCooperativeWriteReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the result was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// The total number of rows affected by the INSERT/UPDATE/DELETE statement.
-    #[prost(uint32, tag = "3")]
+    #[prost(uint32, tag = "2")]
     pub total_rows_affected: u32,
     /// An error if Treaty was unable to execute the Cooperative Write.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Request to add the Participant to the specified database.
@@ -1248,21 +1043,21 @@ pub struct ExecuteCooperativeWriteReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AddParticipantRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// An alias for this participant.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub alias: ::prost::alloc::string::String,
     /// The IP address for this Participant, in IP 4 format.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub ip4_address: ::prost::alloc::string::String,
     /// The database port number for this Participant.
+    #[prost(uint32, optional, tag = "4")]
+    pub db_port: ::core::option::Option<u32>,
+    /// The info port number for this Participant.
     #[prost(uint32, tag = "5")]
-    pub port: u32,
+    pub info_port: u32,
     /// The HTTP address for this Participant.
     #[prost(string, tag = "6")]
     pub http_addr: ::prost::alloc::string::String,
@@ -1280,41 +1075,26 @@ pub struct AddParticipantRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AddParticipantReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If adding the Participant was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// A message describing any additional details if needed. This field can be empty.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
     /// An error if Treaty was unable to add the Participant.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
-}
-/// Requests to view a list of all contracts Treaty has that are in a Pending state,.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ViewPendingContractsRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
 }
 /// Replies with a list of pending contracts.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ViewPendingContractsReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// A list of contracts that are in a pending state. This list may be empty.
-    #[prost(message, repeated, tag = "2")]
+    #[prost(message, repeated, tag = "1")]
     pub contracts: ::prost::alloc::vec::Vec<Contract>,
     /// An error if Treaty was unable to get the list of pending contracts.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests Treaty to accept the pending contract from the specified Host,.
@@ -1325,11 +1105,8 @@ pub struct ViewPendingContractsReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AcceptPendingContractRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The host that has sent us the pending contract.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub host_alias: ::prost::alloc::string::String,
 }
 /// Replies with the result of accepting a pending contract,.
@@ -1337,17 +1114,14 @@ pub struct AcceptPendingContractRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AcceptPendingContractReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// A message with any additional information. This field may be blank.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
     /// An error if Treaty was unable to accept the pending contract.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests that Treaty reject the pending contract from the specified host,.
@@ -1357,11 +1131,8 @@ pub struct AcceptPendingContractReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RejectPendingContractRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The alias of the host.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub host_alias: ::prost::alloc::string::String,
 }
 /// Replies with the result of rejecting a pending contract.
@@ -1369,17 +1140,14 @@ pub struct RejectPendingContractRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RejectPendingContractReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the rejection was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// A message with any additional information. This field may be blank.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
     /// An error if Treaty was unable to reject the pending contract.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Requests that Treaty enable cooperative features for a database, if authentiated.
@@ -1389,11 +1157,8 @@ pub struct RejectPendingContractReply {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnableCoooperativeFeaturesRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name to enable cooperative features.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
 }
 /// Replies with the result of enabling cooperative features,.
@@ -1401,56 +1166,41 @@ pub struct EnableCoooperativeFeaturesRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EnableCoooperativeFeaturesReply {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If enabling cooperative features was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// A message containing any additional details. This field may be blank.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
     /// An error if Treaty was unable to enable cooperative features on the specified database.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub error: ::core::option::Option<TreatyError>,
-}
-/// A request to validate that we have access to this Treaty instance.
-#[derive(serde::Serialize, serde::Deserialize)]
-#[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct TryAuthRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
 }
 /// Replies with the authentication result.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TryAuthResult {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
+    /// returns if the authentication is valid
+    #[prost(bool, tag = "1")]
+    pub is_authenticated: bool,
 }
 /// A message for creating a table in a database.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateTableRequest {
-    /// The user requesting the table creation.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database in which to create the table.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The database GUID in which to create the table.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub database_guid: ::prost::alloc::string::String,
     /// The name of the table to create.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub table_name: ::prost::alloc::string::String,
     /// A list of columns for the table.
-    #[prost(message, repeated, tag = "5")]
+    #[prost(message, repeated, tag = "4")]
     pub columns: ::prost::alloc::vec::Vec<ColumnSchema>,
 }
 /// A message for describing the result of a CreateTableRequest.
@@ -1458,32 +1208,29 @@ pub struct CreateTableRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreateTableResult {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the table was created.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// The name of the database the table was created in.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub database_name: ::prost::alloc::string::String,
     /// Any additional information if needed. This field can be blank.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub result_message: ::prost::alloc::string::String,
     /// The database id the table was created in.
-    #[prost(string, tag = "5")]
+    #[prost(string, tag = "4")]
     pub database_id: ::prost::alloc::string::String,
     /// The table name that was created. This should line up with the request made and is intended for confirmation.
-    #[prost(string, tag = "6")]
+    #[prost(string, tag = "5")]
     pub table_name: ::prost::alloc::string::String,
     /// The table id that was created.
-    #[prost(string, tag = "7")]
+    #[prost(string, tag = "6")]
     pub table_id: ::prost::alloc::string::String,
     /// If the request failed in any manner.
-    #[prost(bool, tag = "8")]
+    #[prost(bool, tag = "7")]
     pub is_error: bool,
     /// An error detailing if the request failed in any manner.
-    #[prost(message, optional, tag = "9")]
+    #[prost(message, optional, tag = "8")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// A message describing the details of a row in a partial database.
@@ -1511,18 +1258,15 @@ pub struct RowInfo {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct InsertDataRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
     /// The actual INSERT statement.
     /// Note: while this is duplicative, at the moment the contents of this INSERT statement must match the database and table name.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub cmd: ::prost::alloc::string::String,
 }
 /// A result of executing an INSERT statement against a partial database.
@@ -1530,26 +1274,23 @@ pub struct InsertDataRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct InsertDataResult {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the result was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// A hash of the data inserted.
-    #[prost(uint64, tag = "3")]
+    #[prost(uint64, tag = "2")]
     pub data_hash: u64,
     /// An additional message if needed. This field can be blank.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub message: ::prost::alloc::string::String,
     /// The row id of the record inserted.
-    #[prost(uint32, tag = "5")]
+    #[prost(uint32, tag = "4")]
     pub row_id: u32,
     /// If there was an error executing the INSERT statement.
-    #[prost(bool, tag = "6")]
+    #[prost(bool, tag = "5")]
     pub is_error: bool,
     /// An error detailing if the request failed.
-    #[prost(message, optional, tag = "7")]
+    #[prost(message, optional, tag = "6")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// A request for Treaty to execute the specified UPDATE statement if authentiated.
@@ -1559,19 +1300,17 @@ pub struct InsertDataResult {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateDataRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
     /// The actual UPDATE statement.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub cmd: ::prost::alloc::string::String,
-    #[prost(string, tag = "5")]
+    /// The where clause
+    #[prost(string, tag = "4")]
     pub where_clause: ::prost::alloc::string::String,
 }
 /// Replies with the result of executing the provided UPDATE statement.
@@ -1579,17 +1318,14 @@ pub struct UpdateDataRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateDataResult {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the UPDATE statement was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// A message describing any additional details. This field can be blank.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
     /// A copy of the rows that were affected.
-    #[prost(message, repeated, tag = "4")]
+    #[prost(message, repeated, tag = "3")]
     pub rows: ::prost::alloc::vec::Vec<RowInfo>,
     /// The status of the actual update. Values are:
     /// 0 - unknown
@@ -1597,13 +1333,13 @@ pub struct UpdateDataResult {
     /// 2 - pending (queue for review)
     /// 3 - ignored (ignore)
     /// Note: These values are defined in the /treaty/treaty-types/enums.rs file.
-    #[prost(uint32, tag = "5")]
+    #[prost(uint32, tag = "4")]
     pub update_status: u32,
     /// If there was an error executing the UPDATE statement.
-    #[prost(bool, tag = "6")]
+    #[prost(bool, tag = "5")]
     pub is_error: bool,
     /// Any details if there was an error executing the UPDATE statement.
-    #[prost(message, optional, tag = "7")]
+    #[prost(message, optional, tag = "6")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// A request for Treaty to execute the provided DELETE statement.
@@ -1613,22 +1349,19 @@ pub struct UpdateDataResult {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteDataRequest {
-    /// The authentication requestl
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The database name.
-    #[prost(string, tag = "2")]
+    #[prost(string, tag = "1")]
     pub database_name: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub table_name: ::prost::alloc::string::String,
     /// The actual DELETE statement.
     /// Note: This DELETE statement needs to match the field specified prior.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub cmd: ::prost::alloc::string::String,
     /// ❗ The WHERE clause of the delete statement. This field needs to match the WHERE clause if there is one in the prior field.
     /// Otherwise, this field can be left blank.
-    #[prost(string, tag = "5")]
+    #[prost(string, tag = "4")]
     pub where_clause: ::prost::alloc::string::String,
 }
 /// Describes the result of Treaty executing the specified DELETE statement.
@@ -1636,23 +1369,20 @@ pub struct DeleteDataRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct DeleteDataResult {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the command was successfully executed.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// A message providing further details if needed. This field can be blank.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub message: ::prost::alloc::string::String,
     /// A message describing details of the rows impacted.
-    #[prost(message, repeated, tag = "4")]
+    #[prost(message, repeated, tag = "3")]
     pub rows: ::prost::alloc::vec::Vec<RowInfo>,
     /// Denotes if there was an error executing the DELETE statement.
-    #[prost(bool, tag = "5")]
+    #[prost(bool, tag = "4")]
     pub is_error: bool,
     /// An error describing details if needed.
-    #[prost(message, optional, tag = "6")]
+    #[prost(message, optional, tag = "5")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// A request to get a specified row from a partial database.
@@ -1660,14 +1390,11 @@ pub struct DeleteDataResult {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRowFromPartialDatabaseRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// The row which to get.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "1")]
     pub row_address: ::core::option::Option<RowParticipantAddress>,
     /// Additional details for debugging purposes.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub telemetry: ::core::option::Option<Telemetry>,
 }
 /// A response containing the specified row requested,.
@@ -1675,20 +1402,17 @@ pub struct GetRowFromPartialDatabaseRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRowFromPartialDatabaseResult {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the request was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// Any additional details if needed. This field can be blank.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub result_message: ::prost::alloc::string::String,
     /// The actual row requested.
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "3")]
     pub row: ::core::option::Option<Row>,
     /// An error if Treaty was unable to get the specified row.
-    #[prost(message, optional, tag = "5")]
+    #[prost(message, optional, tag = "4")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// A message from a host to a participant to save a contract.
@@ -1773,35 +1497,32 @@ pub struct ParticipantAcceptsContractResult {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateRowDataHashForHostRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// Additional telemetry for debugging.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "1")]
     pub telemetry: ::core::option::Option<Telemetry>,
     /// The host information this data hash came from (from the perspective of the Host, this is the Participant's information).
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub host_info: ::core::option::Option<Host>,
     /// The database name.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub database_name: ::prost::alloc::string::String,
     /// The database id.
-    #[prost(string, tag = "5")]
+    #[prost(string, tag = "4")]
     pub database_id: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "6")]
+    #[prost(string, tag = "5")]
     pub table_name: ::prost::alloc::string::String,
     /// The table id.
-    #[prost(uint32, tag = "7")]
+    #[prost(uint32, tag = "6")]
     pub table_id: u32,
     /// The row id.
-    #[prost(uint32, tag = "8")]
+    #[prost(uint32, tag = "7")]
     pub row_id: u32,
     /// The new hash value for the row.
-    #[prost(uint64, tag = "9")]
+    #[prost(uint64, tag = "8")]
     pub updated_hash_value: u64,
     /// If the row is deleted.
-    #[prost(bool, tag = "10")]
+    #[prost(bool, tag = "9")]
     pub is_deleted_at_participant: bool,
 }
 /// Replies with the result of the update data hash request.
@@ -1809,14 +1530,11 @@ pub struct UpdateRowDataHashForHostRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct UpdateRowDataHashForHostResult {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the message was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// An error if the updated data hash could not be sent.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// Request to notify the upstream Host that a row has been deleted.
@@ -1824,29 +1542,26 @@ pub struct UpdateRowDataHashForHostResult {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct NotifyHostOfRemovedRowRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// Debugging information about the sender of this message.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "1")]
     pub telemetry: ::core::option::Option<Telemetry>,
     /// The host information. From an upstream Host's perspective, this is the Participant.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub host_info: ::core::option::Option<Host>,
     /// The database name.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub database_name: ::prost::alloc::string::String,
     /// The database id.
-    #[prost(string, tag = "5")]
+    #[prost(string, tag = "4")]
     pub database_id: ::prost::alloc::string::String,
     /// The table name.
-    #[prost(string, tag = "6")]
+    #[prost(string, tag = "5")]
     pub table_name: ::prost::alloc::string::String,
     /// The table id.
-    #[prost(uint32, tag = "7")]
+    #[prost(uint32, tag = "6")]
     pub table_id: u32,
     /// The row id.
-    #[prost(uint32, tag = "8")]
+    #[prost(uint32, tag = "7")]
     pub row_id: u32,
 }
 /// The result of notifying the upstream Host that a row has been deleted.
@@ -1854,14 +1569,11 @@ pub struct NotifyHostOfRemovedRowRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct NotifyHostOfRemovedRowResult {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the notification was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// An error if Treaty was not able to notify the upstream Host.
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "2")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// A message for basic online testing.
@@ -1925,32 +1637,69 @@ pub struct Telemetry {
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct AuthRequest {
+pub struct AuthRequestBasic {
     /// The name of the user.
     #[prost(string, tag = "1")]
     pub user_name: ::prost::alloc::string::String,
     /// The pw of the user.
     #[prost(string, tag = "2")]
     pub pw: ::prost::alloc::string::String,
-    /// A hash of the pw of the user.
-    #[prost(bytes = "vec", tag = "3")]
-    pub pw_hash: ::prost::alloc::vec::Vec<u8>,
-    /// A generated token of the pw of the user.
-    #[prost(bytes = "vec", tag = "4")]
-    pub token: ::prost::alloc::vec::Vec<u8>,
+}
+/// Credentials to authenticate against Treaty.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AuthRequestWebToken {
     /// A Json Web Token in place of credentials.
-    #[prost(string, tag = "5")]
+    #[prost(string, tag = "1")]
     pub jwt: ::prost::alloc::string::String,
+}
+/// Credentials to authenticate against Treaty.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AuthRequestBinary {
+    /// The name of the user.
+    #[prost(string, tag = "1")]
+    pub user_name: ::prost::alloc::string::String,
+    /// A generated token of the pw of the user.
+    #[prost(bytes = "vec", tag = "2")]
+    pub token: ::prost::alloc::vec::Vec<u8>,
+}
+/// Additional metadata to support authorization actions.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AuthRequestMetadata {
     /// An optional Host Id of the Treaty instance. This is used when talking to a `treaty-proxy` instance.
-    #[prost(string, optional, tag = "6")]
+    #[prost(string, optional, tag = "1")]
     pub id: ::core::option::Option<::prost::alloc::string::String>,
+    /// The name of the database to verify authorization, if applicable. This is usually in
+    /// the case of Participants sending messages back to the Host.
+    #[prost(string, optional, tag = "2")]
+    pub db_name: ::core::option::Option<::prost::alloc::string::String>,
+}
+/// A message explaining the author of the request. Maps to the treaty-types enum of the same name.
+/// Values are:
+/// - 0 - Unknown
+/// - 1 - User
+/// - 2 - Data
+/// - 3 - Participant
+#[derive(serde::Serialize, serde::Deserialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct AuthRequestAuthor {
+    /// The type who is making the request: a user or a type of
+    /// Treaty instance.
+    #[prost(uint32, tag = "1")]
+    pub author_type: u32,
 }
 /// A message describing the results of an authentication attempt.
 #[derive(serde::Serialize, serde::Deserialize)]
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AuthResult {
-    /// .
+    /// If the authentication attempt was successful.
     #[prost(bool, tag = "1")]
     pub is_authenticated: bool,
     /// An optional message for any additional information.
@@ -1962,14 +1711,11 @@ pub struct AuthResult {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreatePartialDatabaseRequest {
-    /// The authentication request.
-    #[prost(message, optional, tag = "1")]
-    pub authentication: ::core::option::Option<AuthRequest>,
     /// Additional debugging information.
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "1")]
     pub telemetry: ::core::option::Option<Telemetry>,
     /// The database name.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub database_name: ::prost::alloc::string::String,
 }
 /// A message describing the results of a CreateDatabaseRequest.
@@ -1977,23 +1723,20 @@ pub struct CreatePartialDatabaseRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CreatePartialDatabaseResult {
-    /// The authentication result.
-    #[prost(message, optional, tag = "1")]
-    pub authentication_result: ::core::option::Option<AuthResult>,
     /// If the partial database creation was successful.
-    #[prost(bool, tag = "2")]
+    #[prost(bool, tag = "1")]
     pub is_successful: bool,
     /// The name of the database.
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "2")]
     pub database_name: ::prost::alloc::string::String,
     /// The id of the database.
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub database_id: ::prost::alloc::string::String,
     /// If there was an error creating the database.
-    #[prost(bool, tag = "5")]
+    #[prost(bool, tag = "4")]
     pub is_error: bool,
     /// An error describing what happened during the request, if applicable.
-    #[prost(message, optional, tag = "6")]
+    #[prost(message, optional, tag = "5")]
     pub error: ::core::option::Option<TreatyError>,
 }
 /// An object for representing a row in a table. Used for returning data.
@@ -2131,17 +1874,20 @@ pub struct Participant {
     /// The database port number.
     #[prost(uint32, tag = "5")]
     pub database_port_number: u32,
+    /// The info port number
+    #[prost(uint32, tag = "6")]
+    pub info_port_number: u32,
     /// A token used for authentication.
-    #[prost(bytes = "vec", tag = "6")]
+    #[prost(bytes = "vec", tag = "7")]
     pub token: ::prost::alloc::vec::Vec<u8>,
     /// An internal generated GUID/UUID for the Participant.
-    #[prost(string, tag = "7")]
+    #[prost(string, tag = "8")]
     pub internal_participant_guid: ::prost::alloc::string::String,
     /// The HTTP address.
-    #[prost(string, tag = "8")]
+    #[prost(string, tag = "9")]
     pub http_addr: ::prost::alloc::string::String,
     /// The HTTP port number.
-    #[prost(uint32, tag = "9")]
+    #[prost(uint32, tag = "10")]
     pub http_port: u32,
 }
 /// The status of a Participant at a Host.
@@ -2195,6 +1941,9 @@ pub struct HostNetwork {
     /// The HTTP port.
     #[prost(uint32, optional, tag = "8")]
     pub http_port: ::core::option::Option<u32>,
+    /// The information port number
+    #[prost(uint32, optional, tag = "9")]
+    pub info_port_number: ::core::option::Option<u32>,
 }
 /// A message describing the latest status of a Host.
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -2226,7 +1975,7 @@ pub struct DatabaseSchema {
     /// The tables of the database.
     #[prost(message, repeated, tag = "3")]
     pub tables: ::prost::alloc::vec::Vec<TableSchema>,
-    /// The type of database: Sqlite, Postgres, or MySQL.
+    /// The type of database: Sqlite or Postgres.
     /// This value is defined in the /treaty/treaty-types/enums.rs file.
     #[prost(uint32, tag = "4")]
     pub database_type: u32,
@@ -2282,6 +2031,21 @@ pub struct RowParticipantAddress {
     #[prost(uint32, tag = "3")]
     pub row_id: u32,
 }
+/// A message with ports available. These values can be empty depending on what the Treaty host has configured.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TreatyPorts {
+    /// The public info port used to provide general public information
+    #[prost(uint32, optional, tag = "1")]
+    pub info_port: ::core::option::Option<u32>,
+    /// The data port used for Treaty to Treaty operations
+    #[prost(uint32, optional, tag = "2")]
+    pub data_port: ::core::option::Option<u32>,
+    /// The client port, used for application developer or admin user operations
+    #[prost(uint32, optional, tag = "3")]
+    pub user_port: ::core::option::Option<u32>,
+}
 /// Generated client implementations.
 pub mod user_service_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
@@ -2290,6 +2054,7 @@ pub mod user_service_client {
     /// *
     /// A service by which application developers can talk to a Treaty instance.
     /// Generally defaults to port 50051. See the "Settings.toml" file for configuration.
+    /// 🔐 These calls require authentication.
     #[derive(Debug, Clone)]
     pub struct UserServiceClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -2298,7 +2063,7 @@ pub mod user_service_client {
         /// Attempt to create a new client by connecting to a given endpoint.
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
-            D: std::convert::TryInto<tonic::transport::Endpoint>,
+            D: TryInto<tonic::transport::Endpoint>,
             D::Error: Into<StdError>,
         {
             let conn = tonic::transport::Endpoint::new(dst)?.connect().await?;
@@ -2354,11 +2119,27 @@ pub mod user_service_client {
             self.inner = self.inner.accept_compressed(encoding);
             self
         }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_decoding_message_size(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_encoding_message_size(limit);
+            self
+        }
         /// Denotes if the instance is online.
         pub async fn is_online(
             &mut self,
             request: impl tonic::IntoRequest<super::TestRequest>,
-        ) -> Result<tonic::Response<super::TestReply>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<super::TestReply>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -2372,14 +2153,20 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/IsOnline",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.UserService", "IsOnline"));
+            self.inner.unary(req, path, codec).await
         }
         /// Creates a database.
         /// ℹ️ This will return an error if the database already exists.
         pub async fn create_user_database(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateUserDatabaseRequest>,
-        ) -> Result<tonic::Response<super::CreateUserDatabaseReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::CreateUserDatabaseReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2393,13 +2180,21 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/CreateUserDatabase",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.UserService", "CreateUserDatabase"),
+                );
+            self.inner.unary(req, path, codec).await
         }
-        /// Deletes a database.
+        /// Deletes a database in a cleanup oriented manner, cleaning up references, etc.
         pub async fn delete_user_database(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteUserDatabaseRequest>,
-        ) -> Result<tonic::Response<super::DeleteUserDatabaseReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::DeleteUserDatabaseReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2413,13 +2208,49 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/DeleteUserDatabase",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.UserService", "DeleteUserDatabase"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Deletes the database off of disk or drops the database forcefully, without removing references. This can cause un-intended consequences.
+        pub async fn delete_user_database_destructively(
+            &mut self,
+            request: impl tonic::IntoRequest<super::DeleteUserDatabaseRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::DeleteUserDatabaseReply>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/treaty_proto.UserService/DeleteUserDatabaseDestructively",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "DeleteUserDatabaseDestructively",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Instructs Treaty to create needed meta-data tables.
         pub async fn enable_coooperative_features(
             &mut self,
             request: impl tonic::IntoRequest<super::EnableCoooperativeFeaturesRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::EnableCoooperativeFeaturesReply>,
             tonic::Status,
         > {
@@ -2436,13 +2267,24 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/EnableCoooperativeFeatures",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "EnableCoooperativeFeatures",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Executes the specified SELECT SQL query against a Host database.
         pub async fn execute_read_at_host(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteReadRequest>,
-        ) -> Result<tonic::Response<super::ExecuteReadReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::ExecuteReadReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2456,13 +2298,21 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/ExecuteReadAtHost",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.UserService", "ExecuteReadAtHost"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Executes the specified INSERT/UPDATE/DELETE SQL statement against a Host database.
         pub async fn execute_write_at_host(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteWriteRequest>,
-        ) -> Result<tonic::Response<super::ExecuteWriteReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::ExecuteWriteReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2476,13 +2326,18 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/ExecuteWriteAtHost",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.UserService", "ExecuteWriteAtHost"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Executes the specified INSERT/UPDATE/DELETE SQL statement at the Participant and saves the meta-data at the Host.
         pub async fn execute_cooperative_write_at_host(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteCooperativeWriteRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::ExecuteCooperativeWriteReply>,
             tonic::Status,
         > {
@@ -2499,13 +2354,24 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/ExecuteCooperativeWriteAtHost",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "ExecuteCooperativeWriteAtHost",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Executes the specified SELECT SQL query against a Partial database.
         pub async fn execute_read_at_participant(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteReadRequest>,
-        ) -> Result<tonic::Response<super::ExecuteReadReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::ExecuteReadReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2519,13 +2385,24 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/ExecuteReadAtParticipant",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "ExecuteReadAtParticipant",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Executes the specified INSERT/UPDATE/DELETE SQL statment against a Partial database.
         pub async fn execute_write_at_participant(
             &mut self,
             request: impl tonic::IntoRequest<super::ExecuteWriteRequest>,
-        ) -> Result<tonic::Response<super::ExecuteWriteReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::ExecuteWriteReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2539,13 +2416,21 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/ExecuteWriteAtParticipant",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "ExecuteWriteAtParticipant",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Checks if the specified table exists in the specified database.
         pub async fn has_table(
             &mut self,
             request: impl tonic::IntoRequest<super::HasTableRequest>,
-        ) -> Result<tonic::Response<super::HasTableReply>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<super::HasTableReply>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -2559,13 +2444,16 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/HasTable",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.UserService", "HasTable"));
+            self.inner.unary(req, path, codec).await
         }
         /// Sets the Logical Storage Policy for the specified table in the specified database.
         pub async fn set_logical_storage_policy(
             &mut self,
             request: impl tonic::IntoRequest<super::SetLogicalStoragePolicyRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::SetLogicalStoragePolicyReply>,
             tonic::Status,
         > {
@@ -2582,13 +2470,21 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/SetLogicalStoragePolicy",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "SetLogicalStoragePolicy",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Gets the Logical Storage Policy for the specified table in the specified database.
         pub async fn get_logical_storage_policy(
             &mut self,
             request: impl tonic::IntoRequest<super::GetLogicalStoragePolicyRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::GetLogicalStoragePolicyReply>,
             tonic::Status,
         > {
@@ -2605,7 +2501,15 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetLogicalStoragePolicy",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "GetLogicalStoragePolicy",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Generates a database contract for the specified database.
         /// ℹ️ INFORMATION: For this to work, you must set a Logical Storage Policy ahead of time on all database tables.
@@ -2613,7 +2517,10 @@ pub mod user_service_client {
         pub async fn generate_contract(
             &mut self,
             request: impl tonic::IntoRequest<super::GenerateContractRequest>,
-        ) -> Result<tonic::Response<super::GenerateContractReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::GenerateContractReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2627,13 +2534,19 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GenerateContract",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.UserService", "GenerateContract"));
+            self.inner.unary(req, path, codec).await
         }
         /// Adds a participant with the specified attributes to the specified database.
         pub async fn add_participant(
             &mut self,
             request: impl tonic::IntoRequest<super::AddParticipantRequest>,
-        ) -> Result<tonic::Response<super::AddParticipantReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::AddParticipantReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2647,13 +2560,16 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/AddParticipant",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.UserService", "AddParticipant"));
+            self.inner.unary(req, path, codec).await
         }
         /// Sends a copy of the active database contract to the specified Participant.
         pub async fn send_participant_contract(
             &mut self,
             request: impl tonic::IntoRequest<super::SendParticipantContractRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::SendParticipantContractReply>,
             tonic::Status,
         > {
@@ -2670,13 +2586,24 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/SendParticipantContract",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "SendParticipantContract",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Gets a list of pending contracts at our Treaty instance.
         pub async fn review_pending_contracts(
             &mut self,
-            request: impl tonic::IntoRequest<super::ViewPendingContractsRequest>,
-        ) -> Result<tonic::Response<super::ViewPendingContractsReply>, tonic::Status> {
+            request: impl tonic::IntoRequest<()>,
+        ) -> std::result::Result<
+            tonic::Response<super::ViewPendingContractsReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2690,13 +2617,21 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/ReviewPendingContracts",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.UserService", "ReviewPendingContracts"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Accepts the specified database contract. This creates the needed partial database and supporting database structures.
         pub async fn accept_pending_contract(
             &mut self,
             request: impl tonic::IntoRequest<super::AcceptPendingContractRequest>,
-        ) -> Result<tonic::Response<super::AcceptPendingContractReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::AcceptPendingContractReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2710,13 +2645,21 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/AcceptPendingContract",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.UserService", "AcceptPendingContract"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Rejects the specified database contract. This informs the Host that we do not agree to cooperate.
         pub async fn reject_pending_contract(
             &mut self,
             request: impl tonic::IntoRequest<super::RejectPendingContractRequest>,
-        ) -> Result<tonic::Response<super::RejectPendingContractReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::RejectPendingContractReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2730,7 +2673,12 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/RejectPendingContract",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.UserService", "RejectPendingContract"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Generates our host info with the specified host name.
         /// ❗ WARNING: Calling this may overwrite any existing authentication token you have
@@ -2738,7 +2686,10 @@ pub mod user_service_client {
         pub async fn generate_host_info(
             &mut self,
             request: impl tonic::IntoRequest<super::GenerateHostInfoRequest>,
-        ) -> Result<tonic::Response<super::GenerateHostInfoReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::GenerateHostInfoReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2752,13 +2703,19 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GenerateHostInfo",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.UserService", "GenerateHostInfo"));
+            self.inner.unary(req, path, codec).await
         }
         /// Change the status for the specified Host. This configures if a Host is allowed to talk to our Treaty instance.
         pub async fn change_host_status(
             &mut self,
             request: impl tonic::IntoRequest<super::ChangeHostStatusRequest>,
-        ) -> Result<tonic::Response<super::ChangeHostStatusReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::ChangeHostStatusReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2772,13 +2729,19 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/ChangeHostStatus",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.UserService", "ChangeHostStatus"));
+            self.inner.unary(req, path, codec).await
         }
         /// Attempt authentication at the specified host.
         pub async fn try_auth_at_participant(
             &mut self,
             request: impl tonic::IntoRequest<super::TryAuthAtParticipantRequest>,
-        ) -> Result<tonic::Response<super::TryAuthAtPartipantReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::TryAuthAtPartipantReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2792,13 +2755,18 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/TryAuthAtParticipant",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.UserService", "TryAuthAtParticipant"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Changes the UpdatesFromHost behavior.
         pub async fn change_updates_from_host_behavior(
             &mut self,
             request: impl tonic::IntoRequest<super::ChangeUpdatesFromHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::ChangesUpdatesFromHostBehaviorReply>,
             tonic::Status,
         > {
@@ -2815,13 +2783,21 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/ChangeUpdatesFromHostBehavior",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "ChangeUpdatesFromHostBehavior",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Changes the DeletesFromHost behavior.
         pub async fn change_deletes_from_host_behavior(
             &mut self,
             request: impl tonic::IntoRequest<super::ChangeDeletesFromHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::ChangeDeletesFromHostBehaviorReply>,
             tonic::Status,
         > {
@@ -2838,13 +2814,21 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/ChangeDeletesFromHostBehavior",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "ChangeDeletesFromHostBehavior",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Changes the UpdatesToHost behavior.
         pub async fn change_updates_to_host_behavior(
             &mut self,
             request: impl tonic::IntoRequest<super::ChangeUpdatesToHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::ChangeUpdatesToHostBehaviorReply>,
             tonic::Status,
         > {
@@ -2861,13 +2845,21 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/ChangeUpdatesToHostBehavior",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "ChangeUpdatesToHostBehavior",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Changes the DeletesToHost behavior.
         pub async fn change_deletes_to_host_behavior(
             &mut self,
             request: impl tonic::IntoRequest<super::ChangeDeletesToHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::ChangeDeletesToHostBehaviorReply>,
             tonic::Status,
         > {
@@ -2884,13 +2876,24 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/ChangeDeletesToHostBehavior",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "ChangeDeletesToHostBehavior",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Gets the data hash at the specified Host database for the specified row.
         pub async fn get_data_hash_at_host(
             &mut self,
             request: impl tonic::IntoRequest<super::GetDataHashRequest>,
-        ) -> Result<tonic::Response<super::GetDataHashReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::GetDataHashReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2904,13 +2907,21 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetDataHashAtHost",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.UserService", "GetDataHashAtHost"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Gets the data hash at the specified Partial database for the specified row.
         pub async fn get_data_hash_at_participant(
             &mut self,
             request: impl tonic::IntoRequest<super::GetDataHashRequest>,
-        ) -> Result<tonic::Response<super::GetDataHashReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::GetDataHashReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2924,13 +2935,24 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetDataHashAtParticipant",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "GetDataHashAtParticipant",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Gets the Row ID at the specified Partial database for the specified WHERE clause.
         pub async fn read_row_id_at_participant(
             &mut self,
             request: impl tonic::IntoRequest<super::GetReadRowIdsRequest>,
-        ) -> Result<tonic::Response<super::GetReadRowIdsReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::GetReadRowIdsReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2944,13 +2966,21 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/ReadRowIdAtParticipant",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.UserService", "ReadRowIdAtParticipant"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Gets the status of our Log table at the Partial database.
         pub async fn get_data_log_table_status_at_participant(
             &mut self,
             request: impl tonic::IntoRequest<super::GetDataLogTableStatusRequest>,
-        ) -> Result<tonic::Response<super::GetDataLogTableStatusReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::GetDataLogTableStatusReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2964,13 +2994,24 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetDataLogTableStatusAtParticipant",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "GetDataLogTableStatusAtParticipant",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Sets the status of our Log table at the Partial database.
         pub async fn set_data_log_table_status_at_participant(
             &mut self,
             request: impl tonic::IntoRequest<super::SetDataLogTableStatusRequest>,
-        ) -> Result<tonic::Response<super::SetDataLogTableStatusReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::SetDataLogTableStatusReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -2984,13 +3025,24 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/SetDataLogTableStatusAtParticipant",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "SetDataLogTableStatusAtParticipant",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Gets a list of pending actions at the Partial database.
         pub async fn get_pending_actions_at_participant(
             &mut self,
             request: impl tonic::IntoRequest<super::GetPendingActionsRequest>,
-        ) -> Result<tonic::Response<super::GetPendingActionsReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::GetPendingActionsReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -3004,13 +3056,24 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetPendingActionsAtParticipant",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "GetPendingActionsAtParticipant",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Accepts the pending database action at the Partial database.
         pub async fn accept_pending_action_at_participant(
             &mut self,
             request: impl tonic::IntoRequest<super::AcceptPendingActionRequest>,
-        ) -> Result<tonic::Response<super::AcceptPendingActionReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::AcceptPendingActionReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -3024,13 +3087,24 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/AcceptPendingActionAtParticipant",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "AcceptPendingActionAtParticipant",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Gets a list of databases at our Treaty instance.
         pub async fn get_databases(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetDatabasesRequest>,
-        ) -> Result<tonic::Response<super::GetDatabasesReply>, tonic::Status> {
+            request: impl tonic::IntoRequest<()>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetDatabasesReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -3044,13 +3118,19 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetDatabases",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.UserService", "GetDatabases"));
+            self.inner.unary(req, path, codec).await
         }
         /// Gets a list of Participants at our Treaty instance.
         pub async fn get_participants(
             &mut self,
             request: impl tonic::IntoRequest<super::GetParticipantsRequest>,
-        ) -> Result<tonic::Response<super::GetParticipantsReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::GetParticipantsReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -3064,13 +3144,19 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetParticipants",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.UserService", "GetParticipants"));
+            self.inner.unary(req, path, codec).await
         }
         /// Gets the active database contract for the specified database.
         pub async fn get_active_contract(
             &mut self,
             request: impl tonic::IntoRequest<super::GetActiveContractRequest>,
-        ) -> Result<tonic::Response<super::GetActiveContractReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::GetActiveContractReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -3084,13 +3170,18 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetActiveContract",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.UserService", "GetActiveContract"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Requests Treaty to generate a Json Web Token for the credentials provided.
         pub async fn auth_for_token(
             &mut self,
-            request: impl tonic::IntoRequest<super::AuthRequest>,
-        ) -> Result<tonic::Response<super::TokenReply>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::AuthRequestBasic>,
+        ) -> std::result::Result<tonic::Response<super::TokenReply>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -3104,13 +3195,16 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/AuthForToken",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.UserService", "AuthForToken"));
+            self.inner.unary(req, path, codec).await
         }
         /// Requests Treaty to revoke the Json Web Token for the credentials provided.
         pub async fn revoke_token(
             &mut self,
-            request: impl tonic::IntoRequest<super::AuthRequest>,
-        ) -> Result<tonic::Response<super::RevokeReply>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::AuthRequestWebToken>,
+        ) -> std::result::Result<tonic::Response<super::RevokeReply>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -3124,13 +3218,16 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/RevokeToken",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.UserService", "RevokeToken"));
+            self.inner.unary(req, path, codec).await
         }
         /// Gets our Host Information.
         pub async fn get_host_info(
             &mut self,
-            request: impl tonic::IntoRequest<super::AuthRequest>,
-        ) -> Result<tonic::Response<super::HostInfoReply>, tonic::Status> {
+            request: impl tonic::IntoRequest<()>,
+        ) -> std::result::Result<tonic::Response<super::HostInfoReply>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -3144,13 +3241,16 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetHostInfo",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.UserService", "GetHostInfo"));
+            self.inner.unary(req, path, codec).await
         }
         /// Gets the versions of Treaty assemblies.
         pub async fn get_versions(
             &mut self,
-            request: impl tonic::IntoRequest<super::AuthRequest>,
-        ) -> Result<tonic::Response<super::VersionReply>, tonic::Status> {
+            request: impl tonic::IntoRequest<()>,
+        ) -> std::result::Result<tonic::Response<super::VersionReply>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -3164,13 +3264,16 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetVersions",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.UserService", "GetVersions"));
+            self.inner.unary(req, path, codec).await
         }
         /// Gets the current configured UpdatesFromHostBehavior.
         pub async fn get_updates_from_host_behavior(
             &mut self,
             request: impl tonic::IntoRequest<super::GetUpdatesFromHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::GetUpdatesFromHostBehaviorReply>,
             tonic::Status,
         > {
@@ -3187,13 +3290,21 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetUpdatesFromHostBehavior",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "GetUpdatesFromHostBehavior",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Gets the current configured UpdatesToHostBehavior.
         pub async fn get_updates_to_host_behavior(
             &mut self,
             request: impl tonic::IntoRequest<super::GetUpdatesToHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::GetUpdatesToHostBehaviorReply>,
             tonic::Status,
         > {
@@ -3210,13 +3321,21 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetUpdatesToHostBehavior",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "GetUpdatesToHostBehavior",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Gets the current configured DeletesFromHostBehavior.
         pub async fn get_deletes_from_host_behavior(
             &mut self,
             request: impl tonic::IntoRequest<super::GetDeletesFromHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::GetDeletesFromHostBehaviorReply>,
             tonic::Status,
         > {
@@ -3233,13 +3352,21 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetDeletesFromHostBehavior",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "GetDeletesFromHostBehavior",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Gets the current configured DeletesToHostBehavior.
         pub async fn get_deletes_to_host_behavior(
             &mut self,
             request: impl tonic::IntoRequest<super::GetDeletesToHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::GetDeletesToHostBehaviorReply>,
             tonic::Status,
         > {
@@ -3256,13 +3383,24 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetDeletesToHostBehavior",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "GetDeletesToHostBehavior",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Gets a list of Hosts that we are cooperating with. These are all the Treaty instances that we have accepted contracts from.
         pub async fn get_cooperative_hosts(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetCooperativeHostsRequest>,
-        ) -> Result<tonic::Response<super::GetCooperativeHostsReply>, tonic::Status> {
+            request: impl tonic::IntoRequest<()>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetCooperativeHostsReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -3276,13 +3414,21 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetCooperativeHosts",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.UserService", "GetCooperativeHosts"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Gets the current configured settings from the Settings.toml file.
         pub async fn get_settings(
             &mut self,
-            request: impl tonic::IntoRequest<super::GetSettingsRequest>,
-        ) -> Result<tonic::Response<super::GetSettingsReply>, tonic::Status> {
+            request: impl tonic::IntoRequest<()>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetSettingsReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -3296,13 +3442,19 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetSettings",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.UserService", "GetSettings"));
+            self.inner.unary(req, path, codec).await
         }
         /// Gets the last X number of log entries.
         pub async fn get_logs_by_last_number(
             &mut self,
             request: impl tonic::IntoRequest<super::GetLogsByLastNumberRequest>,
-        ) -> Result<tonic::Response<super::GetLogsByLastNumberReply>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::GetLogsByLastNumberReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -3316,7 +3468,43 @@ pub mod user_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.UserService/GetLogsByLastNumber",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.UserService", "GetLogsByLastNumber"),
+                );
+            self.inner.unary(req, path, codec).await
+        }
+        /// Gets the backing database technology used at this Treaty instance.
+        pub async fn get_backing_database_config(
+            &mut self,
+            request: impl tonic::IntoRequest<()>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetBackingDatabaseConfigReply>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/treaty_proto.UserService/GetBackingDatabaseConfig",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.UserService",
+                        "GetBackingDatabaseConfig",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
     }
 }
@@ -3328,6 +3516,7 @@ pub mod data_service_client {
     /// *
     /// A service that a Treaty instance can talk to other Treaty instances.
     /// Generally defaults to port 50052. See the "Settings.toml" file for configuration.
+    /// 🔐 These calls require authentication.
     #[derive(Debug, Clone)]
     pub struct DataServiceClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -3336,7 +3525,7 @@ pub mod data_service_client {
         /// Attempt to create a new client by connecting to a given endpoint.
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
-            D: std::convert::TryInto<tonic::transport::Endpoint>,
+            D: TryInto<tonic::transport::Endpoint>,
             D::Error: Into<StdError>,
         {
             let conn = tonic::transport::Endpoint::new(dst)?.connect().await?;
@@ -3392,11 +3581,27 @@ pub mod data_service_client {
             self.inner = self.inner.accept_compressed(encoding);
             self
         }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_decoding_message_size(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_encoding_message_size(limit);
+            self
+        }
         /// A call to see if the service is available.
         pub async fn is_online(
             &mut self,
             request: impl tonic::IntoRequest<super::TestRequest>,
-        ) -> Result<tonic::Response<super::TestReply>, tonic::Status> {
+        ) -> std::result::Result<tonic::Response<super::TestReply>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -3410,13 +3615,19 @@ pub mod data_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.DataService/IsOnline",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.DataService", "IsOnline"));
+            self.inner.unary(req, path, codec).await
         }
         /// Creates a partial database.
         pub async fn create_partial_database(
             &mut self,
             request: impl tonic::IntoRequest<super::CreatePartialDatabaseRequest>,
-        ) -> Result<tonic::Response<super::CreatePartialDatabaseResult>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::CreatePartialDatabaseResult>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -3430,13 +3641,21 @@ pub mod data_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.DataService/CreatePartialDatabase",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.DataService", "CreatePartialDatabase"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Creates a table in a partial database.
         pub async fn create_table_in_database(
             &mut self,
             request: impl tonic::IntoRequest<super::CreateTableRequest>,
-        ) -> Result<tonic::Response<super::CreateTableResult>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::CreateTableResult>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -3450,13 +3669,21 @@ pub mod data_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.DataService/CreateTableInDatabase",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.DataService", "CreateTableInDatabase"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Executes the provided INSERT statement against a partial database.
         pub async fn insert_command_into_table(
             &mut self,
             request: impl tonic::IntoRequest<super::InsertDataRequest>,
-        ) -> Result<tonic::Response<super::InsertDataResult>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::InsertDataResult>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -3470,13 +3697,21 @@ pub mod data_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.DataService/InsertCommandIntoTable",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.DataService", "InsertCommandIntoTable"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Executes the provided UPDATE statement against a partial database.
         pub async fn update_command_into_table(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateDataRequest>,
-        ) -> Result<tonic::Response<super::UpdateDataResult>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::UpdateDataResult>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -3490,13 +3725,21 @@ pub mod data_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.DataService/UpdateCommandIntoTable",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.DataService", "UpdateCommandIntoTable"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Executes the provided DELETE statement againts a partial database.
         pub async fn delete_command_into_table(
             &mut self,
             request: impl tonic::IntoRequest<super::DeleteDataRequest>,
-        ) -> Result<tonic::Response<super::DeleteDataResult>, tonic::Status> {
+        ) -> std::result::Result<
+            tonic::Response<super::DeleteDataResult>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -3510,13 +3753,18 @@ pub mod data_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.DataService/DeleteCommandIntoTable",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.DataService", "DeleteCommandIntoTable"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Requests a specific row from a partial database.
         pub async fn get_row_from_partial_database(
             &mut self,
             request: impl tonic::IntoRequest<super::GetRowFromPartialDatabaseRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::GetRowFromPartialDatabaseResult>,
             tonic::Status,
         > {
@@ -3533,56 +3781,21 @@ pub mod data_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.DataService/GetRowFromPartialDatabase",
             );
-            self.inner.unary(request.into_request(), path, codec).await
-        }
-        /// Request to save a Contract; usually to be later Accepted or Rejected.
-        pub async fn save_contract(
-            &mut self,
-            request: impl tonic::IntoRequest<super::SaveContractRequest>,
-        ) -> Result<tonic::Response<super::SaveContractResult>, tonic::Status> {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/treaty_proto.DataService/SaveContract",
-            );
-            self.inner.unary(request.into_request(), path, codec).await
-        }
-        /// Notification that a Participant has accepted a contract.
-        pub async fn accept_contract(
-            &mut self,
-            request: impl tonic::IntoRequest<super::ParticipantAcceptsContractRequest>,
-        ) -> Result<
-            tonic::Response<super::ParticipantAcceptsContractResult>,
-            tonic::Status,
-        > {
-            self.inner
-                .ready()
-                .await
-                .map_err(|e| {
-                    tonic::Status::new(
-                        tonic::Code::Unknown,
-                        format!("Service was not ready: {}", e.into()),
-                    )
-                })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static(
-                "/treaty_proto.DataService/AcceptContract",
-            );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.DataService",
+                        "GetRowFromPartialDatabase",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Notification that a data hash has changed at a Participant.
         pub async fn update_row_data_hash_for_host(
             &mut self,
             request: impl tonic::IntoRequest<super::UpdateRowDataHashForHostRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::UpdateRowDataHashForHostResult>,
             tonic::Status,
         > {
@@ -3599,13 +3812,21 @@ pub mod data_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.DataService/UpdateRowDataHashForHost",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new(
+                        "treaty_proto.DataService",
+                        "UpdateRowDataHashForHost",
+                    ),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Notification that a row in a partial database has been removed at a Participant.
         pub async fn notify_host_of_removed_row(
             &mut self,
             request: impl tonic::IntoRequest<super::NotifyHostOfRemovedRowRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::NotifyHostOfRemovedRowResult>,
             tonic::Status,
         > {
@@ -3622,13 +3843,18 @@ pub mod data_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.DataService/NotifyHostOfRemovedRow",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(
+                    GrpcMethod::new("treaty_proto.DataService", "NotifyHostOfRemovedRow"),
+                );
+            self.inner.unary(req, path, codec).await
         }
         /// Check if we can authenticate at this Treaty instance.
         pub async fn try_auth(
             &mut self,
-            request: impl tonic::IntoRequest<super::TryAuthRequest>,
-        ) -> Result<tonic::Response<super::TryAuthResult>, tonic::Status> {
+            request: impl tonic::IntoRequest<()>,
+        ) -> std::result::Result<tonic::Response<super::TryAuthResult>, tonic::Status> {
             self.inner
                 .ready()
                 .await
@@ -3642,7 +3868,247 @@ pub mod data_service_client {
             let path = http::uri::PathAndQuery::from_static(
                 "/treaty_proto.DataService/TryAuth",
             );
-            self.inner.unary(request.into_request(), path, codec).await
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.DataService", "TryAuth"));
+            self.inner.unary(req, path, codec).await
+        }
+    }
+}
+/// Generated client implementations.
+pub mod info_service_client {
+    #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
+    use tonic::codegen::*;
+    use tonic::codegen::http::Uri;
+    /// *
+    /// A service that can be queried for general or unauthenticated activities.
+    /// It can also provide authentication as needed.
+    /// Generally defaults to port 50059. See the "Settings.toml" file for configuration.
+    /// 🔓 These calls generally do not require authentication, unless explicitly seeking to generate an authentication token.
+    #[derive(Debug, Clone)]
+    pub struct InfoServiceClient<T> {
+        inner: tonic::client::Grpc<T>,
+    }
+    impl InfoServiceClient<tonic::transport::Channel> {
+        /// Attempt to create a new client by connecting to a given endpoint.
+        pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
+        where
+            D: TryInto<tonic::transport::Endpoint>,
+            D::Error: Into<StdError>,
+        {
+            let conn = tonic::transport::Endpoint::new(dst)?.connect().await?;
+            Ok(Self::new(conn))
+        }
+    }
+    impl<T> InfoServiceClient<T>
+    where
+        T: tonic::client::GrpcService<tonic::body::BoxBody>,
+        T::Error: Into<StdError>,
+        T::ResponseBody: Body<Data = Bytes> + Send + 'static,
+        <T::ResponseBody as Body>::Error: Into<StdError> + Send,
+    {
+        pub fn new(inner: T) -> Self {
+            let inner = tonic::client::Grpc::new(inner);
+            Self { inner }
+        }
+        pub fn with_origin(inner: T, origin: Uri) -> Self {
+            let inner = tonic::client::Grpc::with_origin(inner, origin);
+            Self { inner }
+        }
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> InfoServiceClient<InterceptedService<T, F>>
+        where
+            F: tonic::service::Interceptor,
+            T::ResponseBody: Default,
+            T: tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+                Response = http::Response<
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
+                >,
+            >,
+            <T as tonic::codegen::Service<
+                http::Request<tonic::body::BoxBody>,
+            >>::Error: Into<StdError> + Send + Sync,
+        {
+            InfoServiceClient::new(InterceptedService::new(inner, interceptor))
+        }
+        /// Compress requests with the given encoding.
+        ///
+        /// This requires the server to support it otherwise it might respond with an
+        /// error.
+        #[must_use]
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.send_compressed(encoding);
+            self
+        }
+        /// Enable decompressing responses.
+        #[must_use]
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.inner = self.inner.accept_compressed(encoding);
+            self
+        }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_decoding_message_size(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.inner = self.inner.max_encoding_message_size(limit);
+            self
+        }
+        /// Denotes if the instance is online.
+        pub async fn is_online(
+            &mut self,
+            request: impl tonic::IntoRequest<super::TestRequest>,
+        ) -> std::result::Result<tonic::Response<super::TestReply>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/treaty_proto.InfoService/IsOnline",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.InfoService", "IsOnline"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Request to save a Contract; usually to be later Accepted or Rejected.
+        pub async fn save_contract(
+            &mut self,
+            request: impl tonic::IntoRequest<super::SaveContractRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::SaveContractResult>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/treaty_proto.InfoService/SaveContract",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.InfoService", "SaveContract"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Request to get the public available ports on this instance
+        pub async fn ports_available(
+            &mut self,
+            request: impl tonic::IntoRequest<()>,
+        ) -> std::result::Result<tonic::Response<super::TreatyPorts>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/treaty_proto.InfoService/PortsAvailable",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.InfoService", "PortsAvailable"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Notification that a Participant has accepted a contract.
+        pub async fn accept_contract(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ParticipantAcceptsContractRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::ParticipantAcceptsContractResult>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/treaty_proto.InfoService/AcceptContract",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.InfoService", "AcceptContract"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Attempts to see if the supplied token is valid
+        pub async fn try_auth_web_token(
+            &mut self,
+            request: impl tonic::IntoRequest<super::AuthRequestWebToken>,
+        ) -> std::result::Result<tonic::Response<super::TryAuthResult>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/treaty_proto.InfoService/TryAuthWebToken",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.InfoService", "TryAuthWebToken"));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Requests Treaty to generate a Json Web Token for the credentials provided.
+        /// Note: This call is the same as the one on the User service.
+        pub async fn auth_for_token(
+            &mut self,
+            request: impl tonic::IntoRequest<super::AuthRequestBasic>,
+        ) -> std::result::Result<tonic::Response<super::TokenReply>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/treaty_proto.InfoService/AuthForToken",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("treaty_proto.InfoService", "AuthForToken"));
+            self.inner.unary(req, path, codec).await
         }
     }
 }
@@ -3657,23 +4123,37 @@ pub mod user_service_server {
         async fn is_online(
             &self,
             request: tonic::Request<super::TestRequest>,
-        ) -> Result<tonic::Response<super::TestReply>, tonic::Status>;
+        ) -> std::result::Result<tonic::Response<super::TestReply>, tonic::Status>;
         /// Creates a database.
         /// ℹ️ This will return an error if the database already exists.
         async fn create_user_database(
             &self,
             request: tonic::Request<super::CreateUserDatabaseRequest>,
-        ) -> Result<tonic::Response<super::CreateUserDatabaseReply>, tonic::Status>;
-        /// Deletes a database.
+        ) -> std::result::Result<
+            tonic::Response<super::CreateUserDatabaseReply>,
+            tonic::Status,
+        >;
+        /// Deletes a database in a cleanup oriented manner, cleaning up references, etc.
         async fn delete_user_database(
             &self,
             request: tonic::Request<super::DeleteUserDatabaseRequest>,
-        ) -> Result<tonic::Response<super::DeleteUserDatabaseReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::DeleteUserDatabaseReply>,
+            tonic::Status,
+        >;
+        /// Deletes the database off of disk or drops the database forcefully, without removing references. This can cause un-intended consequences.
+        async fn delete_user_database_destructively(
+            &self,
+            request: tonic::Request<super::DeleteUserDatabaseRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::DeleteUserDatabaseReply>,
+            tonic::Status,
+        >;
         /// Instructs Treaty to create needed meta-data tables.
         async fn enable_coooperative_features(
             &self,
             request: tonic::Request<super::EnableCoooperativeFeaturesRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::EnableCoooperativeFeaturesReply>,
             tonic::Status,
         >;
@@ -3681,96 +4161,144 @@ pub mod user_service_server {
         async fn execute_read_at_host(
             &self,
             request: tonic::Request<super::ExecuteReadRequest>,
-        ) -> Result<tonic::Response<super::ExecuteReadReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::ExecuteReadReply>,
+            tonic::Status,
+        >;
         /// Executes the specified INSERT/UPDATE/DELETE SQL statement against a Host database.
         async fn execute_write_at_host(
             &self,
             request: tonic::Request<super::ExecuteWriteRequest>,
-        ) -> Result<tonic::Response<super::ExecuteWriteReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::ExecuteWriteReply>,
+            tonic::Status,
+        >;
         /// Executes the specified INSERT/UPDATE/DELETE SQL statement at the Participant and saves the meta-data at the Host.
         async fn execute_cooperative_write_at_host(
             &self,
             request: tonic::Request<super::ExecuteCooperativeWriteRequest>,
-        ) -> Result<tonic::Response<super::ExecuteCooperativeWriteReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::ExecuteCooperativeWriteReply>,
+            tonic::Status,
+        >;
         /// Executes the specified SELECT SQL query against a Partial database.
         async fn execute_read_at_participant(
             &self,
             request: tonic::Request<super::ExecuteReadRequest>,
-        ) -> Result<tonic::Response<super::ExecuteReadReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::ExecuteReadReply>,
+            tonic::Status,
+        >;
         /// Executes the specified INSERT/UPDATE/DELETE SQL statment against a Partial database.
         async fn execute_write_at_participant(
             &self,
             request: tonic::Request<super::ExecuteWriteRequest>,
-        ) -> Result<tonic::Response<super::ExecuteWriteReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::ExecuteWriteReply>,
+            tonic::Status,
+        >;
         /// Checks if the specified table exists in the specified database.
         async fn has_table(
             &self,
             request: tonic::Request<super::HasTableRequest>,
-        ) -> Result<tonic::Response<super::HasTableReply>, tonic::Status>;
+        ) -> std::result::Result<tonic::Response<super::HasTableReply>, tonic::Status>;
         /// Sets the Logical Storage Policy for the specified table in the specified database.
         async fn set_logical_storage_policy(
             &self,
             request: tonic::Request<super::SetLogicalStoragePolicyRequest>,
-        ) -> Result<tonic::Response<super::SetLogicalStoragePolicyReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::SetLogicalStoragePolicyReply>,
+            tonic::Status,
+        >;
         /// Gets the Logical Storage Policy for the specified table in the specified database.
         async fn get_logical_storage_policy(
             &self,
             request: tonic::Request<super::GetLogicalStoragePolicyRequest>,
-        ) -> Result<tonic::Response<super::GetLogicalStoragePolicyReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::GetLogicalStoragePolicyReply>,
+            tonic::Status,
+        >;
         /// Generates a database contract for the specified database.
         /// ℹ️ INFORMATION: For this to work, you must set a Logical Storage Policy ahead of time on all database tables.
         /// See the manual for more information.
         async fn generate_contract(
             &self,
             request: tonic::Request<super::GenerateContractRequest>,
-        ) -> Result<tonic::Response<super::GenerateContractReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::GenerateContractReply>,
+            tonic::Status,
+        >;
         /// Adds a participant with the specified attributes to the specified database.
         async fn add_participant(
             &self,
             request: tonic::Request<super::AddParticipantRequest>,
-        ) -> Result<tonic::Response<super::AddParticipantReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::AddParticipantReply>,
+            tonic::Status,
+        >;
         /// Sends a copy of the active database contract to the specified Participant.
         async fn send_participant_contract(
             &self,
             request: tonic::Request<super::SendParticipantContractRequest>,
-        ) -> Result<tonic::Response<super::SendParticipantContractReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::SendParticipantContractReply>,
+            tonic::Status,
+        >;
         /// Gets a list of pending contracts at our Treaty instance.
         async fn review_pending_contracts(
             &self,
-            request: tonic::Request<super::ViewPendingContractsRequest>,
-        ) -> Result<tonic::Response<super::ViewPendingContractsReply>, tonic::Status>;
+            request: tonic::Request<()>,
+        ) -> std::result::Result<
+            tonic::Response<super::ViewPendingContractsReply>,
+            tonic::Status,
+        >;
         /// Accepts the specified database contract. This creates the needed partial database and supporting database structures.
         async fn accept_pending_contract(
             &self,
             request: tonic::Request<super::AcceptPendingContractRequest>,
-        ) -> Result<tonic::Response<super::AcceptPendingContractReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::AcceptPendingContractReply>,
+            tonic::Status,
+        >;
         /// Rejects the specified database contract. This informs the Host that we do not agree to cooperate.
         async fn reject_pending_contract(
             &self,
             request: tonic::Request<super::RejectPendingContractRequest>,
-        ) -> Result<tonic::Response<super::RejectPendingContractReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::RejectPendingContractReply>,
+            tonic::Status,
+        >;
         /// Generates our host info with the specified host name.
         /// ❗ WARNING: Calling this may overwrite any existing authentication token you have
         /// used to identify your Treaty instance to others. See the manual for more information.
         async fn generate_host_info(
             &self,
             request: tonic::Request<super::GenerateHostInfoRequest>,
-        ) -> Result<tonic::Response<super::GenerateHostInfoReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::GenerateHostInfoReply>,
+            tonic::Status,
+        >;
         /// Change the status for the specified Host. This configures if a Host is allowed to talk to our Treaty instance.
         async fn change_host_status(
             &self,
             request: tonic::Request<super::ChangeHostStatusRequest>,
-        ) -> Result<tonic::Response<super::ChangeHostStatusReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::ChangeHostStatusReply>,
+            tonic::Status,
+        >;
         /// Attempt authentication at the specified host.
         async fn try_auth_at_participant(
             &self,
             request: tonic::Request<super::TryAuthAtParticipantRequest>,
-        ) -> Result<tonic::Response<super::TryAuthAtPartipantReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::TryAuthAtPartipantReply>,
+            tonic::Status,
+        >;
         /// Changes the UpdatesFromHost behavior.
         async fn change_updates_from_host_behavior(
             &self,
             request: tonic::Request<super::ChangeUpdatesFromHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::ChangesUpdatesFromHostBehaviorReply>,
             tonic::Status,
         >;
@@ -3778,7 +4306,7 @@ pub mod user_service_server {
         async fn change_deletes_from_host_behavior(
             &self,
             request: tonic::Request<super::ChangeDeletesFromHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::ChangeDeletesFromHostBehaviorReply>,
             tonic::Status,
         >;
@@ -3786,7 +4314,7 @@ pub mod user_service_server {
         async fn change_updates_to_host_behavior(
             &self,
             request: tonic::Request<super::ChangeUpdatesToHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::ChangeUpdatesToHostBehaviorReply>,
             tonic::Status,
         >;
@@ -3794,7 +4322,7 @@ pub mod user_service_server {
         async fn change_deletes_to_host_behavior(
             &self,
             request: tonic::Request<super::ChangeDeletesToHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::ChangeDeletesToHostBehaviorReply>,
             tonic::Status,
         >;
@@ -3802,77 +4330,107 @@ pub mod user_service_server {
         async fn get_data_hash_at_host(
             &self,
             request: tonic::Request<super::GetDataHashRequest>,
-        ) -> Result<tonic::Response<super::GetDataHashReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::GetDataHashReply>,
+            tonic::Status,
+        >;
         /// Gets the data hash at the specified Partial database for the specified row.
         async fn get_data_hash_at_participant(
             &self,
             request: tonic::Request<super::GetDataHashRequest>,
-        ) -> Result<tonic::Response<super::GetDataHashReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::GetDataHashReply>,
+            tonic::Status,
+        >;
         /// Gets the Row ID at the specified Partial database for the specified WHERE clause.
         async fn read_row_id_at_participant(
             &self,
             request: tonic::Request<super::GetReadRowIdsRequest>,
-        ) -> Result<tonic::Response<super::GetReadRowIdsReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::GetReadRowIdsReply>,
+            tonic::Status,
+        >;
         /// Gets the status of our Log table at the Partial database.
         async fn get_data_log_table_status_at_participant(
             &self,
             request: tonic::Request<super::GetDataLogTableStatusRequest>,
-        ) -> Result<tonic::Response<super::GetDataLogTableStatusReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::GetDataLogTableStatusReply>,
+            tonic::Status,
+        >;
         /// Sets the status of our Log table at the Partial database.
         async fn set_data_log_table_status_at_participant(
             &self,
             request: tonic::Request<super::SetDataLogTableStatusRequest>,
-        ) -> Result<tonic::Response<super::SetDataLogTableStatusReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::SetDataLogTableStatusReply>,
+            tonic::Status,
+        >;
         /// Gets a list of pending actions at the Partial database.
         async fn get_pending_actions_at_participant(
             &self,
             request: tonic::Request<super::GetPendingActionsRequest>,
-        ) -> Result<tonic::Response<super::GetPendingActionsReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::GetPendingActionsReply>,
+            tonic::Status,
+        >;
         /// Accepts the pending database action at the Partial database.
         async fn accept_pending_action_at_participant(
             &self,
             request: tonic::Request<super::AcceptPendingActionRequest>,
-        ) -> Result<tonic::Response<super::AcceptPendingActionReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::AcceptPendingActionReply>,
+            tonic::Status,
+        >;
         /// Gets a list of databases at our Treaty instance.
         async fn get_databases(
             &self,
-            request: tonic::Request<super::GetDatabasesRequest>,
-        ) -> Result<tonic::Response<super::GetDatabasesReply>, tonic::Status>;
+            request: tonic::Request<()>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetDatabasesReply>,
+            tonic::Status,
+        >;
         /// Gets a list of Participants at our Treaty instance.
         async fn get_participants(
             &self,
             request: tonic::Request<super::GetParticipantsRequest>,
-        ) -> Result<tonic::Response<super::GetParticipantsReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::GetParticipantsReply>,
+            tonic::Status,
+        >;
         /// Gets the active database contract for the specified database.
         async fn get_active_contract(
             &self,
             request: tonic::Request<super::GetActiveContractRequest>,
-        ) -> Result<tonic::Response<super::GetActiveContractReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::GetActiveContractReply>,
+            tonic::Status,
+        >;
         /// Requests Treaty to generate a Json Web Token for the credentials provided.
         async fn auth_for_token(
             &self,
-            request: tonic::Request<super::AuthRequest>,
-        ) -> Result<tonic::Response<super::TokenReply>, tonic::Status>;
+            request: tonic::Request<super::AuthRequestBasic>,
+        ) -> std::result::Result<tonic::Response<super::TokenReply>, tonic::Status>;
         /// Requests Treaty to revoke the Json Web Token for the credentials provided.
         async fn revoke_token(
             &self,
-            request: tonic::Request<super::AuthRequest>,
-        ) -> Result<tonic::Response<super::RevokeReply>, tonic::Status>;
+            request: tonic::Request<super::AuthRequestWebToken>,
+        ) -> std::result::Result<tonic::Response<super::RevokeReply>, tonic::Status>;
         /// Gets our Host Information.
         async fn get_host_info(
             &self,
-            request: tonic::Request<super::AuthRequest>,
-        ) -> Result<tonic::Response<super::HostInfoReply>, tonic::Status>;
+            request: tonic::Request<()>,
+        ) -> std::result::Result<tonic::Response<super::HostInfoReply>, tonic::Status>;
         /// Gets the versions of Treaty assemblies.
         async fn get_versions(
             &self,
-            request: tonic::Request<super::AuthRequest>,
-        ) -> Result<tonic::Response<super::VersionReply>, tonic::Status>;
+            request: tonic::Request<()>,
+        ) -> std::result::Result<tonic::Response<super::VersionReply>, tonic::Status>;
         /// Gets the current configured UpdatesFromHostBehavior.
         async fn get_updates_from_host_behavior(
             &self,
             request: tonic::Request<super::GetUpdatesFromHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::GetUpdatesFromHostBehaviorReply>,
             tonic::Status,
         >;
@@ -3880,7 +4438,7 @@ pub mod user_service_server {
         async fn get_updates_to_host_behavior(
             &self,
             request: tonic::Request<super::GetUpdatesToHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::GetUpdatesToHostBehaviorReply>,
             tonic::Status,
         >;
@@ -3888,7 +4446,7 @@ pub mod user_service_server {
         async fn get_deletes_from_host_behavior(
             &self,
             request: tonic::Request<super::GetDeletesFromHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::GetDeletesFromHostBehaviorReply>,
             tonic::Status,
         >;
@@ -3896,34 +4454,54 @@ pub mod user_service_server {
         async fn get_deletes_to_host_behavior(
             &self,
             request: tonic::Request<super::GetDeletesToHostBehaviorRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::GetDeletesToHostBehaviorReply>,
             tonic::Status,
         >;
         /// Gets a list of Hosts that we are cooperating with. These are all the Treaty instances that we have accepted contracts from.
         async fn get_cooperative_hosts(
             &self,
-            request: tonic::Request<super::GetCooperativeHostsRequest>,
-        ) -> Result<tonic::Response<super::GetCooperativeHostsReply>, tonic::Status>;
+            request: tonic::Request<()>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetCooperativeHostsReply>,
+            tonic::Status,
+        >;
         /// Gets the current configured settings from the Settings.toml file.
         async fn get_settings(
             &self,
-            request: tonic::Request<super::GetSettingsRequest>,
-        ) -> Result<tonic::Response<super::GetSettingsReply>, tonic::Status>;
+            request: tonic::Request<()>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetSettingsReply>,
+            tonic::Status,
+        >;
         /// Gets the last X number of log entries.
         async fn get_logs_by_last_number(
             &self,
             request: tonic::Request<super::GetLogsByLastNumberRequest>,
-        ) -> Result<tonic::Response<super::GetLogsByLastNumberReply>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::GetLogsByLastNumberReply>,
+            tonic::Status,
+        >;
+        /// Gets the backing database technology used at this Treaty instance.
+        async fn get_backing_database_config(
+            &self,
+            request: tonic::Request<()>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetBackingDatabaseConfigReply>,
+            tonic::Status,
+        >;
     }
     /// *
     /// A service by which application developers can talk to a Treaty instance.
     /// Generally defaults to port 50051. See the "Settings.toml" file for configuration.
+    /// 🔐 These calls require authentication.
     #[derive(Debug)]
     pub struct UserServiceServer<T: UserService> {
         inner: _Inner<T>,
         accept_compression_encodings: EnabledCompressionEncodings,
         send_compression_encodings: EnabledCompressionEncodings,
+        max_decoding_message_size: Option<usize>,
+        max_encoding_message_size: Option<usize>,
     }
     struct _Inner<T>(Arc<T>);
     impl<T: UserService> UserServiceServer<T> {
@@ -3936,6 +4514,8 @@ pub mod user_service_server {
                 inner,
                 accept_compression_encodings: Default::default(),
                 send_compression_encodings: Default::default(),
+                max_decoding_message_size: None,
+                max_encoding_message_size: None,
             }
         }
         pub fn with_interceptor<F>(
@@ -3959,6 +4539,22 @@ pub mod user_service_server {
             self.send_compression_encodings.enable(encoding);
             self
         }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.max_decoding_message_size = Some(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.max_encoding_message_size = Some(limit);
+            self
+        }
     }
     impl<T, B> tonic::codegen::Service<http::Request<B>> for UserServiceServer<T>
     where
@@ -3972,7 +4568,7 @@ pub mod user_service_server {
         fn poll_ready(
             &mut self,
             _cx: &mut Context<'_>,
-        ) -> Poll<Result<(), Self::Error>> {
+        ) -> Poll<std::result::Result<(), Self::Error>> {
             Poll::Ready(Ok(()))
         }
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
@@ -3992,13 +4588,17 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::TestRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move { (*inner).is_online(request).await };
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::is_online(&inner, request).await
+                            };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4008,6 +4608,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4030,15 +4634,18 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::CreateUserDatabaseRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).create_user_database(request).await
+                                <T as UserService>::create_user_database(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4048,6 +4655,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4070,15 +4681,18 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::DeleteUserDatabaseRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).delete_user_database(request).await
+                                <T as UserService>::delete_user_database(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4088,6 +4702,62 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/treaty_proto.UserService/DeleteUserDatabaseDestructively" => {
+                    #[allow(non_camel_case_types)]
+                    struct DeleteUserDatabaseDestructivelySvc<T: UserService>(
+                        pub Arc<T>,
+                    );
+                    impl<
+                        T: UserService,
+                    > tonic::server::UnaryService<super::DeleteUserDatabaseRequest>
+                    for DeleteUserDatabaseDestructivelySvc<T> {
+                        type Response = super::DeleteUserDatabaseReply;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::DeleteUserDatabaseRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::delete_user_database_destructively(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = DeleteUserDatabaseDestructivelySvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4113,15 +4783,21 @@ pub mod user_service_server {
                                 super::EnableCoooperativeFeaturesRequest,
                             >,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).enable_coooperative_features(request).await
+                                <T as UserService>::enable_coooperative_features(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4131,6 +4807,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4153,15 +4833,18 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::ExecuteReadRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).execute_read_at_host(request).await
+                                <T as UserService>::execute_read_at_host(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4171,6 +4854,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4193,15 +4880,18 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::ExecuteWriteRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).execute_write_at_host(request).await
+                                <T as UserService>::execute_write_at_host(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4211,6 +4901,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4235,15 +4929,21 @@ pub mod user_service_server {
                                 super::ExecuteCooperativeWriteRequest,
                             >,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).execute_cooperative_write_at_host(request).await
+                                <T as UserService>::execute_cooperative_write_at_host(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4253,6 +4953,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4275,15 +4979,21 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::ExecuteReadRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).execute_read_at_participant(request).await
+                                <T as UserService>::execute_read_at_participant(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4293,6 +5003,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4315,15 +5029,21 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::ExecuteWriteRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).execute_write_at_participant(request).await
+                                <T as UserService>::execute_write_at_participant(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4333,6 +5053,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4355,13 +5079,17 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::HasTableRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move { (*inner).has_table(request).await };
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::has_table(&inner, request).await
+                            };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4371,6 +5099,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4395,15 +5127,21 @@ pub mod user_service_server {
                                 super::SetLogicalStoragePolicyRequest,
                             >,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).set_logical_storage_policy(request).await
+                                <T as UserService>::set_logical_storage_policy(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4413,6 +5151,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4437,15 +5179,21 @@ pub mod user_service_server {
                                 super::GetLogicalStoragePolicyRequest,
                             >,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_logical_storage_policy(request).await
+                                <T as UserService>::get_logical_storage_policy(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4455,6 +5203,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4477,15 +5229,17 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::GenerateContractRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).generate_contract(request).await
+                                <T as UserService>::generate_contract(&inner, request).await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4495,6 +5249,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4517,15 +5275,17 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::AddParticipantRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).add_participant(request).await
+                                <T as UserService>::add_participant(&inner, request).await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4535,6 +5295,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4559,15 +5323,21 @@ pub mod user_service_server {
                                 super::SendParticipantContractRequest,
                             >,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).send_participant_contract(request).await
+                                <T as UserService>::send_participant_contract(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4577,6 +5347,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4586,28 +5360,29 @@ pub mod user_service_server {
                 "/treaty_proto.UserService/ReviewPendingContracts" => {
                     #[allow(non_camel_case_types)]
                     struct ReviewPendingContractsSvc<T: UserService>(pub Arc<T>);
-                    impl<
-                        T: UserService,
-                    > tonic::server::UnaryService<super::ViewPendingContractsRequest>
+                    impl<T: UserService> tonic::server::UnaryService<()>
                     for ReviewPendingContractsSvc<T> {
                         type Response = super::ViewPendingContractsReply;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::ViewPendingContractsRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
+                        fn call(&mut self, request: tonic::Request<()>) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).review_pending_contracts(request).await
+                                <T as UserService>::review_pending_contracts(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4617,6 +5392,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4639,15 +5418,18 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::AcceptPendingContractRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).accept_pending_contract(request).await
+                                <T as UserService>::accept_pending_contract(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4657,6 +5439,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4679,15 +5465,18 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::RejectPendingContractRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).reject_pending_contract(request).await
+                                <T as UserService>::reject_pending_contract(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4697,6 +5486,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4719,15 +5512,18 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::GenerateHostInfoRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).generate_host_info(request).await
+                                <T as UserService>::generate_host_info(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4737,6 +5533,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4759,15 +5559,18 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::ChangeHostStatusRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).change_host_status(request).await
+                                <T as UserService>::change_host_status(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4777,6 +5580,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4799,15 +5606,18 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::TryAuthAtParticipantRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).try_auth_at_participant(request).await
+                                <T as UserService>::try_auth_at_participant(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4817,6 +5627,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4842,15 +5656,21 @@ pub mod user_service_server {
                                 super::ChangeUpdatesFromHostBehaviorRequest,
                             >,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).change_updates_from_host_behavior(request).await
+                                <T as UserService>::change_updates_from_host_behavior(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4860,6 +5680,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4885,15 +5709,21 @@ pub mod user_service_server {
                                 super::ChangeDeletesFromHostBehaviorRequest,
                             >,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).change_deletes_from_host_behavior(request).await
+                                <T as UserService>::change_deletes_from_host_behavior(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4903,6 +5733,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4928,15 +5762,21 @@ pub mod user_service_server {
                                 super::ChangeUpdatesToHostBehaviorRequest,
                             >,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).change_updates_to_host_behavior(request).await
+                                <T as UserService>::change_updates_to_host_behavior(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4946,6 +5786,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -4971,15 +5815,21 @@ pub mod user_service_server {
                                 super::ChangeDeletesToHostBehaviorRequest,
                             >,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).change_deletes_to_host_behavior(request).await
+                                <T as UserService>::change_deletes_to_host_behavior(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -4989,6 +5839,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5011,15 +5865,18 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::GetDataHashRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_data_hash_at_host(request).await
+                                <T as UserService>::get_data_hash_at_host(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5029,6 +5886,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5051,15 +5912,21 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::GetDataHashRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_data_hash_at_participant(request).await
+                                <T as UserService>::get_data_hash_at_participant(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5069,6 +5936,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5091,15 +5962,21 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::GetReadRowIdsRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).read_row_id_at_participant(request).await
+                                <T as UserService>::read_row_id_at_participant(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5109,6 +5986,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5133,10 +6014,12 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::GetDataLogTableStatusRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner)
-                                    .get_data_log_table_status_at_participant(request)
+                                <T as UserService>::get_data_log_table_status_at_participant(
+                                        &inner,
+                                        request,
+                                    )
                                     .await
                             };
                             Box::pin(fut)
@@ -5144,6 +6027,8 @@ pub mod user_service_server {
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5153,6 +6038,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5177,10 +6066,12 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::SetDataLogTableStatusRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner)
-                                    .set_data_log_table_status_at_participant(request)
+                                <T as UserService>::set_data_log_table_status_at_participant(
+                                        &inner,
+                                        request,
+                                    )
                                     .await
                             };
                             Box::pin(fut)
@@ -5188,6 +6079,8 @@ pub mod user_service_server {
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5197,6 +6090,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5219,15 +6116,21 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::GetPendingActionsRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_pending_actions_at_participant(request).await
+                                <T as UserService>::get_pending_actions_at_participant(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5237,6 +6140,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5261,15 +6168,21 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::AcceptPendingActionRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).accept_pending_action_at_participant(request).await
+                                <T as UserService>::accept_pending_action_at_participant(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5279,6 +6192,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5288,28 +6205,25 @@ pub mod user_service_server {
                 "/treaty_proto.UserService/GetDatabases" => {
                     #[allow(non_camel_case_types)]
                     struct GetDatabasesSvc<T: UserService>(pub Arc<T>);
-                    impl<
-                        T: UserService,
-                    > tonic::server::UnaryService<super::GetDatabasesRequest>
+                    impl<T: UserService> tonic::server::UnaryService<()>
                     for GetDatabasesSvc<T> {
                         type Response = super::GetDatabasesReply;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetDatabasesRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
+                        fn call(&mut self, request: tonic::Request<()>) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_databases(request).await
+                                <T as UserService>::get_databases(&inner, request).await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5319,6 +6233,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5341,15 +6259,17 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::GetParticipantsRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_participants(request).await
+                                <T as UserService>::get_participants(&inner, request).await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5359,6 +6279,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5381,15 +6305,18 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::GetActiveContractRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_active_contract(request).await
+                                <T as UserService>::get_active_contract(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5399,6 +6326,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5408,7 +6339,9 @@ pub mod user_service_server {
                 "/treaty_proto.UserService/AuthForToken" => {
                     #[allow(non_camel_case_types)]
                     struct AuthForTokenSvc<T: UserService>(pub Arc<T>);
-                    impl<T: UserService> tonic::server::UnaryService<super::AuthRequest>
+                    impl<
+                        T: UserService,
+                    > tonic::server::UnaryService<super::AuthRequestBasic>
                     for AuthForTokenSvc<T> {
                         type Response = super::TokenReply;
                         type Future = BoxFuture<
@@ -5417,17 +6350,19 @@ pub mod user_service_server {
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::AuthRequest>,
+                            request: tonic::Request<super::AuthRequestBasic>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).auth_for_token(request).await
+                                <T as UserService>::auth_for_token(&inner, request).await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5437,6 +6372,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5446,7 +6385,9 @@ pub mod user_service_server {
                 "/treaty_proto.UserService/RevokeToken" => {
                     #[allow(non_camel_case_types)]
                     struct RevokeTokenSvc<T: UserService>(pub Arc<T>);
-                    impl<T: UserService> tonic::server::UnaryService<super::AuthRequest>
+                    impl<
+                        T: UserService,
+                    > tonic::server::UnaryService<super::AuthRequestWebToken>
                     for RevokeTokenSvc<T> {
                         type Response = super::RevokeReply;
                         type Future = BoxFuture<
@@ -5455,17 +6396,19 @@ pub mod user_service_server {
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::AuthRequest>,
+                            request: tonic::Request<super::AuthRequestWebToken>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).revoke_token(request).await
+                                <T as UserService>::revoke_token(&inner, request).await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5475,6 +6418,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5484,26 +6431,25 @@ pub mod user_service_server {
                 "/treaty_proto.UserService/GetHostInfo" => {
                     #[allow(non_camel_case_types)]
                     struct GetHostInfoSvc<T: UserService>(pub Arc<T>);
-                    impl<T: UserService> tonic::server::UnaryService<super::AuthRequest>
+                    impl<T: UserService> tonic::server::UnaryService<()>
                     for GetHostInfoSvc<T> {
                         type Response = super::HostInfoReply;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::AuthRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
+                        fn call(&mut self, request: tonic::Request<()>) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_host_info(request).await
+                                <T as UserService>::get_host_info(&inner, request).await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5513,6 +6459,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5522,26 +6472,25 @@ pub mod user_service_server {
                 "/treaty_proto.UserService/GetVersions" => {
                     #[allow(non_camel_case_types)]
                     struct GetVersionsSvc<T: UserService>(pub Arc<T>);
-                    impl<T: UserService> tonic::server::UnaryService<super::AuthRequest>
+                    impl<T: UserService> tonic::server::UnaryService<()>
                     for GetVersionsSvc<T> {
                         type Response = super::VersionReply;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::AuthRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
+                        fn call(&mut self, request: tonic::Request<()>) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_versions(request).await
+                                <T as UserService>::get_versions(&inner, request).await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5551,6 +6500,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5576,15 +6529,21 @@ pub mod user_service_server {
                                 super::GetUpdatesFromHostBehaviorRequest,
                             >,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_updates_from_host_behavior(request).await
+                                <T as UserService>::get_updates_from_host_behavior(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5594,6 +6553,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5618,15 +6581,21 @@ pub mod user_service_server {
                                 super::GetUpdatesToHostBehaviorRequest,
                             >,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_updates_to_host_behavior(request).await
+                                <T as UserService>::get_updates_to_host_behavior(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5636,6 +6605,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5661,15 +6634,21 @@ pub mod user_service_server {
                                 super::GetDeletesFromHostBehaviorRequest,
                             >,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_deletes_from_host_behavior(request).await
+                                <T as UserService>::get_deletes_from_host_behavior(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5679,6 +6658,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5703,15 +6686,21 @@ pub mod user_service_server {
                                 super::GetDeletesToHostBehaviorRequest,
                             >,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_deletes_to_host_behavior(request).await
+                                <T as UserService>::get_deletes_to_host_behavior(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5721,6 +6710,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5730,28 +6723,26 @@ pub mod user_service_server {
                 "/treaty_proto.UserService/GetCooperativeHosts" => {
                     #[allow(non_camel_case_types)]
                     struct GetCooperativeHostsSvc<T: UserService>(pub Arc<T>);
-                    impl<
-                        T: UserService,
-                    > tonic::server::UnaryService<super::GetCooperativeHostsRequest>
+                    impl<T: UserService> tonic::server::UnaryService<()>
                     for GetCooperativeHostsSvc<T> {
                         type Response = super::GetCooperativeHostsReply;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetCooperativeHostsRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
+                        fn call(&mut self, request: tonic::Request<()>) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_cooperative_hosts(request).await
+                                <T as UserService>::get_cooperative_hosts(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5761,6 +6752,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5770,28 +6765,25 @@ pub mod user_service_server {
                 "/treaty_proto.UserService/GetSettings" => {
                     #[allow(non_camel_case_types)]
                     struct GetSettingsSvc<T: UserService>(pub Arc<T>);
-                    impl<
-                        T: UserService,
-                    > tonic::server::UnaryService<super::GetSettingsRequest>
+                    impl<T: UserService> tonic::server::UnaryService<()>
                     for GetSettingsSvc<T> {
                         type Response = super::GetSettingsReply;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::GetSettingsRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
+                        fn call(&mut self, request: tonic::Request<()>) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_settings(request).await
+                                <T as UserService>::get_settings(&inner, request).await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5801,6 +6793,10 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5823,15 +6819,18 @@ pub mod user_service_server {
                             &mut self,
                             request: tonic::Request<super::GetLogsByLastNumberRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_logs_by_last_number(request).await
+                                <T as UserService>::get_logs_by_last_number(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -5841,6 +6840,55 @@ pub mod user_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/treaty_proto.UserService/GetBackingDatabaseConfig" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetBackingDatabaseConfigSvc<T: UserService>(pub Arc<T>);
+                    impl<T: UserService> tonic::server::UnaryService<()>
+                    for GetBackingDatabaseConfigSvc<T> {
+                        type Response = super::GetBackingDatabaseConfigReply;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(&mut self, request: tonic::Request<()>) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as UserService>::get_backing_database_config(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetBackingDatabaseConfigSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -5869,12 +6917,14 @@ pub mod user_service_server {
                 inner,
                 accept_compression_encodings: self.accept_compression_encodings,
                 send_compression_encodings: self.send_compression_encodings,
+                max_decoding_message_size: self.max_decoding_message_size,
+                max_encoding_message_size: self.max_encoding_message_size,
             }
         }
     }
     impl<T: UserService> Clone for _Inner<T> {
         fn clone(&self) -> Self {
-            Self(self.0.clone())
+            Self(Arc::clone(&self.0))
         }
     }
     impl<T: std::fmt::Debug> std::fmt::Debug for _Inner<T> {
@@ -5897,58 +6947,60 @@ pub mod data_service_server {
         async fn is_online(
             &self,
             request: tonic::Request<super::TestRequest>,
-        ) -> Result<tonic::Response<super::TestReply>, tonic::Status>;
+        ) -> std::result::Result<tonic::Response<super::TestReply>, tonic::Status>;
         /// Creates a partial database.
         async fn create_partial_database(
             &self,
             request: tonic::Request<super::CreatePartialDatabaseRequest>,
-        ) -> Result<tonic::Response<super::CreatePartialDatabaseResult>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::CreatePartialDatabaseResult>,
+            tonic::Status,
+        >;
         /// Creates a table in a partial database.
         async fn create_table_in_database(
             &self,
             request: tonic::Request<super::CreateTableRequest>,
-        ) -> Result<tonic::Response<super::CreateTableResult>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::CreateTableResult>,
+            tonic::Status,
+        >;
         /// Executes the provided INSERT statement against a partial database.
         async fn insert_command_into_table(
             &self,
             request: tonic::Request<super::InsertDataRequest>,
-        ) -> Result<tonic::Response<super::InsertDataResult>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::InsertDataResult>,
+            tonic::Status,
+        >;
         /// Executes the provided UPDATE statement against a partial database.
         async fn update_command_into_table(
             &self,
             request: tonic::Request<super::UpdateDataRequest>,
-        ) -> Result<tonic::Response<super::UpdateDataResult>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::UpdateDataResult>,
+            tonic::Status,
+        >;
         /// Executes the provided DELETE statement againts a partial database.
         async fn delete_command_into_table(
             &self,
             request: tonic::Request<super::DeleteDataRequest>,
-        ) -> Result<tonic::Response<super::DeleteDataResult>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::DeleteDataResult>,
+            tonic::Status,
+        >;
         /// Requests a specific row from a partial database.
         async fn get_row_from_partial_database(
             &self,
             request: tonic::Request<super::GetRowFromPartialDatabaseRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::GetRowFromPartialDatabaseResult>,
-            tonic::Status,
-        >;
-        /// Request to save a Contract; usually to be later Accepted or Rejected.
-        async fn save_contract(
-            &self,
-            request: tonic::Request<super::SaveContractRequest>,
-        ) -> Result<tonic::Response<super::SaveContractResult>, tonic::Status>;
-        /// Notification that a Participant has accepted a contract.
-        async fn accept_contract(
-            &self,
-            request: tonic::Request<super::ParticipantAcceptsContractRequest>,
-        ) -> Result<
-            tonic::Response<super::ParticipantAcceptsContractResult>,
             tonic::Status,
         >;
         /// Notification that a data hash has changed at a Participant.
         async fn update_row_data_hash_for_host(
             &self,
             request: tonic::Request<super::UpdateRowDataHashForHostRequest>,
-        ) -> Result<
+        ) -> std::result::Result<
             tonic::Response<super::UpdateRowDataHashForHostResult>,
             tonic::Status,
         >;
@@ -5956,21 +7008,27 @@ pub mod data_service_server {
         async fn notify_host_of_removed_row(
             &self,
             request: tonic::Request<super::NotifyHostOfRemovedRowRequest>,
-        ) -> Result<tonic::Response<super::NotifyHostOfRemovedRowResult>, tonic::Status>;
+        ) -> std::result::Result<
+            tonic::Response<super::NotifyHostOfRemovedRowResult>,
+            tonic::Status,
+        >;
         /// Check if we can authenticate at this Treaty instance.
         async fn try_auth(
             &self,
-            request: tonic::Request<super::TryAuthRequest>,
-        ) -> Result<tonic::Response<super::TryAuthResult>, tonic::Status>;
+            request: tonic::Request<()>,
+        ) -> std::result::Result<tonic::Response<super::TryAuthResult>, tonic::Status>;
     }
     /// *
     /// A service that a Treaty instance can talk to other Treaty instances.
     /// Generally defaults to port 50052. See the "Settings.toml" file for configuration.
+    /// 🔐 These calls require authentication.
     #[derive(Debug)]
     pub struct DataServiceServer<T: DataService> {
         inner: _Inner<T>,
         accept_compression_encodings: EnabledCompressionEncodings,
         send_compression_encodings: EnabledCompressionEncodings,
+        max_decoding_message_size: Option<usize>,
+        max_encoding_message_size: Option<usize>,
     }
     struct _Inner<T>(Arc<T>);
     impl<T: DataService> DataServiceServer<T> {
@@ -5983,6 +7041,8 @@ pub mod data_service_server {
                 inner,
                 accept_compression_encodings: Default::default(),
                 send_compression_encodings: Default::default(),
+                max_decoding_message_size: None,
+                max_encoding_message_size: None,
             }
         }
         pub fn with_interceptor<F>(
@@ -6006,6 +7066,22 @@ pub mod data_service_server {
             self.send_compression_encodings.enable(encoding);
             self
         }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.max_decoding_message_size = Some(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.max_encoding_message_size = Some(limit);
+            self
+        }
     }
     impl<T, B> tonic::codegen::Service<http::Request<B>> for DataServiceServer<T>
     where
@@ -6019,7 +7095,7 @@ pub mod data_service_server {
         fn poll_ready(
             &mut self,
             _cx: &mut Context<'_>,
-        ) -> Poll<Result<(), Self::Error>> {
+        ) -> Poll<std::result::Result<(), Self::Error>> {
             Poll::Ready(Ok(()))
         }
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
@@ -6039,13 +7115,17 @@ pub mod data_service_server {
                             &mut self,
                             request: tonic::Request<super::TestRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move { (*inner).is_online(request).await };
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as DataService>::is_online(&inner, request).await
+                            };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -6055,6 +7135,10 @@ pub mod data_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -6077,15 +7161,18 @@ pub mod data_service_server {
                             &mut self,
                             request: tonic::Request<super::CreatePartialDatabaseRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).create_partial_database(request).await
+                                <T as DataService>::create_partial_database(&inner, request)
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -6095,6 +7182,10 @@ pub mod data_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -6117,15 +7208,21 @@ pub mod data_service_server {
                             &mut self,
                             request: tonic::Request<super::CreateTableRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).create_table_in_database(request).await
+                                <T as DataService>::create_table_in_database(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -6135,6 +7232,10 @@ pub mod data_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -6157,15 +7258,21 @@ pub mod data_service_server {
                             &mut self,
                             request: tonic::Request<super::InsertDataRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).insert_command_into_table(request).await
+                                <T as DataService>::insert_command_into_table(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -6175,6 +7282,10 @@ pub mod data_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -6197,15 +7308,21 @@ pub mod data_service_server {
                             &mut self,
                             request: tonic::Request<super::UpdateDataRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).update_command_into_table(request).await
+                                <T as DataService>::update_command_into_table(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -6215,6 +7332,10 @@ pub mod data_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -6237,15 +7358,21 @@ pub mod data_service_server {
                             &mut self,
                             request: tonic::Request<super::DeleteDataRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).delete_command_into_table(request).await
+                                <T as DataService>::delete_command_into_table(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -6255,6 +7382,10 @@ pub mod data_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -6280,15 +7411,21 @@ pub mod data_service_server {
                                 super::GetRowFromPartialDatabaseRequest,
                             >,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).get_row_from_partial_database(request).await
+                                <T as DataService>::get_row_from_partial_database(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -6298,89 +7435,10 @@ pub mod data_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/treaty_proto.DataService/SaveContract" => {
-                    #[allow(non_camel_case_types)]
-                    struct SaveContractSvc<T: DataService>(pub Arc<T>);
-                    impl<
-                        T: DataService,
-                    > tonic::server::UnaryService<super::SaveContractRequest>
-                    for SaveContractSvc<T> {
-                        type Response = super::SaveContractResult;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::SaveContractRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move {
-                                (*inner).save_contract(request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = SaveContractSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
-                            );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/treaty_proto.DataService/AcceptContract" => {
-                    #[allow(non_camel_case_types)]
-                    struct AcceptContractSvc<T: DataService>(pub Arc<T>);
-                    impl<
-                        T: DataService,
-                    > tonic::server::UnaryService<
-                        super::ParticipantAcceptsContractRequest,
-                    > for AcceptContractSvc<T> {
-                        type Response = super::ParticipantAcceptsContractResult;
-                        type Future = BoxFuture<
-                            tonic::Response<Self::Response>,
-                            tonic::Status,
-                        >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<
-                                super::ParticipantAcceptsContractRequest,
-                            >,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move {
-                                (*inner).accept_contract(request).await
-                            };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = AcceptContractSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec)
-                            .apply_compression_config(
-                                accept_compression_encodings,
-                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -6405,15 +7463,21 @@ pub mod data_service_server {
                                 super::UpdateRowDataHashForHostRequest,
                             >,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).update_row_data_hash_for_host(request).await
+                                <T as DataService>::update_row_data_hash_for_host(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -6423,6 +7487,10 @@ pub mod data_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -6445,15 +7513,21 @@ pub mod data_service_server {
                             &mut self,
                             request: tonic::Request<super::NotifyHostOfRemovedRowRequest>,
                         ) -> Self::Future {
-                            let inner = self.0.clone();
+                            let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                (*inner).notify_host_of_removed_row(request).await
+                                <T as DataService>::notify_host_of_removed_row(
+                                        &inner,
+                                        request,
+                                    )
+                                    .await
                             };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -6463,6 +7537,10 @@ pub mod data_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -6472,26 +7550,25 @@ pub mod data_service_server {
                 "/treaty_proto.DataService/TryAuth" => {
                     #[allow(non_camel_case_types)]
                     struct TryAuthSvc<T: DataService>(pub Arc<T>);
-                    impl<
-                        T: DataService,
-                    > tonic::server::UnaryService<super::TryAuthRequest>
+                    impl<T: DataService> tonic::server::UnaryService<()>
                     for TryAuthSvc<T> {
                         type Response = super::TryAuthResult;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::TryAuthRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move { (*inner).try_auth(request).await };
+                        fn call(&mut self, request: tonic::Request<()>) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as DataService>::try_auth(&inner, request).await
+                            };
                             Box::pin(fut)
                         }
                     }
                     let accept_compression_encodings = self.accept_compression_encodings;
                     let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
@@ -6501,6 +7578,10 @@ pub mod data_service_server {
                             .apply_compression_config(
                                 accept_compression_encodings,
                                 send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
                             );
                         let res = grpc.unary(method, req).await;
                         Ok(res)
@@ -6529,12 +7610,14 @@ pub mod data_service_server {
                 inner,
                 accept_compression_encodings: self.accept_compression_encodings,
                 send_compression_encodings: self.send_compression_encodings,
+                max_decoding_message_size: self.max_decoding_message_size,
+                max_encoding_message_size: self.max_encoding_message_size,
             }
         }
     }
     impl<T: DataService> Clone for _Inner<T> {
         fn clone(&self) -> Self {
-            Self(self.0.clone())
+            Self(Arc::clone(&self.0))
         }
     }
     impl<T: std::fmt::Debug> std::fmt::Debug for _Inner<T> {
@@ -6544,5 +7627,448 @@ pub mod data_service_server {
     }
     impl<T: DataService> tonic::server::NamedService for DataServiceServer<T> {
         const NAME: &'static str = "treaty_proto.DataService";
+    }
+}
+/// Generated server implementations.
+pub mod info_service_server {
+    #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
+    use tonic::codegen::*;
+    /// Generated trait containing gRPC methods that should be implemented for use with InfoServiceServer.
+    #[async_trait]
+    pub trait InfoService: Send + Sync + 'static {
+        /// Denotes if the instance is online.
+        async fn is_online(
+            &self,
+            request: tonic::Request<super::TestRequest>,
+        ) -> std::result::Result<tonic::Response<super::TestReply>, tonic::Status>;
+        /// Request to save a Contract; usually to be later Accepted or Rejected.
+        async fn save_contract(
+            &self,
+            request: tonic::Request<super::SaveContractRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::SaveContractResult>,
+            tonic::Status,
+        >;
+        /// Request to get the public available ports on this instance
+        async fn ports_available(
+            &self,
+            request: tonic::Request<()>,
+        ) -> std::result::Result<tonic::Response<super::TreatyPorts>, tonic::Status>;
+        /// Notification that a Participant has accepted a contract.
+        async fn accept_contract(
+            &self,
+            request: tonic::Request<super::ParticipantAcceptsContractRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::ParticipantAcceptsContractResult>,
+            tonic::Status,
+        >;
+        /// Attempts to see if the supplied token is valid
+        async fn try_auth_web_token(
+            &self,
+            request: tonic::Request<super::AuthRequestWebToken>,
+        ) -> std::result::Result<tonic::Response<super::TryAuthResult>, tonic::Status>;
+        /// Requests Treaty to generate a Json Web Token for the credentials provided.
+        /// Note: This call is the same as the one on the User service.
+        async fn auth_for_token(
+            &self,
+            request: tonic::Request<super::AuthRequestBasic>,
+        ) -> std::result::Result<tonic::Response<super::TokenReply>, tonic::Status>;
+    }
+    /// *
+    /// A service that can be queried for general or unauthenticated activities.
+    /// It can also provide authentication as needed.
+    /// Generally defaults to port 50059. See the "Settings.toml" file for configuration.
+    /// 🔓 These calls generally do not require authentication, unless explicitly seeking to generate an authentication token.
+    #[derive(Debug)]
+    pub struct InfoServiceServer<T: InfoService> {
+        inner: _Inner<T>,
+        accept_compression_encodings: EnabledCompressionEncodings,
+        send_compression_encodings: EnabledCompressionEncodings,
+        max_decoding_message_size: Option<usize>,
+        max_encoding_message_size: Option<usize>,
+    }
+    struct _Inner<T>(Arc<T>);
+    impl<T: InfoService> InfoServiceServer<T> {
+        pub fn new(inner: T) -> Self {
+            Self::from_arc(Arc::new(inner))
+        }
+        pub fn from_arc(inner: Arc<T>) -> Self {
+            let inner = _Inner(inner);
+            Self {
+                inner,
+                accept_compression_encodings: Default::default(),
+                send_compression_encodings: Default::default(),
+                max_decoding_message_size: None,
+                max_encoding_message_size: None,
+            }
+        }
+        pub fn with_interceptor<F>(
+            inner: T,
+            interceptor: F,
+        ) -> InterceptedService<Self, F>
+        where
+            F: tonic::service::Interceptor,
+        {
+            InterceptedService::new(Self::new(inner), interceptor)
+        }
+        /// Enable decompressing requests with the given encoding.
+        #[must_use]
+        pub fn accept_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.accept_compression_encodings.enable(encoding);
+            self
+        }
+        /// Compress responses with the given encoding, if the client supports it.
+        #[must_use]
+        pub fn send_compressed(mut self, encoding: CompressionEncoding) -> Self {
+            self.send_compression_encodings.enable(encoding);
+            self
+        }
+        /// Limits the maximum size of a decoded message.
+        ///
+        /// Default: `4MB`
+        #[must_use]
+        pub fn max_decoding_message_size(mut self, limit: usize) -> Self {
+            self.max_decoding_message_size = Some(limit);
+            self
+        }
+        /// Limits the maximum size of an encoded message.
+        ///
+        /// Default: `usize::MAX`
+        #[must_use]
+        pub fn max_encoding_message_size(mut self, limit: usize) -> Self {
+            self.max_encoding_message_size = Some(limit);
+            self
+        }
+    }
+    impl<T, B> tonic::codegen::Service<http::Request<B>> for InfoServiceServer<T>
+    where
+        T: InfoService,
+        B: Body + Send + 'static,
+        B::Error: Into<StdError> + Send + 'static,
+    {
+        type Response = http::Response<tonic::body::BoxBody>;
+        type Error = std::convert::Infallible;
+        type Future = BoxFuture<Self::Response, Self::Error>;
+        fn poll_ready(
+            &mut self,
+            _cx: &mut Context<'_>,
+        ) -> Poll<std::result::Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+        fn call(&mut self, req: http::Request<B>) -> Self::Future {
+            let inner = self.inner.clone();
+            match req.uri().path() {
+                "/treaty_proto.InfoService/IsOnline" => {
+                    #[allow(non_camel_case_types)]
+                    struct IsOnlineSvc<T: InfoService>(pub Arc<T>);
+                    impl<T: InfoService> tonic::server::UnaryService<super::TestRequest>
+                    for IsOnlineSvc<T> {
+                        type Response = super::TestReply;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::TestRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as InfoService>::is_online(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = IsOnlineSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/treaty_proto.InfoService/SaveContract" => {
+                    #[allow(non_camel_case_types)]
+                    struct SaveContractSvc<T: InfoService>(pub Arc<T>);
+                    impl<
+                        T: InfoService,
+                    > tonic::server::UnaryService<super::SaveContractRequest>
+                    for SaveContractSvc<T> {
+                        type Response = super::SaveContractResult;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::SaveContractRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as InfoService>::save_contract(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = SaveContractSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/treaty_proto.InfoService/PortsAvailable" => {
+                    #[allow(non_camel_case_types)]
+                    struct PortsAvailableSvc<T: InfoService>(pub Arc<T>);
+                    impl<T: InfoService> tonic::server::UnaryService<()>
+                    for PortsAvailableSvc<T> {
+                        type Response = super::TreatyPorts;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(&mut self, request: tonic::Request<()>) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as InfoService>::ports_available(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = PortsAvailableSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/treaty_proto.InfoService/AcceptContract" => {
+                    #[allow(non_camel_case_types)]
+                    struct AcceptContractSvc<T: InfoService>(pub Arc<T>);
+                    impl<
+                        T: InfoService,
+                    > tonic::server::UnaryService<
+                        super::ParticipantAcceptsContractRequest,
+                    > for AcceptContractSvc<T> {
+                        type Response = super::ParticipantAcceptsContractResult;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<
+                                super::ParticipantAcceptsContractRequest,
+                            >,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as InfoService>::accept_contract(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = AcceptContractSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/treaty_proto.InfoService/TryAuthWebToken" => {
+                    #[allow(non_camel_case_types)]
+                    struct TryAuthWebTokenSvc<T: InfoService>(pub Arc<T>);
+                    impl<
+                        T: InfoService,
+                    > tonic::server::UnaryService<super::AuthRequestWebToken>
+                    for TryAuthWebTokenSvc<T> {
+                        type Response = super::TryAuthResult;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::AuthRequestWebToken>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as InfoService>::try_auth_web_token(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = TryAuthWebTokenSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/treaty_proto.InfoService/AuthForToken" => {
+                    #[allow(non_camel_case_types)]
+                    struct AuthForTokenSvc<T: InfoService>(pub Arc<T>);
+                    impl<
+                        T: InfoService,
+                    > tonic::server::UnaryService<super::AuthRequestBasic>
+                    for AuthForTokenSvc<T> {
+                        type Response = super::TokenReply;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::AuthRequestBasic>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as InfoService>::auth_for_token(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = AuthForTokenSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                _ => {
+                    Box::pin(async move {
+                        Ok(
+                            http::Response::builder()
+                                .status(200)
+                                .header("grpc-status", "12")
+                                .header("content-type", "application/grpc")
+                                .body(empty_body())
+                                .unwrap(),
+                        )
+                    })
+                }
+            }
+        }
+    }
+    impl<T: InfoService> Clone for InfoServiceServer<T> {
+        fn clone(&self) -> Self {
+            let inner = self.inner.clone();
+            Self {
+                inner,
+                accept_compression_encodings: self.accept_compression_encodings,
+                send_compression_encodings: self.send_compression_encodings,
+                max_decoding_message_size: self.max_decoding_message_size,
+                max_encoding_message_size: self.max_encoding_message_size,
+            }
+        }
+    }
+    impl<T: InfoService> Clone for _Inner<T> {
+        fn clone(&self) -> Self {
+            Self(Arc::clone(&self.0))
+        }
+    }
+    impl<T: std::fmt::Debug> std::fmt::Debug for _Inner<T> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{:?}", self.0)
+        }
+    }
+    impl<T: InfoService> tonic::server::NamedService for InfoServiceServer<T> {
+        const NAME: &'static str = "treaty_proto.InfoService";
     }
 }

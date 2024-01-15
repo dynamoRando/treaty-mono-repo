@@ -1,6 +1,7 @@
 use crate::TreatyProxy;
 use rocket::{http::Status, post, serde::json::Json, State};
-use tracing::debug;
+use stdext::function_name;
+use tracing::{debug, trace};
 use treaty_types::proxy::server_messages::{
     AuthForTokenReply, AuthForTokenRequest, RegisterLoginReply, RegisterLoginRequest,
 };
@@ -14,10 +15,11 @@ pub async fn register(
 
     let request = request.into_inner();
     let result_register = state.register_user(&request.login, &request.pw);
+    trace!("[{}]: {result_register:?}", function_name!());
 
     let response = match result_register {
         Ok(_) => {
-            let result_host_id = state.create_treaty_instance(&request.login, false);
+            let result_host_id = state.create_treaty_instance(&request.login, false).await;
 
             match result_host_id {
                 Ok(id) => RegisterLoginReply {

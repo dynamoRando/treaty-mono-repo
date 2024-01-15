@@ -8,13 +8,15 @@ use crate::{
         common::{select_database::SelectDatabase, select_table::SelectTable},
     },
     request::treaty::{
-        clear_status, get_database, get_treaty_token, set_status, update_token_login_status,
+        clear_status, get_database, get_treaty_token, set_status,
     },
 };
 use num_traits::FromPrimitive;
 use treaty_types::enums::DeletesFromHostBehavior;
-use treaty_types::types::treaty_proto::{GetDeletesFromHostBehaviorReply, GetDeletesFromHostBehaviorRequest};
 use treaty_types::proxy::request_type::RequestType;
+use treaty_types::types::treaty_proto::{
+    GetDeletesFromHostBehaviorReply, GetDeletesFromHostBehaviorRequest,
+};
 use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
 mod change_behavior;
 mod view_pending_deletes;
@@ -62,7 +64,6 @@ pub fn DeletesFromHost() -> Html {
                 let token = get_treaty_token();
 
                 let request = GetDeletesFromHostBehaviorRequest {
-                    authentication: Some(token.auth()),
                     database_name: active_database.to_string(),
                     table_name,
                 };
@@ -78,19 +79,11 @@ pub fn DeletesFromHost() -> Html {
                         let reply: GetDeletesFromHostBehaviorReply =
                             serde_json::from_str(&response).unwrap();
 
-                        let is_authenticated = reply
-                            .authentication_result
-                            .as_ref()
+                        let behavior = reply.behavior.unwrap();
+                        let behavior_value = DeletesFromHostBehavior::from_u32(behavior)
                             .unwrap()
-                            .is_authenticated;
-                        update_token_login_status(is_authenticated);
-
-                        if is_authenticated {
-                            let behavior = reply.behavior.unwrap();
-                            let behavior_value =
-                                DeletesFromHostBehavior::from_u32(behavior).unwrap().to_string();
-                            behavior_type_state.set(behavior_value);
-                        }
+                            .to_string();
+                        behavior_type_state.set(behavior_value);
                     } else {
                         set_status(response.err().unwrap());
                     }

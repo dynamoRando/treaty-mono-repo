@@ -11,11 +11,10 @@ use crate::{
     alt_transport::http::HttpServer,
     defaults,
     treaty_proto::{
-        AuthRequest, ChangeHostStatusReply, ChangeHostStatusRequest, GetSettingsReply,
-        GetSettingsRequest, RevokeReply, TestReply, TestRequest, TokenReply,
-        TryAuthAtParticipantRequest, TryAuthAtPartipantReply,
+        AuthRequestBasic, AuthRequestWebToken, ChangeHostStatusReply, ChangeHostStatusRequest,
+        GetBackingDatabaseConfigReply, GetSettingsReply, RevokeReply, TestReply, TestRequest,
+        TokenReply, TryAuthAtParticipantRequest, TryAuthAtPartipantReply,
     },
-    user_service_handler::user_service_handler_actions::UserServiceHandlerActions,
 };
 
 #[get("/client/status")]
@@ -34,6 +33,14 @@ pub fn version(request: Json<TestRequest>) -> (Status, Json<TestReply>) {
     (Status::Ok, Json(response))
 }
 
+#[post("/client/db-type", format = "application/json")]
+pub async fn db_type(x: &State<HttpServer>) -> (Status, Json<GetBackingDatabaseConfigReply>) {
+    let core = x.user().await;
+    let response = core.get_backing_database_config().await;
+
+    (Status::Ok, Json(response))
+}
+
 #[post(
     "/client/change-host-status-id",
     format = "application/json",
@@ -43,7 +50,7 @@ pub async fn change_host_status_id(
     request: Json<ChangeHostStatusRequest>,
     x: &State<HttpServer>,
 ) -> (Status, Json<ChangeHostStatusReply>) {
-    let core = x.user();
+    let core = x.user().await;
 
     let response = core.change_host_status(request.into_inner()).await;
 
@@ -59,7 +66,7 @@ pub async fn change_host_status_name(
     request: Json<ChangeHostStatusRequest>,
     x: &State<HttpServer>,
 ) -> (Status, Json<ChangeHostStatusReply>) {
-    let core = x.user();
+    let core = x.user().await;
     let response = core.change_host_status(request.into_inner()).await;
 
     (Status::Ok, Json(response))
@@ -74,7 +81,7 @@ pub async fn try_auth_at_participant(
     request: Json<TryAuthAtParticipantRequest>,
     x: &State<HttpServer>,
 ) -> (Status, Json<TryAuthAtPartipantReply>) {
-    let core = x.user();
+    let core = x.user().await;
 
     let response = core.try_auth_at_participant(request.into_inner()).await;
 
@@ -83,11 +90,10 @@ pub async fn try_auth_at_participant(
 
 #[post("/client/token", format = "application/json", data = "<request>")]
 pub async fn auth_for_token(
-    request: Json<AuthRequest>,
+    request: Json<AuthRequestBasic>,
     x: &State<HttpServer>,
 ) -> (Status, Json<TokenReply>) {
-    let core = x.user();
-
+    let core = x.user().await;
     let response = core.auth_for_token(request.into_inner()).await;
 
     trace!("{response:?}");
@@ -95,14 +101,10 @@ pub async fn auth_for_token(
     (Status::Ok, Json(response))
 }
 
-#[post("/client/settings", format = "application/json", data = "<request>")]
-pub async fn get_settings(
-    request: Json<GetSettingsRequest>,
-    x: &State<HttpServer>,
-) -> (Status, Json<GetSettingsReply>) {
-    let core = x.user();
-
-    let response = core.get_settings(request.into_inner()).await;
+#[post("/client/settings", format = "application/json")]
+pub async fn get_settings(x: &State<HttpServer>) -> (Status, Json<GetSettingsReply>) {
+    let core = x.user().await;
+    let response = core.get_settings().await;
 
     (Status::Ok, Json(response))
 }
@@ -113,11 +115,10 @@ pub async fn get_settings(
     data = "<request>"
 )]
 pub async fn revoke_token(
-    request: Json<AuthRequest>,
+    request: Json<AuthRequestWebToken>,
     x: &State<HttpServer>,
 ) -> (Status, Json<RevokeReply>) {
-    let core = x.user();
-
+    let core = x.user().await;
     let response = core.revoke_token(request.into_inner()).await;
 
     (Status::Ok, Json(response))

@@ -177,7 +177,7 @@ pub async fn init_host() {
 
     println!("set policy result is: {result:?}");
 
-    let logical_storage_policy = LogicalStoragePolicy::ParticpantOwned;
+    let logical_storage_policy = LogicalStoragePolicy::ParticipantOwned;
 
     let result = client
         .set_logical_storage_policy(db_name, "LISTS", logical_storage_policy)

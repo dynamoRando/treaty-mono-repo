@@ -1,8 +1,11 @@
-use treaty_types::enums::DeletesFromHostBehavior;
 use treaty_http_endpoints::client::GET_DELETES_FROM_HOST_BEHAVIOR;
-use treaty_types::types::treaty_proto::{GetDeletesFromHostBehaviorReply, GetDeletesFromHostBehaviorRequest};
+use treaty_types::enums::DeletesFromHostBehavior;
+use treaty_types::types::treaty_proto::{
+    GetDeletesFromHostBehaviorReply, GetDeletesFromHostBehaviorRequest,
+};
 use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
 
+use crate::request::get_client;
 use crate::{
     log::log_to_console,
     pages::{
@@ -11,7 +14,7 @@ use crate::{
         },
         common::{select_database::SelectDatabase, select_table::SelectTable},
     },
-    request::{self, clear_status, get_database, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, get_database},
 };
 use num::FromPrimitive;
 mod change_behavior;
@@ -57,16 +60,15 @@ pub fn DeletesFromHost() -> Html {
             if !table_name.is_empty() {
                 log_to_console(table_name.clone());
 
-                let token = get_token();
+                let client = get_client();
 
                 let request = GetDeletesFromHostBehaviorRequest {
-                    authentication: Some(token.auth()),
                     database_name: active_database.to_string(),
                     table_name,
                 };
 
                 let body = serde_json::to_string(&request).unwrap();
-                let url = format!("{}{}", token.addr, GET_DELETES_FROM_HOST_BEHAVIOR);
+                let url = format!("{}{}", client.user_addr_port(), GET_DELETES_FROM_HOST_BEHAVIOR);
 
                 let cb = Callback::from(move |response: Result<AttrValue, String>| {
                     if response.is_ok() {
@@ -77,21 +79,11 @@ pub fn DeletesFromHost() -> Html {
                         let reply: GetDeletesFromHostBehaviorReply =
                             serde_json::from_str(&response).unwrap();
 
-                        let is_authenticated = reply
-                            .authentication_result
-                            .as_ref()
+                        let behavior = reply.behavior.unwrap();
+                        let behavior_value = DeletesFromHostBehavior::from_u32(behavior)
                             .unwrap()
-                            .is_authenticated;
-                        update_token_login_status(is_authenticated);
-
-                        if is_authenticated {
-                            let behavior = reply.behavior.unwrap();
-                            let behavior_value =
-                                DeletesFromHostBehavior::from_u32(behavior).unwrap().to_string();
-                            behavior_type_state.set(behavior_value);
-                        }
-                    } else {
-                        set_status(response.err().unwrap());
+                            .to_string();
+                        behavior_type_state.set(behavior_value);
                     }
                 });
 

@@ -1,9 +1,9 @@
 use tracing::trace;
-use treaty_types::enums::DatabaseType;
 use treaty_tests::{
     common_contract_setup::main_and_participant_setup,
     harness::{get_treaty_client, CoreTestConfig},
 };
+use treaty_types::enums::DatabaseType;
 
 pub mod grpc {
 
@@ -14,10 +14,10 @@ pub mod grpc {
 
     use crate::test_core;
 
-    #[test]
-    fn test() {
+    #[tokio::test]
+    async fn test() {
         let test_name = "add_read_update_remote_grpc";
-        init_trace_to_screen(false);
+        init_trace_to_screen(false, None);
 
         let config = RunnerConfig {
             test_name: test_name.to_string(),
@@ -25,11 +25,11 @@ pub mod grpc {
             use_internal_logging: false,
         };
 
-        TestRunner::run_grpc_test_multi(config, test_core);
+        TestRunner::run_grpc_test_multi(config, test_core).await;
     }
 
-    #[test]
-    fn proxy() {
+    #[tokio::test]
+    async fn proxy() {
         let test_name = "add_read_update_remote_grpc-proxy";
 
         let config = RunnerConfig {
@@ -38,22 +38,13 @@ pub mod grpc {
             use_internal_logging: false,
         };
 
-        TestRunner::run_grpc_proxy_test_multi(config, test_core);
+        TestRunner::run_grpc_proxy_test_multi(config, test_core).await;
     }
-}
 
-pub mod http {
-
-    #[test]
-    fn test() {
-        use crate::test_core;
-        use treaty_tests::{
-            harness::init_trace_to_screen,
-            runner::{RunnerConfig, TestRunner},
-        };
-
-        let test_name = "add_read_update_remote_http";
-        init_trace_to_screen(false);
+    #[tokio::test]
+    async fn postgres() {
+        let test_name = "add_read_update_remote_grpc_postgres";
+        init_trace_to_screen(false, Some(String::from("db_setup_insert=trace")));
 
         let config = RunnerConfig {
             test_name: test_name.to_string(),
@@ -61,15 +52,37 @@ pub mod http {
             use_internal_logging: false,
         };
 
-        TestRunner::run_http_test_multi(config, test_core);
+        TestRunner::run_grpc_test_postgres_multi(config, test_core).await;
     }
 }
 
-fn test_core(config: CoreTestConfig) {
-    go(config);
+pub mod http {
+
+    #[tokio::test]
+    async fn test() {
+        use crate::test_core;
+        use treaty_tests::{
+            harness::init_trace_to_screen,
+            runner::{RunnerConfig, TestRunner},
+        };
+
+        let test_name = "add_read_update_remote_http";
+        init_trace_to_screen(false, None);
+
+        let config = RunnerConfig {
+            test_name: test_name.to_string(),
+            contract_desc: Some(String::from("contract")),
+            use_internal_logging: false,
+        };
+
+        TestRunner::run_http_test_multi(config, test_core).await;
+    }
 }
 
-#[tokio::main]
+async fn test_core(config: CoreTestConfig) {
+    go(config).await;
+}
+
 async fn go(config: CoreTestConfig) {
     let result = main_and_participant_setup(config.clone()).await;
     assert!(result);
@@ -97,21 +110,22 @@ async fn go(config: CoreTestConfig) {
         .await
         .unwrap();
 
-    trace!("{new_data:?}");
+    trace!("{new_data:#?}");
 
     let new_value = new_data
         .rows
         .first()
         .unwrap()
         .values
-        .last()
+        .iter()
+        .find(|v| v.column.as_ref().unwrap().column_name.to_lowercase() == "name")
         .unwrap()
         .value
         .clone();
 
-    trace!("assert left: {new_value:?}");
+    trace!("assert left: {new_value:#?}");
     let expected_value = "Bob".as_bytes().to_vec();
-    trace!("assert right: {expected_value:?}");
+    trace!("assert right: {expected_value:#?}");
 
     assert!(new_value == expected_value);
 }

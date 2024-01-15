@@ -1,12 +1,12 @@
 use treaty_http_endpoints::client::GENERATE_CONTRACT;
-use treaty_types::types::treaty_proto::{GenerateContractRequest, GenerateContractReply};
+use treaty_types::types::treaty_proto::{GenerateContractReply, GenerateContractRequest};
 use web_sys::HtmlInputElement;
 use yew::{function_component, html, use_node_ref, use_state_eq, AttrValue, Callback, Html};
 
 use crate::{
     log::log_to_console,
     pages::common::select_database::SelectDatabase,
-    request::{self, clear_status, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, set_status, get_client},
 };
 
 #[function_component]
@@ -36,10 +36,9 @@ pub fn Generate() -> Html {
                 .unwrap()
                 .value();
 
-            let token = get_token();
+            let client = get_client();
 
             let request = GenerateContractRequest {
-                authentication: Some(token.auth()),
                 database_name: (*active_db).clone().into(),
                 description: desc.into(),
                 host_name: host_name.into(),
@@ -48,7 +47,7 @@ pub fn Generate() -> Html {
 
             let request_json = serde_json::to_string(&request).unwrap();
 
-            let url = format!("{}{}", token.addr, GENERATE_CONTRACT);
+            let url = format!("{}{}", client.user_addr_port(), GENERATE_CONTRACT);
 
             let cb = {
                 Callback::from(move |response: Result<AttrValue, String>| {
@@ -58,17 +57,8 @@ pub fn Generate() -> Html {
 
                         let reply: GenerateContractReply = serde_json::from_str(x).unwrap();
 
-                        let is_authenticated = reply
-                            .authentication_result
-                            .as_ref()
-                            .unwrap()
-                            .is_authenticated;
-                        update_token_login_status(is_authenticated);
-
-                        if is_authenticated {
-                            let is_successful = reply.is_successful;
-                            last_generate_result.set(is_successful.to_string());
-                        }
+                        let is_successful = reply.is_successful;
+                        last_generate_result.set(is_successful.to_string());
                     } else {
                         set_status(response.err().unwrap());
                     }

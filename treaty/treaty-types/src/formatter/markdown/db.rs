@@ -1,4 +1,4 @@
-use crate::{types::treaty_proto::DatabaseSchema, formatter::build_table};
+use crate::{formatter::build_table, types::treaty_proto::DatabaseSchema};
 use indexmap::IndexMap;
 
 use super::table;

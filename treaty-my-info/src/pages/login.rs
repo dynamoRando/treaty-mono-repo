@@ -1,6 +1,7 @@
 use treaty_client_wasm::token::Token;
 use treaty_types::{
-    proxy::{request_type::RequestType, server_messages::AuthForTokenReply}, types::treaty_proto::{AuthRequest, GetDatabasesRequest, GetDatabasesReply},
+    proxy::{request_type::RequestType, server_messages::AuthForTokenReply},
+    types::treaty_proto::{AuthRequestBasic, GetDatabasesReply},
 };
 use web_sys::HtmlInputElement;
 use yew::{platform::spawn_local, prelude::*};
@@ -12,10 +13,7 @@ use crate::{
             clear_proxy_token, get_proxy, get_proxy_token, set_proxy, set_proxy_token, set_un,
             TreatyProxy,
         },
-        treaty::{
-            clear_status, get_treaty_token, set_databases, set_status, set_treaty_token,
-            update_token_login_status,
-        },
+        treaty::{clear_status, get_treaty_token, set_databases, set_status, set_treaty_token},
     },
 };
 
@@ -47,6 +45,7 @@ pub fn Login() -> Html {
             let api_val = ui_addr_port.cast::<HtmlInputElement>().unwrap().value();
 
             let mut proxy = TreatyProxy::new(&api_val);
+            proxy.set_basic(&un_val, &pw_val);
             set_proxy(&proxy);
 
             let u = un_val;
@@ -131,13 +130,9 @@ async fn login_to_treaty_instance(un: &str, pw: &str) {
     let proxy_token = get_proxy_token();
     let token = get_treaty_token();
 
-    let request = AuthRequest {
+    let request = AuthRequestBasic {
         user_name: un.to_string(),
         pw: pw.to_string(),
-        pw_hash: Vec::new(),
-        token: Vec::new(),
-        jwt: "".to_string(),
-        id: token.id,
     };
 
     let request_json = serde_json::to_string(&request).unwrap();
@@ -164,33 +159,17 @@ async fn login_to_treaty_instance(un: &str, pw: &str) {
 
 pub async fn databases() {
     let mut proxy = get_proxy();
-    let token = get_treaty_token();
-    let auth_request = token.auth();
 
-    let db_request = GetDatabasesRequest {
-        authentication: Some(auth_request),
-    };
-
-    let request_json = serde_json::to_string(&db_request).unwrap();
     let request_type = RequestType::GetDatabases;
 
     let r = proxy
-        .execute_request_as::<GetDatabasesReply>(&request_json, request_type)
+        .execute_request_as::<GetDatabasesReply>("", request_type)
         .await;
-
-
-    //let message = format!("{r:?}");
-    //log_to_console(&message);
 
     match r {
         Ok(r) => {
-            let is_authenticated = r.authentication_result.as_ref().unwrap().is_authenticated;
-            update_token_login_status(is_authenticated);
-
-            if is_authenticated {
-                let databases = r.databases;
-                set_databases(databases);
-            }
+            let databases = r.databases;
+            set_databases(databases);
         }
         Err(e) => set_status(e),
     };

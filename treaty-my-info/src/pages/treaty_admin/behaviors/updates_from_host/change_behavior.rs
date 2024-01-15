@@ -1,9 +1,9 @@
 use treaty_types::enums::UpdatesFromHostBehavior;
 
+use treaty_types::proxy::request_type::RequestType;
 use treaty_types::types::treaty_proto::{
     ChangeUpdatesFromHostBehaviorRequest, ChangesUpdatesFromHostBehaviorReply,
 };
-use treaty_types::proxy::request_type::RequestType;
 use web_sys::HtmlInputElement;
 use yew::{
     function_component, html, use_node_ref, AttrValue, Callback, Html, Properties, UseStateHandle,
@@ -12,7 +12,7 @@ use yew::{
 use crate::request;
 use crate::{
     log::log_to_console,
-    request::treaty::{clear_status, get_treaty_token, set_status, update_token_login_status},
+    request::treaty::{clear_status, get_treaty_token, set_status},
 };
 
 #[derive(Properties, PartialEq)]
@@ -48,7 +48,6 @@ pub fn ChangeBehavior(
             let token = get_treaty_token();
 
             let request = ChangeUpdatesFromHostBehaviorRequest {
-                authentication: Some(token.auth()),
                 database_name: (*database).clone(),
                 table_name: (*table).clone(),
                 behavior: behavior_value,
@@ -67,43 +66,35 @@ pub fn ChangeBehavior(
 
                         let reply: ChangesUpdatesFromHostBehaviorReply =
                             serde_json::from_str(&response).unwrap();
-                        let is_authenticated = reply
-                            .authentication_result
-                            .as_ref()
-                            .unwrap()
-                            .is_authenticated;
-                        update_token_login_status(is_authenticated);
 
-                        if is_authenticated {
-                            if reply.is_successful {
-                                let behavior = UpdatesFromHostBehavior::from_u32(behavior_value);
-                                let behavior = behavior.as_string();
+                        if reply.is_successful {
+                            let behavior = UpdatesFromHostBehavior::from_u32(behavior_value);
+                            let behavior = behavior.as_string();
 
-                                let message = format!(
-                                    "{}{}{}{}{}{}",
-                                    "Behavior Updated For: ",
-                                    (*database),
-                                    " table: ",
-                                    (*table),
-                                    " behavior to: ",
-                                    behavior
-                                );
-                                set_status(message);
-                            } else {
-                                let behavior = UpdatesFromHostBehavior::from_u32(behavior_value);
-                                let behavior = behavior.as_string();
+                            let message = format!(
+                                "{}{}{}{}{}{}",
+                                "Behavior Updated For: ",
+                                (*database),
+                                " table: ",
+                                (*table),
+                                " behavior to: ",
+                                behavior
+                            );
+                            set_status(message);
+                        } else {
+                            let behavior = UpdatesFromHostBehavior::from_u32(behavior_value);
+                            let behavior = behavior.as_string();
 
-                                let message = format!(
-                                    "{}{}{}{}{}{}",
-                                    "Behavior Updated FAILED For: ",
-                                    (*database),
-                                    " table: ",
-                                    (*table),
-                                    " behavior to: ",
-                                    behavior
-                                );
-                                set_status(message);
-                            }
+                            let message = format!(
+                                "{}{}{}{}{}{}",
+                                "Behavior Updated FAILED For: ",
+                                (*database),
+                                " table: ",
+                                (*table),
+                                " behavior to: ",
+                                behavior
+                            );
+                            set_status(message);
                         }
                     }
                     Err(error_message) => {

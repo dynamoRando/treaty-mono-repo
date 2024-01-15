@@ -2,18 +2,17 @@ use tracing::debug;
 use treaty::{
     treaty_proto::{
         AcceptPendingActionRequest, AcceptPendingContractRequest, AddParticipantRequest,
-        AuthRequest, ChangeDeletesFromHostBehaviorRequest, ChangeDeletesToHostBehaviorRequest,
+        AuthRequestBasic, ChangeDeletesFromHostBehaviorRequest, ChangeDeletesToHostBehaviorRequest,
         ChangeHostStatusRequest, ChangeUpdatesFromHostBehaviorRequest,
         ChangeUpdatesToHostBehaviorRequest, CreateUserDatabaseRequest,
         EnableCoooperativeFeaturesRequest, ExecuteCooperativeWriteRequest, ExecuteReadRequest,
         ExecuteWriteRequest, GenerateContractRequest, GenerateHostInfoRequest,
-        GetActiveContractRequest, GetCooperativeHostsRequest, GetDataHashRequest,
-        GetDatabasesRequest, GetDeletesFromHostBehaviorRequest, GetDeletesToHostBehaviorRequest,
-        GetLogicalStoragePolicyRequest, GetLogsByLastNumberRequest, GetParticipantsRequest,
-        GetPendingActionsRequest, GetReadRowIdsRequest, GetSettingsRequest,
-        GetUpdatesFromHostBehaviorRequest, GetUpdatesToHostBehaviorRequest, HasTableRequest,
-        SendParticipantContractRequest, SetLogicalStoragePolicyRequest,
-        TryAuthAtParticipantRequest, ViewPendingContractsRequest,
+        GetActiveContractRequest, GetDataHashRequest, GetDeletesFromHostBehaviorRequest,
+        GetDeletesToHostBehaviorRequest, GetLogicalStoragePolicyRequest,
+        GetLogsByLastNumberRequest, GetParticipantsRequest, GetPendingActionsRequest,
+        GetReadRowIdsRequest, GetUpdatesFromHostBehaviorRequest, GetUpdatesToHostBehaviorRequest,
+        HasTableRequest, SendParticipantContractRequest, SetLogicalStoragePolicyRequest,
+        TryAuthAtParticipantRequest,
     },
     user_service_handler::user_service_handler_actions::UserServiceHandlerActions,
 };
@@ -31,7 +30,8 @@ pub async fn process_request(
             match request_type {
                 RequestType::Unknown => todo!(),
                 RequestType::Auth => {
-                    let result_request = serde_json::from_str::<AuthRequest>(&request.request_json);
+                    let result_request =
+                        serde_json::from_str::<AuthRequestBasic>(&request.request_json);
                     match result_request {
                         Ok(request) => {
                             let request = request.clone();
@@ -156,15 +156,8 @@ pub async fn process_request(
                     }
                 }
                 RequestType::ViewPendingContracts => {
-                    let result_request =
-                        serde_json::from_str::<ViewPendingContractsRequest>(&request.request_json);
-                    match result_request {
-                        Ok(request) => {
-                            let reply = core.review_pending_contracts(request).await;
-                            Ok(serde_json::to_string(&reply).unwrap())
-                        }
-                        Err(e) => Err(e.to_string()),
-                    }
+                    let reply = core.review_pending_contracts().await;
+                    Ok(serde_json::to_string(&reply).unwrap())
                 }
                 RequestType::AcceptPendingContract => {
                     let result_request =
@@ -310,15 +303,8 @@ pub async fn process_request(
                     }
                 }
                 RequestType::GetDatabases => {
-                    let result_request =
-                        serde_json::from_str::<GetDatabasesRequest>(&request.request_json);
-                    match result_request {
-                        Ok(request) => {
-                            let reply = core.get_databases(request).await;
-                            Ok(serde_json::to_string(&reply).unwrap())
-                        }
-                        Err(e) => Err(e.to_string()),
-                    }
+                    let reply = core.get_databases().await;
+                    Ok(serde_json::to_string(&reply).unwrap())
                 }
                 RequestType::GetParticipants => {
                     let result_request =
@@ -391,26 +377,12 @@ pub async fn process_request(
                     }
                 }
                 RequestType::GetCooperativeHosts => {
-                    let result_request =
-                        serde_json::from_str::<GetCooperativeHostsRequest>(&request.request_json);
-                    match result_request {
-                        Ok(request) => {
-                            let reply = core.get_cooperative_hosts(request).await;
-                            Ok(serde_json::to_string(&reply).unwrap())
-                        }
-                        Err(e) => Err(e.to_string()),
-                    }
+                    let reply = core.get_cooperative_hosts().await;
+                    Ok(serde_json::to_string(&reply).unwrap())
                 }
                 RequestType::GetSettings => {
-                    let result_request =
-                        serde_json::from_str::<GetSettingsRequest>(&request.request_json);
-                    match result_request {
-                        Ok(request) => {
-                            let reply = core.get_settings(request).await;
-                            Ok(serde_json::to_string(&reply).unwrap())
-                        }
-                        Err(e) => Err(e.to_string()),
-                    }
+                    let reply = core.get_settings().await;
+                    Ok(serde_json::to_string(&reply).unwrap())
                 }
                 RequestType::GetLogsByLastNumber => {
                     let result_request =
@@ -470,14 +442,8 @@ pub async fn process_request(
                     }
                 }
                 RequestType::ViewHostInfo => {
-                    let result_request = serde_json::from_str::<AuthRequest>(&request.request_json);
-                    match result_request {
-                        Ok(request) => {
-                            let reply = core.get_host_info(request).await;
-                            Ok(serde_json::to_string(&reply).unwrap())
-                        }
-                        Err(e) => Err(e.to_string()),
-                    }
+                    let reply = core.get_host_info().await;
+                    Ok(serde_json::to_string(&reply).unwrap())
                 }
             }
         }

@@ -1,5 +1,5 @@
-use treaty_types::types::treaty_proto::{CreateUserDatabaseReply, CreateUserDatabaseRequest};
 use treaty_types::proxy::request_type::RequestType;
+use treaty_types::types::treaty_proto::{CreateUserDatabaseReply, CreateUserDatabaseRequest};
 use web_sys::HtmlInputElement;
 use yew::{function_component, html, use_node_ref, use_state_eq, AttrValue, Callback, Html};
 
@@ -7,7 +7,7 @@ use crate::{
     log::log_to_console,
     request::{
         self,
-        treaty::{clear_status, get_treaty_token, set_status, update_token_login_status},
+        treaty::{clear_status, get_treaty_token, set_status},
     },
 };
 
@@ -27,7 +27,6 @@ pub fn Create() -> Html {
             let token = get_treaty_token();
 
             let request = CreateUserDatabaseRequest {
-                authentication: Some(token.auth()),
                 database_name: db_name,
             };
 
@@ -42,16 +41,7 @@ pub fn Create() -> Html {
 
                         let reply: CreateUserDatabaseReply = serde_json::from_str(x).unwrap();
 
-                        let is_authenticated = reply
-                            .authentication_result
-                            .as_ref()
-                            .unwrap()
-                            .is_authenticated;
-                        update_token_login_status(is_authenticated);
-
-                        if is_authenticated {
-                            last_created_result.set(reply.is_created.to_string());
-                        }
+                        last_created_result.set(reply.is_created.to_string());
                     } else {
                         set_status(response.err().unwrap());
                     }

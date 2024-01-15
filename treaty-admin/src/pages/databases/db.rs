@@ -3,7 +3,7 @@ use crate::{
         databases::{add::Create, enable_coop::EnableCoop, tables::Tables},
         home,
     },
-    request::{get_database, get_databases},
+    request::{get_database, get_databases, get_client},
 };
 use treaty_types::types::treaty_proto::DatabaseSchema;
 
@@ -33,7 +33,9 @@ pub fn Databases() -> Html {
     });
 
     let reload_db_onclick = Callback::from(move |_| {
-        home::databases(x.clone());
+        let client = get_client();
+        let addr = format!("http:// {}:{}", client.user_addr(), client.user_port());
+        home::databases(&addr, x.clone());
     });
 
     html! {

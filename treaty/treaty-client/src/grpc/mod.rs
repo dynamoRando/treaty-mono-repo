@@ -1,68 +1,116 @@
 use std::time::Duration;
 
+use crate::client_actions::ClientActions;
 use async_trait::async_trait;
 use stdext::function_name;
-use tonic::transport::Channel;
-use tracing::{debug, trace};
-use treaty_types::enums::*;
-use treaty::{
-   
-    treaty_proto::{
-        user_service_client::UserServiceClient, AcceptPendingActionReply,
-        AcceptPendingActionRequest, AcceptPendingContractRequest, AddParticipantRequest,
-        AuthRequest, ChangeDeletesFromHostBehaviorRequest, ChangeDeletesToHostBehaviorRequest,
-        ChangeHostStatusRequest, ChangeUpdatesFromHostBehaviorRequest,
-        ChangeUpdatesToHostBehaviorRequest, Contract, CreateUserDatabaseRequest,
-        EnableCoooperativeFeaturesRequest, ExecuteCooperativeWriteRequest, ExecuteReadRequest,
-        ExecuteWriteRequest, GenerateContractRequest, GenerateHostInfoRequest,
-        GetActiveContractReply, GetActiveContractRequest, GetCooperativeHostsReply,
-        GetCooperativeHostsRequest, GetDataHashRequest, GetDatabasesReply, GetDatabasesRequest,
-        GetDeletesFromHostBehaviorReply, GetDeletesFromHostBehaviorRequest,
-        GetDeletesToHostBehaviorReply, GetDeletesToHostBehaviorRequest,
-        GetLogicalStoragePolicyRequest, GetParticipantsReply, GetParticipantsRequest,
-        GetPendingActionsReply, GetPendingActionsRequest, GetReadRowIdsRequest,
-        GetUpdatesFromHostBehaviorReply, GetUpdatesFromHostBehaviorRequest,
-        GetUpdatesToHostBehaviorReply, GetUpdatesToHostBehaviorRequest, HasTableRequest,
-        HostInfoReply, RevokeReply, SendParticipantContractRequest, SetLogicalStoragePolicyRequest,
-        StatementResultset, TestRequest, TokenReply, TreatyError, TryAuthAtParticipantRequest,
-        ViewPendingContractsRequest, GetSettingsReply, GetSettingsRequest,
-    },
+use tonic::transport::{Channel, ClientTlsConfig};
+use tonic::{codegen::InterceptedService, transport::Certificate};
+use tracing::{debug, trace, warn};
+use treaty::treaty_proto::{
+    user_service_client::UserServiceClient, AcceptPendingActionReply, AcceptPendingActionRequest,
+    AcceptPendingContractRequest, AddParticipantRequest, ChangeDeletesFromHostBehaviorRequest,
+    ChangeDeletesToHostBehaviorRequest, ChangeHostStatusRequest,
+    ChangeUpdatesFromHostBehaviorRequest, ChangeUpdatesToHostBehaviorRequest, Contract,
+    CreateUserDatabaseRequest, DeleteUserDatabaseReply, DeleteUserDatabaseRequest,
+    EnableCoooperativeFeaturesRequest, ExecuteCooperativeWriteRequest, ExecuteReadRequest,
+    ExecuteWriteRequest, GenerateContractRequest, GenerateHostInfoRequest, GetActiveContractReply,
+    GetActiveContractRequest, GetBackingDatabaseConfigReply, GetCooperativeHostsReply,
+    GetDataHashRequest, GetDatabasesReply, GetDeletesFromHostBehaviorReply,
+    GetDeletesFromHostBehaviorRequest, GetDeletesToHostBehaviorReply,
+    GetDeletesToHostBehaviorRequest, GetLogicalStoragePolicyRequest, GetParticipantsReply,
+    GetParticipantsRequest, GetPendingActionsReply, GetPendingActionsRequest, GetReadRowIdsRequest,
+    GetSettingsReply, GetUpdatesFromHostBehaviorReply, GetUpdatesFromHostBehaviorRequest,
+    GetUpdatesToHostBehaviorReply, GetUpdatesToHostBehaviorRequest, HasTableRequest, HostInfoReply,
+    RevokeReply, SendParticipantContractRequest, SetLogicalStoragePolicyRequest,
+    StatementResultset, TestRequest, TokenReply, TreatyError, TryAuthAtParticipantRequest,
 };
 
-use crate::{client_actions::ClientActions, Auth};
+use self::interceptors::AuthenticationInterceptor;
+use treaty_types::enums::*;
+
+mod interceptors;
 
 #[derive(Debug, Clone)]
 pub struct GrpcClient {
-    /// The HTTP (or HTTPS) address and port of the `treaty` instance you are talking to. Example: `http://127.0.0.1:50051`
-    addr_port: String,
+    /// The HTTP (or HTTPS) address and port for the User service of the `treaty` instance you are talking to. Example: `http://127.0.0.1:50051`
+    user_service_address_port: String,
+    /// The HTTP (or HTTPS) address and port of the Info service of the `treaty` instance you are talking to.
+    info_service_address_port: String,
+    /// The timeout for any gRPC call in seconds
     timeout_in_seconds: u32,
-    grpc_client: Option<UserServiceClient<Channel>>,
-    auth: Auth,
-    send_jwt_if_available: bool,
-    // when talking to a treaty-proxy instance, send the host_id to identify which account you want
-    host_id: Option<String>,
+    /// The client for making calls
+    grpc_client: UserServiceClient<InterceptedService<Channel, AuthenticationInterceptor>>,
+    /// Auth Interceptor
+    interceptor: AuthenticationInterceptor,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct TlsSettings {
+    pub pem: String,
+    pub domain: Option<String>,
 }
 
 impl GrpcClient {
     pub async fn new(
-        addr_port: &str,
+        user_service_address_port: &str,
+        info_service_address_port: &str,
         timeout_in_seconds: u32,
-        auth: Auth,
-        send_jwt_if_available: bool,
+        username: &str,
+        pw: &str,
         host_id: Option<String>,
+        tls: Option<TlsSettings>,
     ) -> Self {
-        let endpoint = tonic::transport::Channel::builder(addr_port.parse().unwrap())
-            .timeout(Duration::from_secs(timeout_in_seconds.into()));
-        let channel = endpoint.connect().await.unwrap();
-        let client = UserServiceClient::new(channel);
+        trace!(
+            "[{}]: connecting to: {}",
+            function_name!(),
+            user_service_address_port
+        );
+
+        let tls_opts = tls.clone();
+        let channel = match tls_opts {
+            Some(settings) => {
+                let ca = Certificate::from_pem(settings.pem);
+
+                let tls = match settings.domain {
+                    Some(domain) => ClientTlsConfig::new()
+                        .ca_certificate(ca)
+                        .domain_name(domain),
+                    None => ClientTlsConfig::new().ca_certificate(ca),
+                };
+
+                Channel::builder(user_service_address_port.parse().unwrap())
+                    .tls_config(tls)
+                    .unwrap()
+                    .timeout(Duration::from_secs(timeout_in_seconds.into()))
+                    .connect()
+                    .await
+                    .unwrap()
+            }
+            None => Channel::builder(user_service_address_port.parse().unwrap())
+                .timeout(Duration::from_secs(timeout_in_seconds.into()))
+                .connect()
+                .await
+                .unwrap(),
+        };
+
+        let interceptor = AuthenticationInterceptor::new(
+            username,
+            pw,
+            info_service_address_port,
+            timeout_in_seconds.into(),
+            host_id,
+            tls.clone(),
+        )
+        .await;
+
+        let user_client = UserServiceClient::with_interceptor(channel, interceptor.clone());
 
         Self {
-            addr_port: addr_port.to_string(),
+            user_service_address_port: user_service_address_port.to_string(),
+            info_service_address_port: info_service_address_port.to_string(),
             timeout_in_seconds,
-            grpc_client: Some(client),
-            auth,
-            send_jwt_if_available,
-            host_id,
+            grpc_client: user_client,
+            interceptor: interceptor.clone(),
         }
     }
 
@@ -70,40 +118,12 @@ impl GrpcClient {
         self.timeout_in_seconds
     }
 
-    pub fn addr_port(&self) -> String {
-        self.addr_port.clone()
+    pub fn user_service_address_port(&self) -> String {
+        self.user_service_address_port.clone()
     }
 
-    fn gen_auth_request(&self) -> AuthRequest {
-        let auth: AuthRequest;
-
-        if self.send_jwt_if_available && !self.auth.jwt.is_empty() {
-            auth = AuthRequest {
-                user_name: String::from(""),
-                pw: String::from(""),
-                pw_hash: Vec::new(),
-                token: Vec::new(),
-                jwt: self.auth.jwt.clone(),
-                id: self.host_id.clone(),
-            };
-
-            // trace!("[{}]: {auth:?}", function_name!());
-
-            return auth;
-        }
-
-        auth = AuthRequest {
-            user_name: self.auth.user_name.clone(),
-            pw: self.auth.pw.clone(),
-            pw_hash: Vec::new(),
-            token: Vec::new(),
-            jwt: String::from(""),
-            id: self.host_id.clone(),
-        };
-
-        // trace!("[{}]: {:?}", function_name!(), auth);
-
-        auth
+    pub fn info_service_address_port(&self) -> String {
+        self.info_service_address_port.clone()
     }
 }
 
@@ -121,25 +141,28 @@ impl ClientActions for GrpcClient {
             request_echo_message: test_string.to_string(),
         };
 
-        let result = self
-            .grpc_client
-            .as_mut()
-            .unwrap()
-            .is_online(request)
-            .await
-            .unwrap();
+        let result = self.grpc_client.is_online(request).await.unwrap();
 
         Ok(result.into_inner().reply_echo_message == test_string)
     }
 
-    async fn get_host_info(&mut self) -> Result<HostInfoReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
+    async fn get_backing_db_config(
+        &mut self,
+    ) -> Result<GetBackingDatabaseConfigReply, TreatyError> {
         let response = self
             .grpc_client
-            .as_mut()
+            .get_backing_database_config(())
+            .await
             .unwrap()
-            .get_host_info(auth)
+            .into_inner();
+
+        return Ok(response);
+    }
+
+    async fn get_host_info(&mut self) -> Result<HostInfoReply, TreatyError> {
+        let response = self
+            .grpc_client
+            .get_host_info(())
             .await
             .unwrap()
             .into_inner();
@@ -151,17 +174,12 @@ impl ClientActions for GrpcClient {
         &mut self,
         db_name: &str,
     ) -> Result<GetActiveContractReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetActiveContractRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
         };
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .get_active_contract(request)
             .await
             .unwrap()
@@ -171,12 +189,10 @@ impl ClientActions for GrpcClient {
     }
 
     async fn revoke_token(&mut self) -> Result<RevokeReply, TreatyError> {
-        let auth = self.gen_auth_request();
+        let auth = self.interceptor.web_token().unwrap();
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .revoke_token(auth)
             .await
             .unwrap()
@@ -185,23 +201,36 @@ impl ClientActions for GrpcClient {
         Ok(response)
     }
 
-    async fn auth_for_token(&mut self) -> Result<TokenReply, TreatyError> {
-        let auth = self.gen_auth_request();
+    async fn drop_database_forcefully(
+        &mut self,
+        db_name: &str,
+    ) -> Result<DeleteUserDatabaseReply, TreatyError> {
+        let request = DeleteUserDatabaseRequest {
+            database_name: db_name.to_string(),
+        };
 
         let response = self
             .grpc_client
-            .as_mut()
+            .delete_user_database_destructively(request)
+            .await
             .unwrap()
+            .into_inner();
+
+        Ok(response)
+    }
+
+    async fn auth_for_token(&mut self) -> Result<TokenReply, TreatyError> {
+        let auth = self.interceptor.basic_auth();
+
+        let response = self
+            .grpc_client
             .auth_for_token(auth)
             .await
             .unwrap()
             .into_inner();
 
-        if response.is_successful {
-            let x = response.clone();
-            self.auth.jwt = x.jwt;
-        } else {
-            self.auth.jwt = "".to_string();
+        if !response.is_successful {
+            warn!("[{}]: could not authenticate for token", function_name!());
         }
 
         Ok(response)
@@ -213,10 +242,7 @@ impl ClientActions for GrpcClient {
         table_name: &str,
         row_id: u32,
     ) -> Result<AcceptPendingActionReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = AcceptPendingActionRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             row_id,
@@ -224,8 +250,6 @@ impl ClientActions for GrpcClient {
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .accept_pending_action_at_participant(request)
             .await
             .unwrap()
@@ -235,17 +259,9 @@ impl ClientActions for GrpcClient {
     }
 
     async fn get_cooperative_hosts(&mut self) -> Result<GetCooperativeHostsReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
-        let request = GetCooperativeHostsRequest {
-            authentication: Some(auth),
-        };
-
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
-            .get_cooperative_hosts(tonic::Request::new(request))
+            .get_cooperative_hosts(tonic::Request::new(()))
             .await
             .unwrap()
             .into_inner();
@@ -258,17 +274,12 @@ impl ClientActions for GrpcClient {
         &mut self,
         db_name: &str,
     ) -> Result<GetParticipantsReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetParticipantsRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
         };
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .get_participants(tonic::Request::new(request))
             .await
             .unwrap()
@@ -284,10 +295,7 @@ impl ClientActions for GrpcClient {
         table_name: &str,
         action: &str,
     ) -> Result<GetPendingActionsReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetPendingActionsRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             action: action.to_string(),
@@ -295,8 +303,6 @@ impl ClientActions for GrpcClient {
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .get_pending_actions_at_participant(tonic::Request::new(request))
             .await
             .unwrap()
@@ -312,10 +318,7 @@ impl ClientActions for GrpcClient {
         table_name: &str,
         where_clause: &str,
     ) -> Result<Vec<u32>, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetReadRowIdsRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             where_clause: where_clause.to_string(),
@@ -323,8 +326,6 @@ impl ClientActions for GrpcClient {
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .read_row_id_at_participant(tonic::Request::new(request))
             .await
             .unwrap()
@@ -340,10 +341,7 @@ impl ClientActions for GrpcClient {
         table_name: &str,
         row_id: u32,
     ) -> Result<u64, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetDataHashRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             row_id,
@@ -351,8 +349,6 @@ impl ClientActions for GrpcClient {
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .get_data_hash_at_participant(tonic::Request::new(request))
             .await
             .unwrap()
@@ -368,10 +364,7 @@ impl ClientActions for GrpcClient {
         table_name: &str,
         row_id: u32,
     ) -> Result<u64, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetDataHashRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             row_id,
@@ -379,8 +372,6 @@ impl ClientActions for GrpcClient {
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .get_data_hash_at_host(tonic::Request::new(request))
             .await
             .unwrap()
@@ -395,17 +386,13 @@ impl ClientActions for GrpcClient {
         db_name: &str,
         table_name: &str,
     ) -> Result<GetDeletesToHostBehaviorReply, TreatyError> {
-        let auth = self.gen_auth_request();
         let request = GetDeletesToHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
         };
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .get_deletes_to_host_behavior(tonic::Request::new(request))
             .await
             .unwrap()
@@ -421,10 +408,7 @@ impl ClientActions for GrpcClient {
         table_name: &str,
         behavior: DeletesToHostBehavior,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ChangeDeletesToHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             behavior: num::ToPrimitive::to_u32(&behavior).unwrap(),
@@ -432,8 +416,6 @@ impl ClientActions for GrpcClient {
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .change_deletes_to_host_behavior(tonic::Request::new(request))
             .await
             .unwrap()
@@ -448,17 +430,13 @@ impl ClientActions for GrpcClient {
         db_name: &str,
         table_name: &str,
     ) -> Result<GetUpdatesToHostBehaviorReply, TreatyError> {
-        let auth = self.gen_auth_request();
         let request = GetUpdatesToHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
         };
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .get_updates_to_host_behavior(tonic::Request::new(request))
             .await
             .unwrap()
@@ -474,10 +452,7 @@ impl ClientActions for GrpcClient {
         table_name: &str,
         behavior: UpdatesToHostBehavior,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ChangeUpdatesToHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             behavior: num::ToPrimitive::to_u32(&behavior).unwrap(),
@@ -485,8 +460,6 @@ impl ClientActions for GrpcClient {
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .change_updates_to_host_behavior(tonic::Request::new(request))
             .await
             .unwrap()
@@ -501,18 +474,13 @@ impl ClientActions for GrpcClient {
         db_name: &str,
         table_name: &str,
     ) -> Result<GetDeletesFromHostBehaviorReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetDeletesFromHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
         };
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .get_deletes_from_host_behavior(tonic::Request::new(request))
             .await
             .unwrap()
@@ -528,10 +496,7 @@ impl ClientActions for GrpcClient {
         table_name: &str,
         behavior: DeletesFromHostBehavior,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ChangeDeletesFromHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             behavior: num::ToPrimitive::to_u32(&behavior).unwrap(),
@@ -539,8 +504,6 @@ impl ClientActions for GrpcClient {
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .change_deletes_from_host_behavior(tonic::Request::new(request))
             .await
             .unwrap()
@@ -555,18 +518,13 @@ impl ClientActions for GrpcClient {
         db_name: &str,
         table_name: &str,
     ) -> Result<GetUpdatesFromHostBehaviorReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetUpdatesFromHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
         };
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .get_updates_from_host_behavior(request)
             .await
             .unwrap()
@@ -582,9 +540,7 @@ impl ClientActions for GrpcClient {
         table_name: &str,
         behavior: UpdatesFromHostBehavior,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
         let request = ChangeUpdatesFromHostBehaviorRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             behavior: UpdatesFromHostBehavior::to_u32(behavior),
@@ -592,8 +548,6 @@ impl ClientActions for GrpcClient {
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .change_updates_from_host_behavior(request)
             .await
             .unwrap()
@@ -608,9 +562,7 @@ impl ClientActions for GrpcClient {
         host_id: &str,
         status: u32,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
         let request = ChangeHostStatusRequest {
-            authentication: Some(auth),
             host_alias: String::from(""),
             host_id: host_id.to_string(),
             status,
@@ -618,8 +570,6 @@ impl ClientActions for GrpcClient {
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .change_host_status(request)
             .await
             .unwrap()
@@ -634,9 +584,7 @@ impl ClientActions for GrpcClient {
         host_name: &str,
         status: u32,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
         let request = ChangeHostStatusRequest {
-            authentication: Some(auth),
             host_alias: host_name.to_string(),
             host_id: String::from(""),
             status,
@@ -644,8 +592,6 @@ impl ClientActions for GrpcClient {
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .change_host_status(request)
             .await
             .unwrap()
@@ -656,16 +602,12 @@ impl ClientActions for GrpcClient {
     }
 
     async fn generate_host_info(&mut self, host_name: &str) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
         let request = GenerateHostInfoRequest {
-            authentication: Some(auth),
             host_name: host_name.to_string(),
         };
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .generate_host_info(request)
             .await
             .unwrap()
@@ -676,16 +618,14 @@ impl ClientActions for GrpcClient {
     }
 
     async fn get_databases(&mut self) -> Result<GetDatabasesReply, TreatyError> {
-        let auth = self.gen_auth_request();
+        let response = self
+            .grpc_client
+            .get_databases(tonic::Request::new(()))
+            .await
+            .unwrap()
+            .into_inner();
 
-        let request = GetDatabasesRequest {
-            authentication: Some(auth),
-        };
-
-        let client = self.grpc_client.as_mut().unwrap();
-        let response = client.get_databases(request).await.unwrap().into_inner();
-
-        trace!("[{}]: {:?}", function_name!(), response);
+        trace!("[{}]: {:#?}", function_name!(), response);
 
         Ok(response)
     }
@@ -696,10 +636,7 @@ impl ClientActions for GrpcClient {
         participant_alias: &str,
         where_clause: &str,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ExecuteCooperativeWriteRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             sql_statement: cmd.to_string(),
             database_type: DatabaseType::to_u32(DatabaseType::Sqlite),
@@ -710,8 +647,8 @@ impl ClientActions for GrpcClient {
 
         trace!("request: {request:?}");
 
-        let client = self.grpc_client.as_mut().unwrap();
-        let response = client
+        let response = self
+            .grpc_client
             .execute_cooperative_write_at_host(request)
             .await
             .unwrap()
@@ -722,16 +659,9 @@ impl ClientActions for GrpcClient {
         Ok(response.is_successful)
     }
     async fn view_pending_contracts(&mut self) -> Result<Vec<Contract>, TreatyError> {
-        let auth = self.gen_auth_request();
-
-        let request = ViewPendingContractsRequest {
-            authentication: Some(auth),
-        };
-
-        let client = self.grpc_client.as_mut().unwrap();
-
-        let response = client
-            .review_pending_contracts(request)
+        let response = self
+            .grpc_client
+            .review_pending_contracts(tonic::Request::new(()))
             .await
             .unwrap()
             .into_inner();
@@ -741,16 +671,12 @@ impl ClientActions for GrpcClient {
     }
 
     async fn accept_pending_contract(&mut self, host_alias: &str) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = AcceptPendingContractRequest {
-            authentication: Some(auth),
             host_alias: host_alias.to_string(),
         };
 
-        let client = self.grpc_client.as_mut().unwrap();
-
-        let response = client
+        let response = self
+            .grpc_client
             .accept_pending_contract(request)
             .await
             .unwrap()
@@ -765,17 +691,13 @@ impl ClientActions for GrpcClient {
         db_name: &str,
         participant_alias: &str,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = SendParticipantContractRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             participant_alias: participant_alias.to_string(),
         };
 
-        let client = self.grpc_client.as_mut().unwrap();
-
-        let response = client
+        let response = self
+            .grpc_client
             .send_participant_contract(request)
             .await
             .unwrap()
@@ -790,27 +712,29 @@ impl ClientActions for GrpcClient {
         db_name: &str,
         participant_alias: &str,
         participant_ip4addr: &str,
-        participant_db_port: u32,
+        participant_db_port: Option<u32>,
+        participant_info_port: u32,
         participant_http_addr: &str,
         participant_http_port: u16,
         participant_id: Option<String>,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = AddParticipantRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             alias: participant_alias.to_string(),
             ip4_address: participant_ip4addr.to_string(),
-            port: participant_db_port,
+            db_port: participant_db_port,
+            info_port: participant_info_port,
             http_addr: participant_http_addr.to_string(),
             http_port: participant_http_port as u32,
             id: participant_id,
         };
 
-        let client = self.grpc_client.as_mut().unwrap();
-
-        let response = client.add_participant(request).await.unwrap().into_inner();
+        let response = self
+            .grpc_client
+            .add_participant(request)
+            .await
+            .unwrap()
+            .into_inner();
         trace!("[{}]: RESPONSE={response:?}", function_name!());
 
         Ok(response.is_successful)
@@ -823,19 +747,15 @@ impl ClientActions for GrpcClient {
         desc: &str,
         remote_delete_behavior: RemoteDeleteBehavior,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GenerateContractRequest {
-            authentication: Some(auth),
             host_name: host_name.to_string(),
             description: desc.to_string(),
             database_name: db_name.to_string(),
             remote_delete_behavior: RemoteDeleteBehavior::to_u32(remote_delete_behavior),
         };
 
-        let client = self.grpc_client.as_mut().unwrap();
-
-        let response = client
+        let response = self
+            .grpc_client
             .generate_contract(request)
             .await
             .unwrap()
@@ -846,17 +766,17 @@ impl ClientActions for GrpcClient {
     }
 
     async fn has_table(&mut self, db_name: &str, table_name: &str) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = HasTableRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
         };
 
-        let client = self.grpc_client.as_mut().unwrap();
-
-        let response = client.has_table(request).await.unwrap().into_inner();
+        let response = self
+            .grpc_client
+            .has_table(request)
+            .await
+            .unwrap()
+            .into_inner();
         trace!("[{}]: RESPONSE={response:?}", function_name!());
 
         Ok(response.has_table)
@@ -867,17 +787,13 @@ impl ClientActions for GrpcClient {
         db_name: &str,
         table_name: &str,
     ) -> Result<LogicalStoragePolicy, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = GetLogicalStoragePolicyRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
         };
 
-        let client = self.grpc_client.as_mut().unwrap();
-
-        let response = client
+        let response = self
+            .grpc_client
             .get_logical_storage_policy(request)
             .await
             .unwrap()
@@ -889,19 +805,10 @@ impl ClientActions for GrpcClient {
         Ok(policy)
     }
 
-    async fn get_settings(
-        &mut self,
-    ) -> Result<GetSettingsReply, TreatyError> {
-        let auth = self.gen_auth_request();
-
-        let request = GetSettingsRequest {
-            authentication: Some(auth),
-        };
-
-        let client = self.grpc_client.as_mut().unwrap();
-
-        let response = client
-            .get_settings(request)
+    async fn get_settings(&mut self) -> Result<GetSettingsReply, TreatyError> {
+        let response = self
+            .grpc_client
+            .get_settings(tonic::Request::new(()))
             .await
             .unwrap()
             .into_inner();
@@ -916,18 +823,14 @@ impl ClientActions for GrpcClient {
         table_name: &str,
         policy: LogicalStoragePolicy,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = SetLogicalStoragePolicyRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             table_name: table_name.to_string(),
             policy_mode: LogicalStoragePolicy::to_u32(policy),
         };
 
-        let client = self.grpc_client.as_mut().unwrap();
-
-        let response = client
+        let response = self
+            .grpc_client
             .set_logical_storage_policy(request)
             .await
             .unwrap()
@@ -943,19 +846,15 @@ impl ClientActions for GrpcClient {
         db_type: u32,
         where_clause: &str,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ExecuteWriteRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             sql_statement: sql_statement.to_string(),
             database_type: db_type,
             where_clause: where_clause.to_string(),
         };
 
-        let client = self.grpc_client.as_mut().unwrap();
-
-        let response = client
+        let response = self
+            .grpc_client
             .execute_write_at_host(request)
             .await
             .unwrap()
@@ -972,19 +871,15 @@ impl ClientActions for GrpcClient {
         db_type: u32,
         where_clause: &str,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ExecuteWriteRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             sql_statement: sql_statement.to_string(),
             database_type: db_type,
             where_clause: where_clause.to_string(),
         };
 
-        let client = self.grpc_client.as_mut().unwrap();
-
-        let response = client
+        let response = self
+            .grpc_client
             .execute_write_at_participant(request)
             .await
             .unwrap()
@@ -999,18 +894,14 @@ impl ClientActions for GrpcClient {
         id: &str,
         db_name: &str,
     ) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = TryAuthAtParticipantRequest {
-            authentication: Some(auth),
             participant_id: id.to_string(),
             participant_alias: alias.to_string(),
             db_name: db_name.to_string(),
         };
 
-        let client = self.grpc_client.as_mut().unwrap();
-
-        let response = client
+        let response = self
+            .grpc_client
             .try_auth_at_participant(request)
             .await
             .unwrap()
@@ -1025,10 +916,7 @@ impl ClientActions for GrpcClient {
         sql_statement: &str,
         db_type: u32,
     ) -> Result<StatementResultset, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ExecuteReadRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             sql_statement: sql_statement.to_string(),
             database_type: db_type,
@@ -1036,9 +924,8 @@ impl ClientActions for GrpcClient {
 
         trace!("REQUEST={request:?}");
 
-        let client = self.grpc_client.as_mut().unwrap();
-
-        let response = client
+        let response = self
+            .grpc_client
             .execute_read_at_participant(request)
             .await
             .unwrap()
@@ -1053,10 +940,7 @@ impl ClientActions for GrpcClient {
         sql_statement: &str,
         db_type: u32,
     ) -> Result<StatementResultset, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = ExecuteReadRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
             sql_statement: sql_statement.to_string(),
             database_type: db_type,
@@ -1064,9 +948,8 @@ impl ClientActions for GrpcClient {
 
         trace!("[{}]: REQUEST={request:?}", function_name!());
 
-        let client = self.grpc_client.as_mut().unwrap();
-
-        let response = client
+        let response = self
+            .grpc_client
             .execute_read_at_host(request)
             .await
             .unwrap()
@@ -1076,16 +959,12 @@ impl ClientActions for GrpcClient {
         Ok(response.results[0].clone())
     }
     async fn enable_cooperative_features(&mut self, db_name: &str) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = EnableCoooperativeFeaturesRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
         };
 
-        let client = self.grpc_client.as_mut().unwrap();
-
-        let response = client
+        let response = self
+            .grpc_client
             .enable_coooperative_features(request)
             .await
             .unwrap()
@@ -1095,17 +974,12 @@ impl ClientActions for GrpcClient {
         Ok(response.is_successful)
     }
     async fn create_user_database(&mut self, db_name: &str) -> Result<bool, TreatyError> {
-        let auth = self.gen_auth_request();
-
         let request = CreateUserDatabaseRequest {
-            authentication: Some(auth),
             database_name: db_name.to_string(),
         };
 
         let response = self
             .grpc_client
-            .as_mut()
-            .unwrap()
             .create_user_database(request)
             .await
             .unwrap()

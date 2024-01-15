@@ -1,12 +1,14 @@
-use std::{fs::{self, OpenOptions}, io::Write};
 use regex::Regex;
+use std::{
+    fs::{self, OpenOptions},
+    io::Write,
+};
 
 fn main() {
-
     // this is insane, i know.
     // i need a "clean" mod of pure Rust structs than can be seralized to JSON
-    // but are generated from the protobuf file, which is the source of truth for the 
-    // schema. 
+    // but are generated from the protobuf file, which is the source of truth for the
+    // schema.
 
     // i need this because i need a lib that is web assembly compat.
     // prost is not web assembly (wasm) compatible.
@@ -26,16 +28,22 @@ fn main() {
     let contents = fs::read_to_string(local_path).unwrap();
 
     let contents = contents.replace(", ::prost::Message", "");
-    let contents = contents.replace("::prost::alloc::string::", "");  
+    let contents = contents.replace("::prost::alloc::string::", "");
     let contents = contents.replace(r#"::prost::alloc::vec::"#, "");
 
     let re = Regex::new(r#"#\[prost\(.*\)\]"#).unwrap();
     let contents = re.replace_all(&contents, "");
-   
-    let end_index = contents.find("/// Generated client implementations.").unwrap();
+
+    let end_index = contents
+        .find("/// Generated client implementations.")
+        .unwrap();
     let mut contents = contents.to_string();
     contents.replace_range(end_index..contents.len(), "");
 
-    let mut file = OpenOptions::new().write(true).truncate(true).open(local_path).unwrap();
+    let mut file = OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(local_path)
+        .unwrap();
     file.write(contents.as_bytes()).unwrap();
 }

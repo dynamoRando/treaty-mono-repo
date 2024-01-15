@@ -16,3 +16,12 @@ Test.toml
 *.sh
 *.ps1
 tracking/target
+*.bundle
+*.pem
+*.key
+*.crt
+*.csr
+*.cer
+*.ext
+*.srl
+*.env

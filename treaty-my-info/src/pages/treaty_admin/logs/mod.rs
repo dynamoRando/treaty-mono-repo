@@ -2,13 +2,13 @@ use crate::{
     log::log_to_console,
     request::{
         self,
-        treaty::{get_treaty_token, set_status, update_token_login_status},
+        treaty::{get_treaty_token, set_status},
     },
 };
+use treaty_types::proxy::request_type::RequestType;
 use treaty_types::types::treaty_proto::{
     GetLogsByLastNumberReply, GetLogsByLastNumberRequest, TreatyLogEntry,
 };
-use treaty_types::proxy::request_type::RequestType;
 use web_sys::HtmlInputElement;
 use yew::{function_component, html, use_node_ref, use_state_eq, AttrValue, Callback, Html};
 
@@ -34,7 +34,6 @@ pub fn Logs() -> Html {
                 .unwrap();
             let token = get_treaty_token();
             let request = GetLogsByLastNumberRequest {
-                authentication: Some(token.auth()),
                 number_of_logs: num_logs,
             };
 
@@ -46,12 +45,7 @@ pub fn Logs() -> Html {
 
                     let reply: GetLogsByLastNumberReply = serde_json::from_str(x).unwrap();
 
-                    let is_authenticated = reply.authentication_result.unwrap().is_authenticated;
-                    update_token_login_status(is_authenticated);
-
-                    if is_authenticated {
-                        logs.set(reply.logs);
-                    }
+                    logs.set(reply.logs);
                 } else {
                     set_status(response.err().unwrap());
                 }

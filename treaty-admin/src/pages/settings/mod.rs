@@ -1,11 +1,10 @@
-
 use treaty_http_endpoints::client::GET_SETTINGS;
-use treaty_types::types::treaty_proto::{GetSettingsReply, GetSettingsRequest};
+use treaty_types::types::treaty_proto::GetSettingsReply;
 use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
 
 use crate::{
     log::log_to_console,
-    request::{self, get_token, set_status, update_token_login_status},
+    request::{self, set_status, get_client},
 };
 
 #[function_component]
@@ -16,13 +15,9 @@ pub fn Settings() -> Html {
         let settings = settings.clone();
         Callback::from(move |_| {
             let settings = settings.clone();
-            let token = get_token();
-            let request = GetSettingsRequest {
-                authentication: Some(token.auth()),
-            };
+            let client = get_client();
 
-            let url = format!("{}{}", token.addr, GET_SETTINGS);
-            let body = serde_json::to_string(&request).unwrap();
+            let url = format!("{}{}", client.user_addr_port(), GET_SETTINGS);
 
             let cb = Callback::from(move |response: Result<AttrValue, String>| {
                 if let Ok(ref x) = response {
@@ -30,18 +25,13 @@ pub fn Settings() -> Html {
 
                     let reply: GetSettingsReply = serde_json::from_str(x).unwrap();
 
-                    let is_authenticated = reply.authentication_result.unwrap().is_authenticated;
-                    update_token_login_status(is_authenticated);
-
-                    if is_authenticated {
-                        settings.set(reply.settings_json.unwrap().to_string());
-                    }
+                    settings.set(reply.settings_json.unwrap().to_string());
                 } else {
                     set_status(response.err().unwrap());
                 }
             });
 
-            request::post(url, body, cb);
+            request::post(url, "".to_string(), cb);
         })
     };
 

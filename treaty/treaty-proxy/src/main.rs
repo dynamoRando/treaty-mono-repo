@@ -22,6 +22,7 @@ async fn main() {
             proxy.start();
             proxy.start_grpc_client().await;
             proxy.start_grpc_data().await;
+            proxy.start_grpc_info().await;
             let server = ProxyServer::new(proxy);
             if let Err(e) = server.start().await {
                 println!("Error: {e:?}");

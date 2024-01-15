@@ -1,10 +1,12 @@
 use crate::{
     log::log_to_console,
     pages::databases::columns::ColumnProps,
-    request::{self, clear_status, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, set_status, get_client},
 };
 use treaty_http_endpoints::client::SET_POLICY;
-use treaty_types::types::treaty_proto::{SetLogicalStoragePolicyReply, SetLogicalStoragePolicyRequest};
+use treaty_types::types::treaty_proto::{
+    SetLogicalStoragePolicyReply, SetLogicalStoragePolicyRequest,
+};
 use web_sys::{HtmlInputElement, MouseEvent};
 use yew::{function_component, html, use_node_ref, use_state_eq, AttrValue, Callback, Html};
 
@@ -51,7 +53,7 @@ pub fn SetTablePolicy(ColumnProps { table }: &ColumnProps) -> Html {
             let set_policy_result = set_policy_result.clone();
 
             Callback::from(move |_| {
-                let token = get_token();
+                let client = get_client();
                 let set_policy_result = set_policy_result.clone();
 
                 let cb = Callback::from(move |response: Result<AttrValue, String>| {
@@ -61,16 +63,7 @@ pub fn SetTablePolicy(ColumnProps { table }: &ColumnProps) -> Html {
 
                         let reply: SetLogicalStoragePolicyReply = serde_json::from_str(x).unwrap();
 
-                        let is_authenticated = reply
-                            .authentication_result
-                            .as_ref()
-                            .unwrap()
-                            .is_authenticated;
-                        update_token_login_status(is_authenticated);
-
-                        if is_authenticated {
-                            set_policy_result.set(Some(reply.is_successful));
-                        }
+                        set_policy_result.set(Some(reply.is_successful));
                     } else {
                         set_status(response.err().unwrap());
                     }
@@ -80,14 +73,13 @@ pub fn SetTablePolicy(ColumnProps { table }: &ColumnProps) -> Html {
                 let table_name = table_name.clone();
 
                 let request = SetLogicalStoragePolicyRequest {
-                    authentication: Some(token.auth()),
                     database_name,
                     table_name,
                     policy_mode: policy_num,
                 };
 
                 let request_json = serde_json::to_string(&request).unwrap();
-                let url = format!("{}{}", token.addr, SET_POLICY);
+                let url = format!("{}{}", client.user_addr_port(), SET_POLICY);
 
                 let message = format!("{}{}", "SENDING REQUEST FOR NEW POLICY: ", request_json);
                 log_to_console(message);
@@ -111,7 +103,7 @@ pub fn SetTablePolicy(ColumnProps { table }: &ColumnProps) -> Html {
                             /*
                                 None = 0,
                                 HostOnly = 1,
-                                ParticpantOwned = 2,
+                                ParticipantOwned = 2,
                                 Shared = 3,
                                 Mirror = 4,
                             */

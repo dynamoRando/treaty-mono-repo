@@ -7,12 +7,12 @@ use crate::{
         behaviors::updates_to_host::change_behavior::ChangeBehavior,
         common::{select_database::SelectDatabase, select_table::SelectTable},
     },
-    request::treaty::{
-        clear_status, get_database, get_treaty_token, set_status, update_token_login_status,
-    },
+    request::treaty::{clear_status, get_database, get_treaty_token, set_status},
 };
-use treaty_types::types::treaty_proto::{GetUpdatesToHostBehaviorReply, GetUpdatesToHostBehaviorRequest};
 use treaty_types::proxy::request_type::RequestType;
+use treaty_types::types::treaty_proto::{
+    GetUpdatesToHostBehaviorReply, GetUpdatesToHostBehaviorRequest,
+};
 use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
 mod change_behavior;
 use num_traits::FromPrimitive;
@@ -57,7 +57,6 @@ pub fn UpdatesToHost() -> Html {
                 let token = get_treaty_token();
 
                 let request = GetUpdatesToHostBehaviorRequest {
-                    authentication: Some(token.auth()),
                     database_name: active_database.to_string(),
                     table_name,
                 };
@@ -71,19 +70,11 @@ pub fn UpdatesToHost() -> Html {
 
                         let reply: GetUpdatesToHostBehaviorReply = serde_json::from_str(x).unwrap();
 
-                        let is_authenticated = reply
-                            .authentication_result
-                            .as_ref()
+                        let behavior = reply.behavior.unwrap();
+                        let behavior_value = UpdatesToHostBehavior::from_u32(behavior)
                             .unwrap()
-                            .is_authenticated;
-                        update_token_login_status(is_authenticated);
-
-                        if is_authenticated {
-                            let behavior = reply.behavior.unwrap();
-                            let behavior_value =
-                                UpdatesToHostBehavior::from_u32(behavior).unwrap().to_string();
-                            behavior_type_state.set(behavior_value);
-                        }
+                            .to_string();
+                        behavior_type_state.set(behavior_value);
                     } else {
                         set_status(response.err().unwrap());
                     }

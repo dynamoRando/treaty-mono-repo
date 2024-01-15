@@ -1,27 +1,35 @@
-use core::time;
-use lazy_static::lazy_static;
-use std::fs;
-use std::sync::mpsc;
-use std::sync::mpsc::Receiver;
-use std::sync::mpsc::Sender;
-use std::thread;
-use std::{path::Path, sync::Mutex};
-use test_common::GrpcTestSetup;
-use test_common::HttpTestSetup;
-use tracing::info;
-use tracing::trace;
-use treaty_client::client_actions::ClientActions;
-use treaty_client::grpc::GrpcClient;
-use treaty_client::http::HttpClient;
-use treaty_client::Auth;
-use treaty_client::TreatyClient;
-use treaty_client::TreatyClientType;
-use triggered::Trigger;
-
 use crate::get_test_temp_dir;
 use crate::DEFAULT_GRPC_TIMEOUT_SECONDS;
 use crate::DEFAULT_TEST_PW;
 use crate::DEFAULT_TEST_UN;
+use core::panic;
+use core::time;
+use lazy_static::lazy_static;
+use std::fs;
+use std::net::TcpListener;
+use std::sync::mpsc;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
+use std::thread;
+use std::time::Duration;
+use std::{path::Path, sync::Mutex};
+use stdext::function_name;
+use test_common::GrpcTestSetup;
+use test_common::HttpTestSetup;
+use tokio_postgres::NoTls;
+use tracing::debug;
+use tracing::error;
+use tracing::info;
+use tracing::trace;
+use treaty::settings::HttpTlsClientOptions;
+use treaty::settings::PostgresSettings;
+use treaty_client::client_actions::ClientActions;
+use treaty_client::grpc::GrpcClient;
+use treaty_client::grpc::TlsSettings;
+use treaty_client::http::HttpClient;
+use treaty_client::TreatyClient;
+use treaty_client::TreatyClientType;
+use triggered::Trigger;
 
 #[doc(hidden)]
 pub mod grpc;
@@ -45,14 +53,19 @@ pub enum HarnessClientType {
 pub enum AddrType {
     Client,
     Database,
+    Info,
 }
 
 #[derive(Debug, Clone)]
 pub struct TreatyClientConfig {
-    pub addr: ServiceAddr,
+    pub user_address_port: ServiceAddr,
+    pub info_address_port: ServiceAddr,
     pub client_type: TreatyClientType,
     pub host_id: Option<String>,
     pub auth: Option<TreatyClientAuth>,
+    pub tls: bool,
+    pub tls_settings: Option<TlsSettings>,
+    pub tls_http: Option<HttpTlsClientOptions>,
 }
 
 #[derive(Debug, Clone)]
@@ -61,6 +74,8 @@ pub struct TreatyClientAuth {
     pub pw: String,
 }
 
+/// Represents an IP address, port number, and the purpose of
+/// the address at a Treaty instance
 #[derive(Debug, Clone)]
 pub struct ServiceAddr {
     pub ip4_addr: String,
@@ -72,15 +87,18 @@ pub struct ServiceAddr {
 pub struct TestConfigGrpc {
     pub client_address: ServiceAddr,
     pub database_address: ServiceAddr,
+    pub info_address: ServiceAddr,
     pub client_service_shutdown_trigger: Trigger,
     pub database_service_shutdown_trigger: Trigger,
     pub client_keep_alive: Sender<bool>,
+    pub tls_settings: Option<TlsSettings>,
 }
 
 #[derive(Debug, Clone)]
 pub struct TestConfigHttp {
     pub http_address: ServiceAddr,
     pub keep_alive: Sender<bool>,
+    pub tls_opts: Option<HttpTlsClientOptions>,
 }
 
 #[derive(Debug, Clone)]
@@ -97,6 +115,7 @@ pub struct CoreTestConfig {
     pub test_db_name: String,
     pub contract_desc: Option<String>,
     pub participant_db_addr: Option<ServiceAddr>,
+    pub participant_info_addr: Option<ServiceAddr>,
     pub grpc_test_setup: Option<GrpcTestSetup>,
     pub http_test_setup: Option<HttpTestSetup>,
     pub participant_id: Option<String>,
@@ -108,7 +127,10 @@ impl ServiceAddr {
         format!("{}{}", self.ip4_addr, self.port)
     }
     #[allow(dead_code)]
-    pub fn to_full_string_with_http(&self) -> String {
+    pub fn to_full_string_with_http(&self, tls: bool) -> String {
+        if tls {
+            return format!("{}{}", String::from("https://"), self.to_full_string());
+        }
         format!("{}{}", String::from("http://"), self.to_full_string())
     }
 }
@@ -140,7 +162,13 @@ pub fn sleep_test() {
 }
 
 pub fn sleep_instance() {
-    sleep_test_for_seconds(2);
+    sleep_test_for_seconds(1);
+}
+
+pub async fn tokio_sleep_core() {
+    let seconds = 5;
+    info!("sleeping for {} seconds...", seconds.to_string());
+    tokio::time::sleep(Duration::from_secs(5)).await;
 }
 
 /*
@@ -153,19 +181,46 @@ pub fn init_log_to_screen(level: log::LevelFilter) {
 }
  */
 
-pub fn init_trace_to_screen(enable: bool) {
+/// Specify if you want tracing to appear on screen.
+/// The optional filter is if you want traces from the test module itself to appear as
+/// part of the traces.
+/// Note that this needs to be the name of the test module, example: `auth_for_token=trace`
+/// where `auth_for_token` is the name of the test module, and `trace` is the
+/// tracing level.
+pub fn init_trace_to_screen(enable: bool, opt_filter: Option<String>) {
     use tracing_subscriber::util::SubscriberInitExt;
     use tracing_subscriber::EnvFilter;
 
-    let filter = EnvFilter::builder().parse_lossy("treaty=trace");
+    // let filter = EnvFilter::builder().parse_lossy("treaty=trace,rocket=trace");
 
-    println!("{filter:?}");
+    let filter = match opt_filter {
+        Some(filter) => {
+            let filter_string = format!("treaty=trace,treaty_tests=trace,{}", filter);
+            println!("EnvFilter passed: {}", filter_string);
+            EnvFilter::builder().parse_lossy(filter_string)
+        }
+        None => EnvFilter::builder().parse_lossy("treaty=trace,treaty_tests=trace"),
+    };
+
+    println!("EnvFilter: {filter:?}");
+
+    /*
+     let subscriber = tracing_subscriber::fmt()
+         .compact()
+         .with_file(true)
+         .with_line_number(true)
+         .with_target(true)
+         .with_max_level(Level::TRACE)
+         //.with_env_filter(filter)
+         .finish();
+    */
 
     let subscriber = tracing_subscriber::fmt()
         .compact()
         .with_file(true)
         .with_line_number(true)
         .with_target(true)
+        //.with_max_level(Level::TRACE)
         .with_env_filter(filter)
         .finish();
 
@@ -174,45 +229,18 @@ pub fn init_trace_to_screen(enable: bool) {
     }
 }
 
-/*
-pub fn init_log_to_screen_fern(level: log::LevelFilter) {
-    use ignore_result::Ignore;
+pub fn start_keepalive_for_test(
+    client_type: TreatyClientType,
+    user_address: ServiceAddr,
+    info_address: ServiceAddr,
+) -> Sender<bool> {
+    trace!("[{}]: Starting keepalive", function_name!());
 
-    let colors = ColoredLevelConfig::new()
-        .info(Color::Green)
-        .debug(Color::Blue)
-        .error(Color::BrightRed)
-        .warn(Color::Magenta);
-
-    fern::Dispatch::new()
-        .format(move |out, message, record| {
-            out.finish(format_args!(
-                "{}[{}][{}] {}",
-                chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
-                record.target(),
-                colors.color(record.level()),
-                message
-            ))
-        })
-        .level(level)
-        .level_for("tokio", log::LevelFilter::Off)
-        .level_for("hyper", log::LevelFilter::Off)
-        .level_for("rocket", log::LevelFilter::Off)
-        .level_for("h2", log::LevelFilter::Off)
-        .level_for("tower", log::LevelFilter::Off)
-        .level_for("_", log::LevelFilter::Off)
-        .chain(std::io::stdout())
-        .apply()
-        .ignore();
-}
-*/
-
-pub fn start_keepalive_for_test(client_type: TreatyClientType, addr: ServiceAddr) -> Sender<bool> {
     let (tx_main, rx_main) = mpsc::channel();
 
     // main - normal database setup
     thread::spawn(move || {
-        let _ = keep_alive(client_type, addr, rx_main);
+        let _ = keep_alive(client_type, user_address, rx_main, info_address);
     })
     .join()
     .unwrap();
@@ -220,27 +248,23 @@ pub fn start_keepalive_for_test(client_type: TreatyClientType, addr: ServiceAddr
     tx_main
 }
 
-async fn keep_alive(client_type: TreatyClientType, addr: ServiceAddr, reciever: Receiver<bool>) {
+async fn keep_alive(
+    client_type: TreatyClientType,
+    user_address: ServiceAddr,
+    reciever: Receiver<bool>,
+    info_address: ServiceAddr,
+) {
     let sleep_in_seconds = 1;
 
     match client_type {
         TreatyClientType::Grpc => {
-            let addr_port = addr.to_full_string_with_http();
-            let timeout_in_seconds = DEFAULT_GRPC_TIMEOUT_SECONDS;
-
-            let auth = Auth {
-                user_name: DEFAULT_TEST_UN.into(),
-                pw: DEFAULT_TEST_PW.into(),
-                jwt: String::from(""),
-            };
-
-            let send_jwt_if_available = true;
-
             let mut client = TreatyClient::<GrpcClient>::new_grpc(
-                &addr_port,
-                timeout_in_seconds,
-                auth,
-                send_jwt_if_available,
+                &user_address.to_full_string_with_http(false),
+                &info_address.to_full_string_with_http(false),
+                DEFAULT_GRPC_TIMEOUT_SECONDS,
+                DEFAULT_TEST_UN,
+                DEFAULT_TEST_PW,
+                None,
                 None,
             )
             .await;
@@ -305,17 +329,41 @@ impl TestSettings {
             self.ports.push(self.max_port);
             self.max_port
         } else {
-            let val = *self.ports.iter().max().unwrap() + 1;
-            self.ports.push(val);
-            val
+            let mut port_num = *self.ports.iter().max().unwrap() + 1;
+
+            while !self.port_is_available(port_num) {
+                port_num = port_num + 1;
+                trace!(
+                    "[{}]: port number {port_num:?} is not available, incrementing",
+                    function_name!()
+                );
+            }
+
+            self.ports.push(port_num);
+
+            let ports = self.ports.clone();
+
+            println!("get_next_avail_port ports: {ports:#?}");
+
+            port_num
         }
     }
 
-    pub fn get_current_port(&self) -> u32 {
-        if self.ports.is_empty() {
-            self.max_port
-        } else {
-            *self.ports.iter().max().unwrap()
+    pub fn port_is_available(&self, port: u32) -> bool {
+        let port = format!("127.0.0.1:{port:?}");
+        match TcpListener::bind(port.clone()) {
+            Ok(_) => {
+                trace!("[{}]: port number {port:?} is available", function_name!());
+                true
+            }
+            Err(e) => {
+                error!("[{}]: Error: {e:?}", function_name!());
+                trace!(
+                    "[{}]: port number {port:?} is NOT available",
+                    function_name!()
+                );
+                false
+            }
         }
     }
 
@@ -335,11 +383,64 @@ pub fn delete_test_database(db_name: &str, cwd: &str) {
     }
 }
 
-pub async fn get_treaty_client(config: &TreatyClientConfig) -> Box<dyn ClientActions> {
+fn get_postgres_connection_string(postgres: &PostgresSettings) -> String {
+    match postgres.port {
+        Some(port) => format!(
+            "host={} user={} password={} port={}",
+            postgres.host, postgres.un, postgres.pw, port
+        ),
+        None => format!(
+            "host={} user={} password={} ",
+            postgres.host, postgres.un, postgres.pw,
+        ),
+    }
+}
+
+pub async fn delete_test_postgres_database(db_name: &str, postgres: &PostgresSettings) {
+    let postgres = postgres.clone();
+    let result_client =
+        match tokio_postgres::connect(&get_postgres_connection_string(&postgres), NoTls).await {
+            Ok(pair) => {
+                let postgres = postgres.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = pair.1.await {
+                        error!("connection error: {} at {postgres:?}", e);
+                        panic!();
+                    }
+                });
+
+                Ok(pair.0)
+            }
+            Err(e) => {
+                error!("[{}]: {postgres:?} {e:?}", function_name!());
+                Err("Couldn't create connection")
+            }
+        };
+
+    let postgres = postgres.clone();
+    if let Err(e) = result_client {
+        panic!("{postgres:?} {e:?}");
+    }
+
+    if let Ok(client) = result_client {
+        let sql = format!("DROP DATABASE IF EXISTS {};", db_name);
+        debug!("{sql:?}");
+        if let Err(e) = client.execute(&sql, &[]).await {
+            error!(
+                "[{}]: postgres: {postgres:?} error: {e:?}",
+                function_name!()
+            );
+            panic!("Error droppping database");
+        }
+    }
+}
+
+pub async fn get_treaty_client(config: &TreatyClientConfig) -> Box<dyn ClientActions + Send> {
     trace!("get_treaty_client: {config:?}");
 
     match config.client_type {
         TreatyClientType::Grpc => {
+            trace!("[{}]: Getting GRPC client...", function_name!());
             let un: String;
             let pw: String;
 
@@ -352,50 +453,51 @@ pub async fn get_treaty_client(config: &TreatyClientConfig) -> Box<dyn ClientAct
             }
 
             if config.host_id.is_none() {
-                let addr_port = config.addr.to_full_string_with_http();
+                let user_address_port = config
+                    .user_address_port
+                    .to_full_string_with_http(config.tls);
+                let info_address_port = config
+                    .info_address_port
+                    .to_full_string_with_http(config.tls);
                 let timeout_in_seconds = DEFAULT_GRPC_TIMEOUT_SECONDS;
 
-                let auth = Auth {
-                    user_name: un,
-                    pw,
-                    jwt: String::from(""),
-                };
-
-                let send_jwt_if_available = true;
-
                 let client = TreatyClient::<GrpcClient>::new_grpc(
-                    &addr_port,
+                    &user_address_port,
+                    &info_address_port,
                     timeout_in_seconds,
-                    auth,
-                    send_jwt_if_available,
+                    &un,
+                    &pw,
                     None,
+                    config.tls_settings.clone(),
                 )
                 .await;
-                // return HarnessClientType::Grpc(client);
+                trace!("[{}]: Getting client with no host id", function_name!());
+                trace!("[{}]: {client:?}", function_name!());
                 return Box::new(client);
             }
 
-            let addr_port = config.addr.to_full_string_with_http();
+            let user_address_port = config
+                .user_address_port
+                .to_full_string_with_http(config.tls);
+            let info_address_port = config
+                .info_address_port
+                .to_full_string_with_http(config.tls);
             let timeout_in_seconds = DEFAULT_GRPC_TIMEOUT_SECONDS;
 
-            let auth = Auth {
-                user_name: un,
-                pw,
-                jwt: String::from(""),
-            };
-
-            let send_jwt_if_available = true;
             let host_id = Some(config.host_id.as_ref().unwrap().clone());
 
             let client = TreatyClient::<GrpcClient>::new_grpc(
-                &addr_port,
+                &user_address_port,
+                &info_address_port,
                 timeout_in_seconds,
-                auth,
-                send_jwt_if_available,
+                &un,
+                &pw,
                 host_id,
+                config.tls_settings.clone(),
             )
             .await;
-            // return HarnessClientType::Grpc(client);
+            trace!("[{}]: Getting client with host id", function_name!());
+            trace!("[{}]: {client:?}", function_name!());
             return Box::new(client);
         }
         TreatyClientType::Http => {
@@ -410,46 +512,58 @@ pub async fn get_treaty_client(config: &TreatyClientConfig) -> Box<dyn ClientAct
                 pw = config.auth.as_ref().unwrap().pw.clone();
             }
 
-            let auth = Auth {
-                user_name: un,
-                pw,
-                jwt: String::from(""),
+            let use_tls = match config.tls_settings {
+                Some(_) => true,
+                None => false,
             };
 
             if config.host_id.is_none() {
-                let addr = &config.addr.ip4_addr.clone();
-                let port = &config.addr.port;
+                let user_address = &config.user_address_port.ip4_addr.clone();
+                let info_address = &config.info_address_port.ip4_addr.clone();
+                let user_port = config.user_address_port.port;
+                let info_port = config.info_address_port.port;
+
                 let timeout_in_seconds: u32 = 60;
-                let send_jwt_if_available = true;
 
                 let client = TreatyClient::<HttpClient>::new_http(
-                    addr,
-                    *port,
-                    auth,
+                    user_address,
+                    user_port,
+                    info_address,
+                    info_port,
+                    &un,
+                    &pw,
                     timeout_in_seconds,
-                    send_jwt_if_available,
                     None,
+                    use_tls,
+                    config.tls_http.clone(),
                 )
                 .await;
-                // return HarnessClientType::Http(client);
+                trace!("[{}]: {client:?}", function_name!());
                 return Box::new(client);
             }
-            let addr = &config.addr.ip4_addr.clone();
-            let port = &config.addr.port;
+
+            let user_address = &config.user_address_port.ip4_addr.clone();
+            let info_address = &config.info_address_port.ip4_addr.clone();
+            let user_port = config.user_address_port.port;
+            let info_port = config.info_address_port.port;
+
             let timeout_in_seconds: u32 = 60;
-            let send_jwt_if_available = true;
             let host_id = config.host_id.as_ref().unwrap();
 
             let client = TreatyClient::<HttpClient>::new_http(
-                addr,
-                *port,
-                auth,
+                user_address,
+                user_port,
+                info_address,
+                info_port,
+                &un,
+                &pw,
                 timeout_in_seconds,
-                send_jwt_if_available,
-                Some(host_id.into()),
+                Some(host_id.to_string()),
+                use_tls,
+                config.tls_http.clone(),
             )
             .await;
-            // return HarnessClientType::Http(client);
+            trace!("[{}]: {client:?}", function_name!());
             return Box::new(client);
         }
     }

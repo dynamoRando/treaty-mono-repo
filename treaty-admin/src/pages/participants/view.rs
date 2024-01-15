@@ -11,7 +11,7 @@ use yew::{
 use crate::{
     log::log_to_console,
     pages::{common::select_database::SelectDatabase, participants::ActiveDbProps},
-    request::{self, clear_status, get_client, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, get_client, set_status},
 };
 
 #[derive(Properties, PartialEq)]
@@ -37,24 +37,13 @@ pub fn ViewParticipants(ActiveDbProps { active_db }: &ActiveDbProps) -> Html {
                 let participant_details = participant_details.clone();
 
                 let mut client = get_client();
-                let token = get_token();
                 spawn_local(async move {
-                    let reply = client.get_participants(token.auth(), &db_name).await;
+                    let reply = client.get_participants(&db_name).await;
 
                     match reply {
                         Ok(reply) => {
                             clear_status();
-
-                            let is_authenticated = reply
-                                .authentication_result
-                                .as_ref()
-                                .unwrap()
-                                .is_authenticated;
-                            update_token_login_status(is_authenticated);
-
-                            if is_authenticated {
-                                participant_details.set(reply.participants);
-                            }
+                            participant_details.set(reply.participants);
                         }
                         Err(e) => {
                             set_status(e);
@@ -132,10 +121,9 @@ pub fn ViewParticipantsForDb(
                                             move |_| {
                                                 let participant_send_contract_result = participant_send_contract_result.clone();
                                                 let alias = participant.alias.clone();
-                                                let token = get_token().clone();
+                                                let client = get_client();
 
                                                 let request = SendParticipantContractRequest {
-                                                    authentication: Some(token.auth().clone()),
                                                     database_name: database_name.clone(),
                                                     participant_alias: alias.clone()
                                                 };
@@ -144,7 +132,7 @@ pub fn ViewParticipantsForDb(
 
                                                 log_to_console(json_request.clone());
 
-                                                let url = format!("{}{}", token.addr, SEND_CONTRACT_TO_PARTICIPANT);
+                                                let url = format!("{}{}", client.user_addr_port(), SEND_CONTRACT_TO_PARTICIPANT);
 
                                                 log_to_console(url.clone());
 
@@ -157,10 +145,7 @@ pub fn ViewParticipantsForDb(
                                                         let reply: SendParticipantContractReply =
                                                         serde_json::from_str(x).unwrap();
 
-                                                        let is_authenticated = reply.authentication_result.unwrap().is_authenticated;
-                                                        update_token_login_status(is_authenticated);
 
-                                                        if is_authenticated {
                                                             if reply.is_sent {
                                                                 let message = format!("{}{}{}","Contract sent to
                                                                 participant ", alias.clone(), " is successful.");
@@ -170,7 +155,7 @@ pub fn ViewParticipantsForDb(
                                                                 participant ", alias.clone(), " is NOT successful. Reason: ", reply.contract_status);
                                                                 participant_send_contract_result.set(message);
                                                             }
-                                                        }
+
                                                     } else {
                                                         set_status(response.err().unwrap());
                                                     }

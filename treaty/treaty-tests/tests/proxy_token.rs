@@ -1,13 +1,19 @@
 use std::sync::{Arc, Mutex};
 
 use tracing::{debug, info};
-use treaty::treaty_proto::{AuthRequest, CreateUserDatabaseReply, CreateUserDatabaseRequest};
+use treaty::treaty_proto::{CreateUserDatabaseReply, CreateUserDatabaseRequest};
 use treaty_proxy::proxy_server::ProxyServer;
 use treaty_tests::harness::{
     init_trace_to_screen,
     proxy::{configure_proxy_for_test, get_http_result, TreatyProxyTestType},
 };
-use treaty_types::proxy::{server_messages::{RegisterLoginRequest, RegisterLoginReply, ExecuteReply, AuthForTokenRequest, AuthForTokenReply, ExecuteRequest}, request_type::RequestType};
+use treaty_types::proxy::{
+    request_type::RequestType,
+    server_messages::{
+        AuthForTokenReply, AuthForTokenRequest, ExecuteReply, ExecuteRequest, RegisterLoginReply,
+        RegisterLoginRequest,
+    },
+};
 
 struct TestId {
     pub id: Option<String>,
@@ -19,7 +25,7 @@ struct TestToken {
 
 #[tokio::test]
 async fn token() {
-    init_trace_to_screen(false);
+    init_trace_to_screen(false, None);
 
     let id = TestId { id: None };
     let id = Mutex::new(id);
@@ -79,17 +85,7 @@ async fn token() {
             _id = Some(_lock.id.as_ref().unwrap().clone());
         }
 
-        let _auth = AuthRequest {
-            user_name: "tester".to_string(),
-            pw: "1234".to_string(),
-            pw_hash: Vec::new(),
-            token: Vec::new(),
-            jwt: "".to_string(),
-            id: _id,
-        };
-
         let _request = CreateUserDatabaseRequest {
-            authentication: Some(_auth),
             database_name: "hopeitworks.db".to_string(),
         };
 
@@ -131,15 +127,6 @@ async fn token() {
             _id = Some(_lock.id.as_ref().unwrap().clone());
         }
 
-        let _auth = AuthRequest {
-            user_name: "tester".to_string(),
-            pw: "1234".to_string(),
-            pw_hash: Vec::new(),
-            token: Vec::new(),
-            jwt: "".to_string(),
-            id: _id,
-        };
-
         let request = AuthForTokenRequest {
             login: "tester".to_string(),
             pw: "1234".to_string(),
@@ -179,17 +166,7 @@ async fn token() {
             _id = Some(_lock.id.as_ref().unwrap().clone());
         }
 
-        let _auth = AuthRequest {
-            user_name: "tester".to_string(),
-            pw: "1234".to_string(),
-            pw_hash: Vec::new(),
-            token: Vec::new(),
-            jwt: "".to_string(),
-            id: _id,
-        };
-
         let _request = CreateUserDatabaseRequest {
-            authentication: Some(_auth),
             database_name: "hopeitworkstoken.db".to_string(),
         };
 

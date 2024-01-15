@@ -1,41 +1,43 @@
 use async_trait::async_trait;
+use treaty_types::auth::AuthRequestData;
 
-use crate::treaty_proto::{
-    AcceptPendingActionReply, AcceptPendingActionRequest, AcceptPendingContractReply,
-    AcceptPendingContractRequest, AddParticipantReply, AddParticipantRequest, AuthRequest,
-    ChangeDeletesFromHostBehaviorReply, ChangeDeletesFromHostBehaviorRequest,
-    ChangeDeletesToHostBehaviorReply, ChangeDeletesToHostBehaviorRequest, ChangeHostStatusReply,
-    ChangeHostStatusRequest, ChangeUpdatesFromHostBehaviorRequest,
-    ChangeUpdatesToHostBehaviorReply, ChangeUpdatesToHostBehaviorRequest,
-    ChangesUpdatesFromHostBehaviorReply, CreateUserDatabaseReply, CreateUserDatabaseRequest,
-    EnableCoooperativeFeaturesReply, EnableCoooperativeFeaturesRequest,
-    ExecuteCooperativeWriteReply, ExecuteCooperativeWriteRequest, ExecuteReadReply,
-    ExecuteReadRequest, ExecuteWriteReply, ExecuteWriteRequest, GenerateContractReply,
-    GenerateContractRequest, GenerateHostInfoReply, GenerateHostInfoRequest,
-    GetActiveContractReply, GetActiveContractRequest, GetCooperativeHostsReply,
-    GetCooperativeHostsRequest, GetDataHashReply, GetDataHashRequest, GetDatabasesReply,
-    GetDatabasesRequest, GetDeletesFromHostBehaviorReply, GetDeletesFromHostBehaviorRequest,
-    GetDeletesToHostBehaviorReply, GetDeletesToHostBehaviorRequest, GetLogicalStoragePolicyReply,
-    GetLogicalStoragePolicyRequest, GetParticipantsReply, GetParticipantsRequest,
-    GetPendingActionsReply, GetPendingActionsRequest, GetReadRowIdsReply, GetReadRowIdsRequest,
-    GetSettingsReply, GetSettingsRequest, GetUpdatesFromHostBehaviorReply,
-    GetUpdatesFromHostBehaviorRequest, GetUpdatesToHostBehaviorReply,
-    GetUpdatesToHostBehaviorRequest, HasTableReply, HasTableRequest, HostInfoReply, RevokeReply,
-    SendParticipantContractReply, SendParticipantContractRequest, SetLogicalStoragePolicyReply,
-    SetLogicalStoragePolicyRequest, TestReply, TestRequest, TokenReply,
-    TryAuthAtParticipantRequest, TryAuthAtPartipantReply, ViewPendingContractsReply,
-    ViewPendingContractsRequest, DeleteUserDatabaseReply, DeleteUserDatabaseRequest,
+use crate::{
+    settings::Settings,
+    treaty_proto::{
+        AcceptPendingActionReply, AcceptPendingActionRequest, AcceptPendingContractReply,
+        AcceptPendingContractRequest, AddParticipantReply, AddParticipantRequest, AuthRequestBasic,
+        AuthRequestWebToken, ChangeDeletesFromHostBehaviorReply,
+        ChangeDeletesFromHostBehaviorRequest, ChangeDeletesToHostBehaviorReply,
+        ChangeDeletesToHostBehaviorRequest, ChangeHostStatusReply, ChangeHostStatusRequest,
+        ChangeUpdatesFromHostBehaviorRequest, ChangeUpdatesToHostBehaviorReply,
+        ChangeUpdatesToHostBehaviorRequest, ChangesUpdatesFromHostBehaviorReply,
+        CreateUserDatabaseReply, CreateUserDatabaseRequest, DeleteUserDatabaseReply,
+        DeleteUserDatabaseRequest, EnableCoooperativeFeaturesReply,
+        EnableCoooperativeFeaturesRequest, ExecuteCooperativeWriteReply,
+        ExecuteCooperativeWriteRequest, ExecuteReadReply, ExecuteReadRequest, ExecuteWriteReply,
+        ExecuteWriteRequest, GenerateContractReply, GenerateContractRequest, GenerateHostInfoReply,
+        GenerateHostInfoRequest, GetActiveContractReply, GetActiveContractRequest,
+        GetBackingDatabaseConfigReply, GetCooperativeHostsReply, GetDataHashReply,
+        GetDataHashRequest, GetDatabasesReply, GetDeletesFromHostBehaviorReply,
+        GetDeletesFromHostBehaviorRequest, GetDeletesToHostBehaviorReply,
+        GetDeletesToHostBehaviorRequest, GetLogicalStoragePolicyReply,
+        GetLogicalStoragePolicyRequest, GetParticipantsReply, GetParticipantsRequest,
+        GetPendingActionsReply, GetPendingActionsRequest, GetReadRowIdsReply, GetReadRowIdsRequest,
+        GetSettingsReply, GetUpdatesFromHostBehaviorReply, GetUpdatesFromHostBehaviorRequest,
+        GetUpdatesToHostBehaviorReply, GetUpdatesToHostBehaviorRequest, HasTableReply,
+        HasTableRequest, HostInfoReply, RevokeReply, SendParticipantContractReply,
+        SendParticipantContractRequest, SetLogicalStoragePolicyReply,
+        SetLogicalStoragePolicyRequest, TestReply, TestRequest, TokenReply,
+        TryAuthAtParticipantRequest, TryAuthAtPartipantReply, ViewPendingContractsReply,
+    },
 };
 
 #[async_trait]
 pub trait UserServiceHandlerActions {
     async fn change_host_status(&self, request: ChangeHostStatusRequest) -> ChangeHostStatusReply;
     async fn is_online(&self, request: TestRequest) -> TestReply;
-    async fn get_cooperative_hosts(
-        &self,
-        request: GetCooperativeHostsRequest,
-    ) -> GetCooperativeHostsReply;
-    async fn get_settings(&self, request: GetSettingsRequest) -> GetSettingsReply;
+    async fn get_cooperative_hosts(&self) -> GetCooperativeHostsReply;
+    async fn get_settings(&self) -> GetSettingsReply;
     async fn get_deletes_from_host_behavior(
         &self,
         request: GetDeletesFromHostBehaviorRequest,
@@ -60,6 +62,10 @@ pub trait UserServiceHandlerActions {
         request: CreateUserDatabaseRequest,
     ) -> CreateUserDatabaseReply;
     async fn delete_user_database(
+        &self,
+        request: DeleteUserDatabaseRequest,
+    ) -> DeleteUserDatabaseReply;
+    async fn delete_user_database_forcefully(
         &self,
         request: DeleteUserDatabaseRequest,
     ) -> DeleteUserDatabaseReply;
@@ -92,16 +98,14 @@ pub trait UserServiceHandlerActions {
         &self,
         request: ChangeUpdatesFromHostBehaviorRequest,
     ) -> ChangesUpdatesFromHostBehaviorReply;
-    async fn review_pending_contracts(
-        &self,
-        request: ViewPendingContractsRequest,
-    ) -> ViewPendingContractsReply;
+    async fn review_pending_contracts(&self) -> ViewPendingContractsReply;
+    async fn get_backing_database_config(&self) -> GetBackingDatabaseConfigReply;
     async fn send_participant_contract(
         &self,
         request: SendParticipantContractRequest,
     ) -> SendParticipantContractReply;
     async fn add_participant(&self, request: AddParticipantRequest) -> AddParticipantReply;
-    async fn get_databases(&self, request: GetDatabasesRequest) -> GetDatabasesReply;
+    async fn get_databases(&self) -> GetDatabasesReply;
     async fn get_pending_actions_at_participant(
         &self,
         request: GetPendingActionsRequest,
@@ -117,8 +121,8 @@ pub trait UserServiceHandlerActions {
         &self,
         request: GetUpdatesToHostBehaviorRequest,
     ) -> GetUpdatesToHostBehaviorReply;
-    async fn revoke_token(&self, request: AuthRequest) -> RevokeReply;
-    async fn auth_for_token(&self, request: AuthRequest) -> TokenReply;
+    async fn revoke_token(&self, request: AuthRequestWebToken) -> RevokeReply;
+    async fn auth_for_token(&self, request: AuthRequestBasic) -> TokenReply;
     async fn set_logical_storage_policy(
         &self,
         request: SetLogicalStoragePolicyRequest,
@@ -131,11 +135,14 @@ pub trait UserServiceHandlerActions {
         &self,
         request: TryAuthAtParticipantRequest,
     ) -> TryAuthAtPartipantReply;
-    async fn get_host_info(&self, request: AuthRequest) -> HostInfoReply;
+    async fn get_host_info(&self) -> HostInfoReply;
     async fn generate_contract(&self, request: GenerateContractRequest) -> GenerateContractReply;
     async fn has_table(&self, request: HasTableRequest) -> HasTableReply;
     async fn execute_cooperative_write_at_host(
         &self,
         request: ExecuteCooperativeWriteRequest,
     ) -> ExecuteCooperativeWriteReply;
+    async fn authenticate_request(&self, auth_data: &AuthRequestData) -> bool;
+    fn debug_settings(&self) -> Settings;
+    fn debug_root_dir(&self) -> Option<String>;
 }

@@ -1,0 +1,39 @@
+version: '3.9'
+
+services:
+  treaty-dev:
+    container_name: dev
+    build:
+      context: .
+      target: dev
+    volumes:
+      - ../../treaty/:/treaty
+    networks:
+      - default
+    platform: "linux/amd64"
+
+
+  postgres:
+    container_name: postgres
+    image: postgres:latest
+    ports:
+    - "5432:5432"
+    environment:
+      POSTGRES_USER: tester
+      POSTGRES_PASSWORD: tester
+      POSTGRES_DB: tester
+    networks:
+      - default
+
+
+  alt.postgres:
+    container_name: alt.postgres
+    image: postgres:latest
+    ports:
+    - "5433:5432"
+    environment:
+      POSTGRES_USER: tester
+      POSTGRES_PASSWORD: tester
+      POSTGRES_DB: tester
+    networks:
+      - default

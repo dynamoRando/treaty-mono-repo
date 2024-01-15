@@ -2,10 +2,12 @@ use crate::{log::log_to_console, pages::treaty_admin::databases::columns::Column
 
 use crate::request::{
     self,
-    treaty::{clear_status, get_treaty_token, set_status, update_token_login_status},
+    treaty::{clear_status, get_treaty_token, set_status},
 };
-use treaty_types::types::treaty_proto::{SetLogicalStoragePolicyReply, SetLogicalStoragePolicyRequest};
 use treaty_types::proxy::request_type::RequestType;
+use treaty_types::types::treaty_proto::{
+    SetLogicalStoragePolicyReply, SetLogicalStoragePolicyRequest,
+};
 use web_sys::{HtmlInputElement, MouseEvent};
 use yew::{function_component, html, use_node_ref, use_state_eq, AttrValue, Callback, Html};
 
@@ -62,16 +64,7 @@ pub fn SetTablePolicy(ColumnProps { table }: &ColumnProps) -> Html {
 
                         let reply: SetLogicalStoragePolicyReply = serde_json::from_str(x).unwrap();
 
-                        let is_authenticated = reply
-                            .authentication_result
-                            .as_ref()
-                            .unwrap()
-                            .is_authenticated;
-                        update_token_login_status(is_authenticated);
-
-                        if is_authenticated {
-                            set_policy_result.set(Some(reply.is_successful));
-                        }
+                        set_policy_result.set(Some(reply.is_successful));
                     } else {
                         set_status(response.err().unwrap());
                     }
@@ -81,7 +74,6 @@ pub fn SetTablePolicy(ColumnProps { table }: &ColumnProps) -> Html {
                 let table_name = table_name.clone();
 
                 let request = SetLogicalStoragePolicyRequest {
-                    authentication: Some(token.auth()),
                     database_name,
                     table_name,
                     policy_mode: policy_num,
@@ -111,7 +103,7 @@ pub fn SetTablePolicy(ColumnProps { table }: &ColumnProps) -> Html {
                             /*
                                 None = 0,
                                 HostOnly = 1,
-                                ParticpantOwned = 2,
+                                ParticipantOwned = 2,
                                 Shared = 3,
                                 Mirror = 4,
                             */

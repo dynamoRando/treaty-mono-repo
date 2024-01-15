@@ -1,13 +1,7 @@
 use std::path::Path;
 
-use guid_create::GUID;
-use rusqlite::{named_params, types::Type, Connection, Statement};
-use stdext::function_name;
-use tracing::{error, info, instrument, trace, warn};
-use treaty_types::enums::*;
 use crate::{
     crypt, defaults,
-    
     error::{TreatyDbError, TreatyGenerateContractError},
     models::{
         CdsHosts, CoopDatabaseContract, CoopDatabaseParticipant, CoopDatabaseParticipantData,
@@ -18,6 +12,12 @@ use crate::{
         Row, RowValue, TokenReply,
     },
 };
+use async_trait::async_trait;
+use guid_create::GUID;
+use rusqlite::{named_params, types::Type, Connection, Statement};
+use stdext::function_name;
+use tracing::{error, info, instrument, trace, warn};
+use treaty_types::enums::*;
 
 use self::{db::Db, part_db::PartDb, treaty::TreatyDb};
 
@@ -27,6 +27,28 @@ mod db;
 mod part_db;
 mod treaty;
 
+/// Takes a native treaty `ColumnType` and converts to the corresponding Sqlite type
+#[derive(Debug, Clone)]
+pub struct ColumnTypeSqlite {}
+
+impl ColumnTypeSqlite {
+    pub fn data_type_to_native_sqlite(column_type: &ColumnType) -> rusqlite::types::Type {
+        match column_type {
+            ColumnType::Unknown => todo!(),
+            ColumnType::Int => todo!(),
+            ColumnType::Bit => todo!(),
+            ColumnType::Char => todo!(),
+            ColumnType::DateTime => todo!(),
+            ColumnType::Decimal => todo!(),
+            ColumnType::Varchar => todo!(),
+            ColumnType::Binary => todo!(),
+            ColumnType::Varbinary => todo!(),
+            ColumnType::Text => todo!(),
+        }
+    }
+}
+
+/// The `dbi` or Database Implemenation for Treaty in Sqlite. Represents the backing Sqlite databases that Treaty will work with.
 #[derive(Debug, Clone)]
 pub struct SqliteDbi {
     db_name: String,
@@ -66,16 +88,17 @@ impl SqliteDbi {
     }
 }
 
+#[async_trait]
 impl DbiActions for SqliteDbi {
-    fn verify_token(&self, token: &str) -> Result<bool, TreatyDbError> {
+    async fn verify_token(&self, token: &str) -> Result<bool, TreatyDbError> {
         self.treaty().verify_token(token)
     }
 
-    fn get_cooperative_hosts(&self) -> Result<Option<Vec<CdsHosts>>, TreatyDbError> {
+    async fn get_cooperative_hosts(&self) -> Result<Option<Vec<CdsHosts>>, TreatyDbError> {
         self.treaty().get_cooperative_hosts()
     }
 
-    fn save_token(
+    async fn save_token(
         &self,
         login: &str,
         token: &str,
@@ -84,34 +107,44 @@ impl DbiActions for SqliteDbi {
         self.treaty().save_token(login, token, expiration)
     }
 
-    fn auth_for_token(&self, login: &str, pw: &str) -> Result<TokenReply, TreatyDbError> {
-        self.treaty().auth_for_token(login, pw)
+    async fn auth_for_token(
+        &self,
+        login: &str,
+        pw: &str,
+        timeout_in_minutes: Option<u32>,
+    ) -> Result<TokenReply, TreatyDbError> {
+        self.treaty().auth_for_token(login, pw, timeout_in_minutes)
     }
 
-    fn login_has_token(&self, login: &str) -> Result<bool, TreatyDbError> {
+    async fn login_has_token(&self, login: &str) -> Result<bool, TreatyDbError> {
         self.treaty().login_has_token(login)
     }
 
-    fn revoke_token(&self, token: &str) -> Result<bool, TreatyDbError> {
+    async fn revoke_token(&self, token: &str) -> Result<bool, TreatyDbError> {
         self.treaty().revoke_token(token)
     }
 
-    fn delete_expired_tokens(&self) -> Result<(), TreatyDbError> {
+    async fn delete_expired_tokens(&self) -> Result<(), TreatyDbError> {
         self.treaty().delete_expired_tokens()
     }
 
-    fn get_last_log_entries(&self, number_of_entries: u32) -> Result<Vec<LogEntry>, TreatyDbError> {
-        todo!()
+    async fn get_last_log_entries(
+        &self,
+        number_of_entries: u32,
+    ) -> Result<Vec<LogEntry>, TreatyDbError> {
+        todo!("get_last_log_entries")
     }
 
-    fn create_token_for_login(
+    async fn create_token_for_login(
         &self,
         login: &str,
+        timeout_in_minutes: Option<u32>,
     ) -> Result<(String, chrono::DateTime<chrono::Utc>), TreatyDbError> {
-        self.treaty().create_token_for_login(login)
+        self.treaty()
+            .create_token_for_login(login, timeout_in_minutes)
     }
 
-    fn accept_pending_action_at_participant(
+    async fn accept_pending_action_at_participant(
         &self,
         db_name: &str,
         table_name: &str,
@@ -121,7 +154,7 @@ impl DbiActions for SqliteDbi {
             .accept_pending_action_at_participant(db_name, table_name, row_id)
     }
 
-    fn get_pending_actions(
+    async fn get_pending_actions(
         &self,
         db_name: &str,
         table_name: &str,
@@ -131,7 +164,7 @@ impl DbiActions for SqliteDbi {
             .get_pending_actions(table_name, action)
     }
 
-    fn get_data_hash_at_host(
+    async fn get_data_hash_at_host(
         &self,
         db_name: &str,
         table_name: &str,
@@ -140,7 +173,7 @@ impl DbiActions for SqliteDbi {
         self.db(db_name).get_data_hash_at_host(table_name, row_id)
     }
 
-    fn get_data_hash_at_participant(
+    async fn get_data_hash_at_participant(
         &self,
         db_name: &str,
         table_name: &str,
@@ -150,7 +183,7 @@ impl DbiActions for SqliteDbi {
             .get_data_hash_at_participant(table_name, row_id)
     }
 
-    fn read_row_id_from_part_db(
+    async fn read_row_id_from_part_db(
         &self,
         db_name: &str,
         table_name: &str,
@@ -160,7 +193,7 @@ impl DbiActions for SqliteDbi {
             .read_row_id_from_part_db(table_name, where_clause)
     }
 
-    fn remove_remote_row_reference_from_host(
+    async fn remove_remote_row_reference_from_host(
         &self,
         db_name: &str,
         table_name: &str,
@@ -170,19 +203,22 @@ impl DbiActions for SqliteDbi {
             .remove_remote_row_reference_from_host(table_name, row_id)
     }
 
-    fn get_cds_host_for_part_db(&self, db_name: &str) -> Result<Option<CdsHosts>, TreatyDbError> {
+    async fn get_cds_host_for_part_db(
+        &self,
+        db_name: &str,
+    ) -> Result<Option<CdsHosts>, TreatyDbError> {
         self.treaty().get_cds_host_for_part_db(db_name)
     }
 
-    fn get_treaty_db_type(&self, db_name: &str) -> Result<TreatyDatabaseType, TreatyDbError> {
+    async fn get_treaty_db_type(&self, db_name: &str) -> Result<TreatyDatabaseType, TreatyDbError> {
         self.treaty().get_treaty_db_type(db_name)
     }
 
-    fn db_type(&self) -> DatabaseType {
+    async fn db_type(&self) -> DatabaseType {
         DatabaseType::Sqlite
     }
 
-    fn get_updates_to_host_behavior(
+    async fn get_updates_to_host_behavior(
         &self,
         db_name: &str,
         table_name: &str,
@@ -191,7 +227,7 @@ impl DbiActions for SqliteDbi {
             .get_updates_to_host_behavior(db_name, table_name)
     }
 
-    fn get_deletes_to_host_behavior(
+    async fn get_deletes_to_host_behavior(
         &self,
         db_name: &str,
         table_name: &str,
@@ -200,7 +236,7 @@ impl DbiActions for SqliteDbi {
             .get_deletes_to_host_behavior(db_name, table_name)
     }
 
-    fn get_deletes_from_host_behavior(
+    async fn get_deletes_from_host_behavior(
         &self,
         db_name: &str,
         table_name: &str,
@@ -209,7 +245,7 @@ impl DbiActions for SqliteDbi {
             .get_deletes_from_host_behavior(db_name, table_name)
     }
 
-    fn get_updates_from_host_behavior(
+    async fn get_updates_from_host_behavior(
         &self,
         db_name: &str,
         table_name: &str,
@@ -218,7 +254,7 @@ impl DbiActions for SqliteDbi {
             .get_updates_from_host_behavior(db_name, table_name)
     }
 
-    fn change_updates_from_host_behavior(
+    async fn change_updates_from_host_behavior(
         &self,
         db_name: &str,
         table_name: &str,
@@ -228,7 +264,7 @@ impl DbiActions for SqliteDbi {
             .change_updates_from_host_behavior(db_name, table_name, behavior)
     }
 
-    fn change_deletes_from_host_behavior(
+    async fn change_deletes_from_host_behavior(
         &self,
         db_name: &str,
         table_name: &str,
@@ -238,7 +274,7 @@ impl DbiActions for SqliteDbi {
             .change_deletes_from_host_behavior(db_name, table_name, behavior)
     }
 
-    fn change_updates_to_host_behavior(
+    async fn change_updates_to_host_behavior(
         &self,
         db_name: &str,
         table_name: &str,
@@ -248,7 +284,7 @@ impl DbiActions for SqliteDbi {
             .change_updates_to_host_behavior(db_name, table_name, behavior)
     }
 
-    fn change_deletes_to_host_behavior(
+    async fn change_deletes_to_host_behavior(
         &self,
         db_name: &str,
         table_name: &str,
@@ -258,7 +294,7 @@ impl DbiActions for SqliteDbi {
             .change_deletes_to_host_behavior(db_name, table_name, behavior)
     }
 
-    fn get_row_from_partial_database(
+    async fn get_row_from_partial_database(
         &self,
         db_name: &str,
         table_name: &str,
@@ -268,11 +304,15 @@ impl DbiActions for SqliteDbi {
             .get_row_from_partial_database(table_name, row_id)
     }
 
-    fn change_host_status_by_id(&self, host_id: &str, status: u32) -> Result<bool, TreatyDbError> {
+    async fn change_host_status_by_id(
+        &self,
+        host_id: &str,
+        status: u32,
+    ) -> Result<bool, TreatyDbError> {
         self.treaty().change_host_status_by_id(host_id, status)
     }
 
-    fn change_host_status_by_name(
+    async fn change_host_status_by_name(
         &self,
         host_name: &str,
         status: u32,
@@ -280,15 +320,23 @@ impl DbiActions for SqliteDbi {
         self.treaty().change_host_status_by_name(host_name, status)
     }
 
-    fn verify_host_by_id(&self, host_id: &str, token: Vec<u8>) -> Result<bool, TreatyDbError> {
+    async fn verify_host_by_id(
+        &self,
+        host_id: &str,
+        token: Vec<u8>,
+    ) -> Result<bool, TreatyDbError> {
         self.treaty().verify_host_by_id(host_id, token)
     }
 
-    fn verify_host_by_name(&self, host_name: &str, token: Vec<u8>) -> Result<bool, TreatyDbError> {
+    async fn verify_host_by_name(
+        &self,
+        host_name: &str,
+        token: Vec<u8>,
+    ) -> Result<bool, TreatyDbError> {
         self.treaty().verify_host_by_name(host_name, token)
     }
 
-    fn delete_metadata_in_host_db(
+    async fn delete_metadata_in_host_db(
         &self,
         db_name: &str,
         table_name: &str,
@@ -299,7 +347,7 @@ impl DbiActions for SqliteDbi {
             .delete_metadata_in_host_db(table_name, row_id, internal_participant_id)
     }
 
-    fn update_metadata_in_host_db(
+    async fn update_metadata_in_host_db(
         &self,
         db_name: &str,
         table_name: &str,
@@ -315,7 +363,7 @@ impl DbiActions for SqliteDbi {
         )
     }
 
-    fn insert_metadata_into_host_db(
+    async fn insert_metadata_into_host_db(
         &self,
         db_name: &str,
         table_name: &str,
@@ -331,7 +379,7 @@ impl DbiActions for SqliteDbi {
         )
     }
 
-    fn delete_data_in_partial_db(
+    async fn delete_data_in_partial_db(
         &self,
         part_db_name: &str,
         table_name: &str,
@@ -343,7 +391,7 @@ impl DbiActions for SqliteDbi {
             .delete_data_in_partial_db(table_name, cmd, where_clause, host_id)
     }
 
-    fn update_data_into_partial_db_queue(
+    async fn update_data_into_partial_db_queue(
         &self,
         part_db_name: &str,
         table_name: &str,
@@ -355,7 +403,7 @@ impl DbiActions for SqliteDbi {
             .update_data_into_partial_db_queue(table_name, cmd, where_clause, &host.host_id)
     }
 
-    fn update_data_into_partial_db(
+    async fn update_data_into_partial_db(
         &self,
         part_db_name: &str,
         table_name: &str,
@@ -371,7 +419,7 @@ impl DbiActions for SqliteDbi {
         )
     }
 
-    fn insert_data_into_partial_db(
+    async fn insert_data_into_partial_db(
         &self,
         part_db_name: &str,
         table_name: &str,
@@ -381,7 +429,7 @@ impl DbiActions for SqliteDbi {
             .insert_data_into_partial_db(table_name, cmd)
     }
 
-    fn update_participant_accepts_contract(
+    async fn update_participant_accepts_contract(
         &self,
         db_name: &str,
         participant: CoopDatabaseParticipant,
@@ -395,7 +443,7 @@ impl DbiActions for SqliteDbi {
         )
     }
 
-    fn create_partial_database_from_contract(
+    async fn create_partial_database_from_contract(
         &self,
         contract: &Contract,
     ) -> Result<bool, TreatyDbError> {
@@ -404,91 +452,95 @@ impl DbiActions for SqliteDbi {
             .create_partial_database_from_contract(contract)
     }
 
-    fn accept_pending_contract(&self, host_name: &str) -> Result<bool, TreatyDbError> {
+    async fn accept_pending_contract(&self, host_name: &str) -> Result<bool, TreatyDbError> {
         self.treaty().accept_pending_contract(host_name)
     }
 
-    fn get_pending_contracts(&self) -> Result<Option<Vec<Contract>>, TreatyDbError> {
+    async fn get_pending_contracts(&self) -> Result<Option<Vec<Contract>>, TreatyDbError> {
         self.treaty()
             .get_contracts_by_status(ContractStatus::Pending)
     }
 
-    fn get_accepted_contracts(&self) -> Result<Option<Vec<Contract>>, TreatyDbError> {
+    async fn get_accepted_contracts(&self) -> Result<Option<Vec<Contract>>, TreatyDbError> {
         self.treaty()
             .get_contracts_by_status(ContractStatus::Accepted)
     }
 
-    fn save_contract(&self, contract: Contract) -> Result<TreatySaveContractResult, TreatyDbError> {
+    async fn save_contract(
+        &self,
+        contract: Contract,
+    ) -> Result<TreatySaveContractResult, TreatyDbError> {
         self.treaty().save_contract(contract)
     }
 
-    fn get_table_id(&self, db_name: &str, table_name: &str) -> Result<String, TreatyDbError> {
-        todo!()
+    async fn get_table_id(&self, db_name: &str, table_name: &str) -> Result<String, TreatyDbError> {
+        todo!("get_table_id")
         // this was never implemented
     }
 
-    fn create_table_in_partial_database(
+    async fn create_table_in_partial_database(
         &self,
         db_name: &str,
         table_name: &str,
         schema: Vec<ColumnSchema>,
     ) -> Result<bool, TreatyDbError> {
-        todo!()
+        todo!("create_table_in_partial_database")
         // this was never implemented
     }
 
-    fn get_db_id(&self, db_name: &str) -> Result<String, TreatyDbError> {
-        todo!()
+    async fn get_db_id(&self, db_name: &str) -> Result<String, TreatyDbError> {
+        todo!("get_db_id")
         // this was never implemented
     }
 
-    fn create_partial_database(&self, db_name: &str) -> Result<bool, TreatyDbError> {
+    async fn create_partial_database(&self, db_name: &str) -> Result<bool, TreatyDbError> {
         self.part_db(db_name).create_partial_database()
     }
 
-    fn has_role_name(&self, role_name: &str) -> Result<bool, TreatyDbError> {
+    async fn has_role_name(&self, role_name: &str) -> Result<bool, TreatyDbError> {
         self.treaty().has_role_name(role_name)
     }
 
-    fn add_login_to_role(&self, login: &str, role_name: &str) -> Result<bool, TreatyDbError> {
+    async fn add_login_to_role(&self, login: &str, role_name: &str) -> Result<bool, TreatyDbError> {
         self.treaty().add_login_to_role(login, role_name)
     }
 
-    fn login_is_in_role(&self, login: &str, role_name: &str) -> Result<bool, TreatyDbError> {
+    async fn login_is_in_role(&self, login: &str, role_name: &str) -> Result<bool, TreatyDbError> {
         self.treaty().login_is_in_role(login, role_name)
     }
 
-    fn create_login(&self, login: &str, pw: &str) -> Result<bool, TreatyDbError> {
+    async fn create_login(&self, login: &str, pw: &str) -> Result<bool, TreatyDbError> {
         self.treaty().create_login(login, pw)
     }
 
-    fn get_database_names(&self) -> Result<Option<Vec<String>>, TreatyDbError> {
+    async fn get_database_names(&self) -> Result<Option<Vec<String>>, TreatyDbError> {
         self.treaty().get_database_names()
     }
 
-    fn has_login(&self, login: &str) -> Result<bool, TreatyDbError> {
+    async fn has_login(&self, login: &str) -> Result<bool, TreatyDbError> {
         self.treaty().has_login(login)
     }
 
-    fn add_participant(
+    async fn add_participant(
         &self,
         db_name: &str,
         alias: &str,
         ip4addr: &str,
-        db_port: u32,
+        db_port: Option<u32>,
+        info_port: u32,
         http_addr: String,
         http_port: u16,
         id: Option<String>,
     ) -> Result<bool, TreatyDbError> {
         self.db(db_name)
-            .add_participant(alias, ip4addr, db_port, http_addr, http_port, id)
+            .add_participant(alias, ip4addr, db_port, info_port, http_addr, http_port, id)
     }
 
-    fn get_database_schema(&self, db_name: &str) -> Result<DatabaseSchema, TreatyDbError> {
+    async fn get_database_schema(&self, db_name: &str) -> Result<DatabaseSchema, TreatyDbError> {
         self.db(db_name).get_db_schema()
     }
 
-    fn get_participant_by_alias(
+    async fn get_participant_by_alias(
         &self,
         db_name: &str,
         participant_alias: &str,
@@ -496,7 +548,7 @@ impl DbiActions for SqliteDbi {
         self.db(db_name).get_participant_by_alias(participant_alias)
     }
 
-    fn get_participant_by_id(
+    async fn get_participant_by_id(
         &self,
         db_name: &str,
         participant_id: &str,
@@ -504,7 +556,7 @@ impl DbiActions for SqliteDbi {
         self.db(db_name).get_participant_by_id(participant_id)
     }
 
-    fn has_participant(
+    async fn has_participant(
         &self,
         db_name: &str,
         participant_alias: &str,
@@ -512,11 +564,14 @@ impl DbiActions for SqliteDbi {
         self.db(db_name).has_participant(participant_alias)
     }
 
-    fn get_active_contract(&self, db_name: &str) -> Result<CoopDatabaseContract, TreatyDbError> {
+    async fn get_active_contract(
+        &self,
+        db_name: &str,
+    ) -> Result<CoopDatabaseContract, TreatyDbError> {
         self.db(db_name).get_active_contract()
     }
 
-    fn get_logical_storage_policy(
+    async fn get_logical_storage_policy(
         &self,
         db_name: &str,
         table_name: &str,
@@ -524,7 +579,7 @@ impl DbiActions for SqliteDbi {
         self.db(db_name).get_logical_storage_policy(table_name)
     }
 
-    fn set_logical_storage_policy(
+    async fn set_logical_storage_policy(
         &self,
         db_name: &str,
         table_name: &str,
@@ -534,7 +589,7 @@ impl DbiActions for SqliteDbi {
             .set_logical_storage_policy(table_name, policy)
     }
 
-    fn has_table(&self, db_name: &str, table_name: &str) -> Result<bool, TreatyDbError> {
+    async fn has_table(&self, db_name: &str, table_name: &str) -> Result<bool, TreatyDbError> {
         // this needs to be able to check any database, so in this case
         // we don't bother with figuring out if it's a partial or user db
         let db_path = Path::new(&self.dir).join(db_name);
@@ -547,15 +602,23 @@ impl DbiActions for SqliteDbi {
         has_any_rows(cmd, &conn)
     }
 
-    fn execute_write_at_host(&self, db_name: &str, cmd: &str) -> Result<usize, TreatyDbError> {
+    async fn execute_write_at_host(
+        &self,
+        db_name: &str,
+        cmd: &str,
+    ) -> Result<usize, TreatyDbError> {
         self.db(db_name).execute_write_at_host(cmd)
     }
 
-    fn execute_write_at_partipant(&self, db_name: &str, cmd: &str) -> Result<usize, TreatyDbError> {
+    async fn execute_write_at_partipant(
+        &self,
+        db_name: &str,
+        cmd: &str,
+    ) -> Result<usize, TreatyDbError> {
         self.part_db(db_name).execute_write_at_participant(cmd)
     }
 
-    fn execute_read_at_participant(
+    async fn execute_read_at_participant(
         &self,
         db_name: &str,
         cmd: &str,
@@ -563,15 +626,19 @@ impl DbiActions for SqliteDbi {
         self.part_db(db_name).execute_read_at_participant(cmd)
     }
 
-    fn execute_read_at_host(&self, db_name: &str, cmd: &str) -> Result<Table, TreatyDbError> {
+    async fn execute_read_at_host(&self, db_name: &str, cmd: &str) -> Result<Table, TreatyDbError> {
         self.db(db_name).execute_read_at_host(cmd)
     }
 
-    fn has_cooperative_tables(&self, db_name: &str, cmd: &str) -> Result<bool, TreatyDbError> {
+    async fn has_cooperative_tables(
+        &self,
+        db_name: &str,
+        cmd: &str,
+    ) -> Result<bool, TreatyDbError> {
         self.db(db_name).has_cooperative_tables(cmd)
     }
 
-    fn get_participants_for_table(
+    async fn get_participants_for_table(
         &self,
         db_name: &str,
         table_name: &str,
@@ -579,17 +646,22 @@ impl DbiActions for SqliteDbi {
         self.db(db_name).get_participants_for_table(table_name)
     }
 
-    fn get_active_contract_proto(&self, db_name: &str) -> Result<Option<Contract>, TreatyDbError> {
+    #[allow(suspicious_double_ref_op)]
+    async fn get_active_contract_proto(
+        &self,
+        db_name: &str,
+    ) -> Result<Option<Contract>, TreatyDbError> {
         if !db_name.contains(".dbpart") {
-            let active_contract = self.get_active_contract(db_name)?;
-            let db_schema = self.get_database_schema(db_name)?;
-            let opt_host_info = self.treaty_get_host_info()?;
+            let active_contract = self.get_active_contract(db_name).await?;
+            let db_schema = self.get_database_schema(db_name).await?;
+            let opt_host_info = self.treaty_get_host_info().await?;
             match opt_host_info {
                 Some(host_info) => Ok(Some(active_contract.convert_to_protobuf(
                     &host_info,
                     db_schema,
                     ContractStatus::Unknown,
                     "",
+                    0,
                     0,
                 ))),
                 None => {
@@ -598,7 +670,7 @@ impl DbiActions for SqliteDbi {
                 }
             }
         } else {
-            let opt_contracts = self.get_accepted_contracts()?;
+            let opt_contracts = self.get_accepted_contracts().await?;
 
             match opt_contracts {
                 Some(contracts) => {
@@ -632,14 +704,14 @@ impl DbiActions for SqliteDbi {
         }
     }
 
-    fn get_participants_for_database(
+    async fn get_participants_for_database(
         &self,
         db_name: &str,
     ) -> Result<Option<Vec<ParticipantStatus>>, TreatyDbError> {
         self.db(db_name).get_participants_for_database()
     }
 
-    fn get_cooperative_tables(
+    async fn get_cooperative_tables(
         &self,
         db_name: &str,
         cmd: &str,
@@ -647,35 +719,41 @@ impl DbiActions for SqliteDbi {
         self.db(db_name).get_cooperative_tables(cmd)
     }
 
-    fn create_database(&self, db_name: &str) -> Result<(), TreatyDbError> {
+    async fn create_database(&self, db_name: &str) -> Result<(), TreatyDbError> {
         self.db(db_name).create_database()
     }
 
-    fn delete_database(&self, db_name: &str) -> Result<(), TreatyDbError> {
+    async fn delete_database(&self, db_name: &str) -> Result<(), TreatyDbError> {
         self.db(db_name).delete_database()
     }
 
-    fn enable_coooperative_features(&self, db_name: &str) -> Result<bool, TreatyDbError> {
+    async fn delete_database_forcefully(&self, db_name: &str) -> Result<(), TreatyDbError> {
+        self.db(db_name).delete_database_forcefully()
+    }
+
+    async fn enable_coooperative_features(&self, db_name: &str) -> Result<bool, TreatyDbError> {
         self.db(db_name).enable_coooperative_features()
     }
 
-    fn generate_contract(
+    async fn generate_contract(
         &self,
         db_name: &str,
         host_name: &str,
         desc: &str,
         remote_delete_behavior: RemoteDeleteBehavior,
     ) -> Result<bool, TreatyGenerateContractError> {
-        self.generate_and_get_host_info(host_name)?;
+        self.generate_and_get_host_info(host_name).await?;
         self.db(db_name)
             .generate_contract(desc, remote_delete_behavior)
     }
 
-    fn treaty_get_host_info(&self) -> Result<Option<HostInfo>, TreatyDbError> {
+    async fn treaty_get_host_info(&self) -> Result<Option<HostInfo>, TreatyDbError> {
         self.treaty().treaty_get_host_info()
     }
 
-    fn treaty_generate_host_info(&self, host_name: &str) -> Result<(), TreatyDbError> {
+    async fn treaty_generate_host_info(&self, host_name: &str) -> Result<(), TreatyDbError> {
+        trace!("[{}]: host_name: {host_name:?}", function_name!());
+
         let conn = self.get_treaty_conn()?;
         let token_gen = GUID::rand();
         let token = crypt::hash(&token_gen.to_string());
@@ -697,7 +775,10 @@ impl DbiActions for SqliteDbi {
                 statement.execute(named_params! {":name" : host_name, ":token" : token.0 })?;
 
             if total_rows == 0 {
-                error!("[{}]: Host info was not updated; this should not happen.", function_name!());
+                error!(
+                    "[{}]: Host info was not updated; this should not happen.",
+                    function_name!()
+                );
             }
         } else {
             let id = GUID::rand();
@@ -725,29 +806,29 @@ impl DbiActions for SqliteDbi {
         Ok(())
     }
 
-    fn if_treaty_host_info_exists(&self) -> Result<bool, TreatyDbError> {
+    async fn if_treaty_host_info_exists(&self) -> Result<bool, TreatyDbError> {
         let cmd = String::from("SELECT COUNT(*) TOTALCOUNT FROM CDS_HOST_INFO");
         has_any_rows(cmd, &self.get_treaty_conn()?)
     }
 
-    fn generate_and_get_host_info(&self, host_name: &str) -> Result<HostInfo, TreatyDbError> {
-        self.treaty_generate_host_info(host_name)?;
-        Ok(self.treaty_get_host_info().unwrap().unwrap())
+    async fn generate_and_get_host_info(&self, host_name: &str) -> Result<HostInfo, TreatyDbError> {
+        self.treaty_generate_host_info(host_name).await?;
+        Ok(self.treaty_get_host_info().await.unwrap().unwrap())
     }
 
-    fn configure_admin_hash(&self, login: &str, hash: Vec<u8>) -> Result<(), TreatyDbError> {
+    async fn configure_admin_hash(&self, login: &str, hash: Vec<u8>) -> Result<(), TreatyDbError> {
         self.treaty().configure_admin_hash(login, hash)
     }
 
-    fn configure_admin(&self, login: &str, pw: &str) -> Result<(), TreatyDbError> {
+    async fn configure_admin(&self, login: &str, pw: &str) -> Result<(), TreatyDbError> {
         self.treaty().configure_admin(login, pw)
     }
 
-    fn verify_login(&self, login: &str, pw: &str) -> Result<bool, TreatyDbError> {
+    async fn verify_login(&self, login: &str, pw: &str) -> Result<bool, TreatyDbError> {
         self.treaty().verify_login(login, pw)
     }
 
-    fn configure_treaty_db(&self) -> Result<(), TreatyDbError> {
+    async fn configure_treaty_db(&self) -> Result<(), TreatyDbError> {
         self.treaty().configure_treaty_db()
     }
 }
@@ -808,15 +889,14 @@ fn execute_write(conn: &Connection, cmd: &str) -> Result<usize, TreatyDbError> {
     trace!("[{}]: {cmd:?} {conn:?}", function_name!());
     let result = conn.execute(cmd, []);
     match result {
-        Ok(rows) => {
-            Ok(rows)
-        }
+        Ok(rows) => Ok(rows),
         Err(e) => {
             error!("[{}]: {e:?}", function_name!());
             Err(e.into())
         }
     }
 }
+
 fn check_database_name_for_contract_format(
     db_name: &str,
     conn: &Connection,
@@ -895,6 +975,7 @@ fn execute_read(cmd: &str, conn: &Connection) -> Result<Table, TreatyDbError> {
     let total_columns = statement.column_count();
     let cols = statement.columns();
     let mut table = Table::new();
+    table.set_database_type(DatabaseType::Sqlite);
 
     trace!("[{}]: {:?}", function_name!(), cmd);
 
@@ -956,6 +1037,8 @@ fn execute_read(cmd: &str, conn: &Connection) -> Result<Table, TreatyDbError> {
 
         table.add_row(data_row);
     }
+
+    trace!("[{}]: Table Result: {table:?}", function_name!());
 
     Ok(table)
 }
@@ -1107,6 +1190,7 @@ fn execute_read_on_connection_for_row(
     Ok(result)
 }
 
+/// Checks to see if the database has enabled cooperative features
 pub fn has_enable_coooperative_features(db_name: &str, dir: &str) -> Result<bool, TreatyDbError> {
     if !has_database(dir, db_name) {
         Err(TreatyDbError::DbNotFound(db_name.to_string()))

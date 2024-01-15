@@ -25,10 +25,10 @@ Practically, you utilize normal SQL statements to send to Treaty, which executes
 Treaty is for application developers who want to give their users access to their data. It's also for users who want ownership of their data: to determine where it's stored; and the ability to query and modify it via SQL.
 
 ## Databases
-`treaty` is currently implemented on top of Sqlite, but the hope is to also implement `treaty` for Postgres and MySQL. `treaty` is written in Rust. While `treaty` is written in Rust, the underlying communication is defined via gRPC. See the [proto](/treaty/proto/treaty.proto) file for the definition to generate a client in the language of your choice (Python, Go, C#, etc.)
+`treaty` is currently implemented on top of Sqlite and Postgres. `treaty` is written in Rust. While `treaty` is written in Rust, the underlying communication is defined via gRPC. See the [proto](/treaty/proto/treaty.proto) file for the definition to generate a client in the language of your choice (Python, Go, C#, etc.)
 
 ## Transport
-`treaty` is implemented using gRPC (via protobuf) or HTTP (via JSON). The hope is to also support in the future: Websockets, Native Postgres and Native MySQL.
+`treaty` is implemented using gRPC (via protobuf) or HTTP (via JSON). The hope is to also support in the future: Websockets and Native Postgres.
 
 # What is Cooperative Data
 
@@ -114,7 +114,7 @@ It's goal is to enable software developers who want to the ability to give their
 
 # Similar projects
 
-Treaty conceptually is similiar to the [Solid project](https://solidproject.org/). The difference between Treaty and Solid is that while Solid is [specification based](https://solidproject.org/TR/protocol), Treaty is _software and patterned based_: gRPC defined first, with SQL based implementations (hopefully): Sqlite, MySQL, Postgres, etc. Treaty is an implementation of a design pattern (cooperative data). 
+Treaty conceptually is similiar to the [Solid project](https://solidproject.org/). The difference between Treaty and Solid is that while Solid is [specification based](https://solidproject.org/TR/protocol), Treaty is _software and patterned based_: gRPC defined first, with SQL based implementations in Sqlite and Postgres. Treaty is an implementation of a design pattern (cooperative data). 
 
 The goal for Treaty is to reduce the mental friction of this proposed design pattern of cooperative data. I hope to build an API where developers can "bring their own database" and just write apps as quickly as possible (in the language of their choice) while still respecting the data rights of their users. Users can get first-class access to their data at the data layer, and optionally can "bring their own database (infastructure)" to store their data.
 

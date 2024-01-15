@@ -639,7 +639,7 @@ A message for describing the schema of a database.
 | database_name | [string](#string) |  | The database name. |
 | database_id | [string](#string) |  | The database id. |
 | tables | [TableSchema](#treaty_proto-TableSchema) | repeated | The tables of the database. |
-| database_type | [uint32](#uint32) |  | The type of database: Sqlite, Postgres, or MySQL. This value is defined in the /treaty/treaty-types/enums.rs file. |
+| database_type | [uint32](#uint32) |  | The type of database: Sqlite or Postgres. This value is defined in the /treaty/treaty-types/enums.rs file. |
 | treaty_database_type | [uint32](#uint32) |  | The type of Treaty database; i.e. A Host, Partial, or internal Treaty system database. This value is defined in the /treaty/treaty-types/enums.rs file. |
 | cooperation_enabled | [bool](#bool) |  | If the database has cooperative features. |
 | has_participants | [bool](#bool) |  | If the database has any participants. |
@@ -759,7 +759,7 @@ For more information, see the README.md or the manual.
 | authentication | [AuthRequest](#treaty_proto-AuthRequest) |  | The authentaction request. |
 | database_name | [string](#string) |  | The name of the database. |
 | sql_statement | [string](#string) |  | The INSERT/UPDATE/DELETE statement to execute at the Participant. |
-| database_type | [uint32](#uint32) |  | The type of database: Sqlite, MySQL, Postgres. This value is defined in the /treaty/treaty-types/enums.rs file. |
+| database_type | [uint32](#uint32) |  | The type of database: Sqlite or Postgres. This value is defined in the /treaty/treaty-types/enums.rs file. |
 | alias | [string](#string) |  | The participant alias this statement is for. |
 | participant_id | [string](#string) |  | The participant id this statement is for. |
 | where_clause | [string](#string) |  | The WHERE clause of the INSERT/UPDATE/STATEMENT. For technical reasons this needs to be the same as in the &#34;sql_statement&#34; field if applicable. This field can be empty. |
@@ -799,7 +799,7 @@ Requests to execute the specified SELECT statement if authenticated.
 | authentication | [AuthRequest](#treaty_proto-AuthRequest) |  | The authentication request. |
 | database_name | [string](#string) |  | The database name. |
 | sql_statement | [string](#string) |  | The SELECT SQL statement. |
-| database_type | [uint32](#uint32) |  | The datababase type (Sqlite, MySQL, Postgres) |
+| database_type | [uint32](#uint32) |  | The datababase type (Sqlite or Postgres) |
 
 
 
@@ -836,7 +836,7 @@ Requests to execute the provided INSERT/UPDATE/DELETE statement if authenticated
 | authentication | [AuthRequest](#treaty_proto-AuthRequest) |  | The authentication request. |
 | database_name | [string](#string) |  | The database name. |
 | sql_statement | [string](#string) |  | The INSERT/UPDATE/DELETE statement to execute. |
-| database_type | [uint32](#uint32) |  | The database type (Sqlite, MySQL, Postgres). |
+| database_type | [uint32](#uint32) |  | The database type (Sqlite, Postgres). |
 | where_clause | [string](#string) |  | The WHERE clause of the statement, if applicable. ℹ️ Note: If the &#34;sql_statement&#34; includes a WHERE clause, duplicate the contents here. Otherwise, leave the string empty. This is needed because of a limitation with Treaty&#39;s implementation of Antlr. In the future, hopefully this field will not be needed. |
 
 

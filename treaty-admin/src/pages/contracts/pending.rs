@@ -1,13 +1,16 @@
 use treaty_http_endpoints::client::{ACCEPT_PENDING_CONTRACT, VIEW_PENDING_CONTRACTS};
-use treaty_types::{types::treaty_proto::{
-    AcceptPendingContractReply, AcceptPendingContractRequest, Contract, ViewPendingContractsReply,
-    ViewPendingContractsRequest,
-}, formatter};
+use treaty_types::{
+    formatter,
+    types::treaty_proto::{
+        AcceptPendingContractReply, AcceptPendingContractRequest, Contract,
+        ViewPendingContractsReply,
+    },
+};
 use yew::{function_component, html, use_state_eq, AttrValue, Callback, Html};
 
 use crate::{
     log::log_to_console,
-    request::{self, clear_status, get_token, set_status, update_token_login_status},
+    request::{self, clear_status, set_status, get_client},
 };
 
 #[function_component]
@@ -23,38 +26,25 @@ pub fn Pending() -> Html {
     let onclick = {
         let pending_contracts = pending_contracts.clone();
         Callback::from(move |_| {
-            let token = get_token();
+            let client = get_client();
             let pending_contracts = pending_contracts.clone();
 
-            let request = ViewPendingContractsRequest {
-                authentication: Some(token.auth()),
-            };
-
-            let request_json = serde_json::to_string(&request).unwrap();
-            let url = format!("{}{}", token.addr, VIEW_PENDING_CONTRACTS);
+            let url = format!("{}{}", client.user_addr_port(), VIEW_PENDING_CONTRACTS);
             let cb = Callback::from(move |response: Result<AttrValue, String>| {
                 if let Ok(ref x) = response {
                     log_to_console(x.to_string());
                     clear_status();
 
                     let reply: ViewPendingContractsReply = serde_json::from_str(x).unwrap();
-                    let is_authenticated = reply
-                        .authentication_result
-                        .as_ref()
-                        .unwrap()
-                        .is_authenticated;
-                    update_token_login_status(is_authenticated);
 
-                    if is_authenticated {
-                        let contracts = reply.contracts;
-                        pending_contracts.set(contracts);
-                    }
+                    let contracts = reply.contracts;
+                    pending_contracts.set(contracts);
                 } else {
                     set_status(response.err().unwrap());
                 }
             });
 
-            request::post(url, request_json, cb);
+            request::post(url, "".to_string(), cb);
         })
     };
 
@@ -109,14 +99,13 @@ pub fn Pending() -> Html {
                                         let host_name = host_name.clone();
                                         let last_accept_reject_result = last_accept_reject_result.clone();
                                         Callback::from(move |_| {
-                                            let token = get_token().clone();
+                                            let client = get_client();
                                             let request = AcceptPendingContractRequest{
-                                                authentication: Some(token.auth()),
                                                 host_alias: host_name.clone(),
                                             };
 
                                             let json_request = serde_json::to_string(&request).unwrap();
-                                            let url = format!("{}{}", token.addr, ACCEPT_PENDING_CONTRACT);
+                                            let url = format!("{}{}", client.user_addr_port(), ACCEPT_PENDING_CONTRACT);
                                             let last_accept_reject_result = last_accept_reject_result.clone();
 
                                             let cb = Callback::from(move |response: Result<AttrValue, String>| {
@@ -125,13 +114,11 @@ pub fn Pending() -> Html {
                                                     log_to_console(x.to_string());
 
                                                     let reply: AcceptPendingContractReply = serde_json::from_str(x).unwrap();
-                                                    let is_authenticated = reply.authentication_result.as_ref().unwrap().is_authenticated;
-                                                    update_token_login_status(is_authenticated);
 
-                                                    if is_authenticated {
+
                                                         let message = format!("{}{}", "Last accept/reject status was: ", reply.is_successful);
                                                         last_accept_reject_result.set(message);
-                                                    }
+
                                                 } else {
                                                     let error_message = response.err().unwrap();
                                                     set_status(error_message);

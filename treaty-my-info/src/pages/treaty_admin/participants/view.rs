@@ -1,8 +1,8 @@
+use treaty_types::proxy::request_type::RequestType;
 use treaty_types::types::treaty_proto::{
     GetParticipantsReply, GetParticipantsRequest, ParticipantStatus, SendParticipantContractReply,
     SendParticipantContractRequest,
 };
-use treaty_types::proxy::request_type::RequestType;
 use yew::{
     function_component, html, use_state_eq, AttrValue, Callback, Html, Properties, UseStateHandle,
 };
@@ -11,7 +11,7 @@ use crate::request;
 use crate::{
     log::log_to_console,
     pages::treaty_admin::{common::select_database::SelectDatabase, participants::ActiveDbProps},
-    request::treaty::{clear_status, get_treaty_token, set_status, update_token_login_status},
+    request::treaty::{clear_status, get_treaty_token, set_status},
 };
 
 #[derive(Properties, PartialEq)]
@@ -39,7 +39,6 @@ pub fn ViewParticipants(ActiveDbProps { active_db }: &ActiveDbProps) -> Html {
                 let token = get_treaty_token();
 
                 let request = GetParticipantsRequest {
-                    authentication: Some(token.auth()),
                     database_name: db_name,
                 };
 
@@ -51,16 +50,7 @@ pub fn ViewParticipants(ActiveDbProps { active_db }: &ActiveDbProps) -> Html {
                             let reply: GetParticipantsReply = serde_json::from_str(&reply).unwrap();
                             clear_status();
 
-                            let is_authenticated = reply
-                                .authentication_result
-                                .as_ref()
-                                .unwrap()
-                                .is_authenticated;
-                            update_token_login_status(is_authenticated);
-
-                            if is_authenticated {
-                                participant_details.set(reply.participants);
-                            }
+                            participant_details.set(reply.participants);
                         }
                         Err(e) => {
                             set_status(e);
@@ -142,7 +132,7 @@ pub fn ViewParticipantsForDb(
                                                 let token = get_treaty_token().clone();
 
                                                 let request = SendParticipantContractRequest {
-                                                    authentication: Some(token.auth().clone()),
+
                                                     database_name: database_name.clone(),
                                                     participant_alias: alias.clone()
                                                 };
@@ -160,10 +150,8 @@ pub fn ViewParticipantsForDb(
                                                         let reply: SendParticipantContractReply =
                                                         serde_json::from_str(x).unwrap();
 
-                                                        let is_authenticated = reply.authentication_result.unwrap().is_authenticated;
-                                                        update_token_login_status(is_authenticated);
 
-                                                        if is_authenticated {
+
                                                             if reply.is_sent {
                                                                 let message = format!("{}{}{}","Contract sent to
                                                                 participant ", alias.clone(), " is successful.");
@@ -173,7 +161,7 @@ pub fn ViewParticipantsForDb(
                                                                 participant ", alias.clone(), " is NOT successful. Reason: ", reply.contract_status);
                                                                 participant_send_contract_result.set(message);
                                                             }
-                                                        }
+
                                                     } else {
                                                         set_status(response.err().unwrap());
                                                     }

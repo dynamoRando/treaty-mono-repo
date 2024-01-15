@@ -1,18 +1,17 @@
 use client_actions::ClientActions;
-use treaty_types::enums::*;
-use grpc::GrpcClient;
+use grpc::{GrpcClient, TlsSettings};
 use http::HttpClient;
 use treaty::{
-  
+    settings::HttpTlsClientOptions,
     treaty_proto::{
-        AcceptPendingActionReply, Contract, GetActiveContractReply, GetCooperativeHostsReply,
-        GetDatabasesReply, GetDeletesFromHostBehaviorReply, GetDeletesToHostBehaviorReply,
-        GetParticipantsReply, GetPendingActionsReply, GetUpdatesFromHostBehaviorReply,
-        GetUpdatesToHostBehaviorReply, HostInfoReply, RevokeReply, StatementResultset, TokenReply,
-        TreatyError,
+        AcceptPendingActionReply, Contract, DeleteUserDatabaseReply, GetActiveContractReply,
+        GetBackingDatabaseConfigReply, GetCooperativeHostsReply, GetDatabasesReply,
+        GetDeletesFromHostBehaviorReply, GetDeletesToHostBehaviorReply, GetParticipantsReply,
+        GetPendingActionsReply, GetUpdatesFromHostBehaviorReply, GetUpdatesToHostBehaviorReply,
+        HostInfoReply, RevokeReply, StatementResultset, TokenReply, TreatyError,
     },
 };
-
+use treaty_types::enums::*;
 
 pub mod client_actions;
 pub mod error;
@@ -26,13 +25,6 @@ pub mod http;
 pub enum TreatyClientType {
     Grpc,
     Http,
-}
-
-#[derive(Debug, Clone)]
-pub struct Auth {
-    pub user_name: String,
-    pub pw: String,
-    pub jwt: String,
 }
 
 #[derive(Debug, Clone)]
@@ -54,18 +46,22 @@ impl<C: ClientActions> TreatyClient<C> {
     /// * `send_jwt_if_available` - Send a Json Web Token in place of Auth credentials if we have recieved one from Treaty
     /// * `host_id` - Optional. Sends the Treaty's `host_id` to denote a specific Treaty instance we wish to talk to. This is used mainly by `treaty-proxy.`
     pub async fn new_grpc(
-        addr_port: &str,
+        user_service_address_port: &str,
+        info_service_address_port: &str,
         timeout_in_seconds: u32,
-        auth: Auth,
-        send_jwt_if_available: bool,
+        username: &str,
+        pw: &str,
         host_id: Option<String>,
+        tls: Option<TlsSettings>,
     ) -> TreatyClient<GrpcClient> {
         let grpc = GrpcClient::new(
-            addr_port,
+            user_service_address_port,
+            info_service_address_port,
             timeout_in_seconds,
-            auth,
-            send_jwt_if_available,
+            username,
+            pw,
             host_id,
+            tls,
         )
         .await;
         TreatyClient::_new_gprc(grpc).await
@@ -75,25 +71,33 @@ impl<C: ClientActions> TreatyClient<C> {
     /// # Arguments
     /// * `addr` - The IP addr or URL for Treaty
     /// * `port` - The port number for Treaty
-    /// * `auth` - The Auth struct for passing credentials to Treaty 
+    /// * `auth` - The Auth struct for passing credentials to Treaty
     /// * `timeout_in_seconds` - The HTTP timeout in seconds
     /// * `send_jwt_if_available` - Send a Json Web Token in place of Auth credentials if we have recieved one from Treaty
     /// * `host_id` - Optional. Sends the Treaty's `host_id` to denote a specific Treaty instance we wish to talk to. This is used mainly by `treaty-proxy.`
     pub async fn new_http(
-        addr: &str,
-        port: u32,
-        auth: Auth,
+        user_service_address: &str,
+        user_service_port: u32,
+        info_service_address: &str,
+        info_service_port: u32,
+        username: &str,
+        pw: &str,
         timeout_in_seconds: u32,
-        send_jwt_if_available: bool,
         host_id: Option<String>,
+        use_tls: bool,
+        opt_identity: Option<HttpTlsClientOptions>,
     ) -> TreatyClient<HttpClient> {
         let http = HttpClient::new(
-            addr,
-            port,
-            auth,
+            user_service_address,
+            user_service_port,
+            info_service_address,
+            info_service_port,
+            username,
+            pw,
             timeout_in_seconds,
-            send_jwt_if_available,
             host_id,
+            use_tls,
+            opt_identity,
         )
         .await;
         TreatyClient::_new_http(http).await
@@ -149,6 +153,22 @@ impl<C: ClientActions> ClientActions for TreatyClient<C> {
         Self: 'async_trait,
     {
         self.client.is_online()
+    }
+
+    fn get_backing_db_config<'life0, 'async_trait>(
+        &'life0 mut self,
+    ) -> core::pin::Pin<
+        Box<
+            dyn core::future::Future<Output = Result<GetBackingDatabaseConfigReply, TreatyError>>
+                + core::marker::Send
+                + 'async_trait,
+        >,
+    >
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait,
+    {
+        self.client.get_backing_db_config()
     }
 
     fn get_active_contract<'life0, 'life1, 'async_trait>(
@@ -693,7 +713,8 @@ impl<C: ClientActions> ClientActions for TreatyClient<C> {
         db_name: &'life1 str,
         participant_alias: &'life2 str,
         participant_ip4addr: &'life3 str,
-        participant_db_port: u32,
+        participant_db_port: Option<u32>,
+        participant_info_port: u32,
         participant_http_addr: &'life4 str,
         participant_http_port: u16,
         participant_id: Option<String>,
@@ -717,6 +738,7 @@ impl<C: ClientActions> ClientActions for TreatyClient<C> {
             participant_alias,
             participant_ip4addr,
             participant_db_port,
+            participant_info_port,
             participant_http_addr,
             participant_http_port,
             participant_id,
@@ -957,5 +979,23 @@ impl<C: ClientActions> ClientActions for TreatyClient<C> {
         Self: 'async_trait,
     {
         self.client.create_user_database(db_name)
+    }
+
+    fn drop_database_forcefully<'life0, 'life1, 'async_trait>(
+        &'life0 mut self,
+        db_name: &'life1 str,
+    ) -> ::core::pin::Pin<
+        Box<
+            dyn ::core::future::Future<Output = Result<DeleteUserDatabaseReply, TreatyError>>
+                + ::core::marker::Send
+                + 'async_trait,
+        >,
+    >
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        Self: 'async_trait,
+    {
+        self.client.drop_database_forcefully(db_name)
     }
 }

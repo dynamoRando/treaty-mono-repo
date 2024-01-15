@@ -1,7 +1,5 @@
 use crate::{
-    models::Table,
-    treaty_proto::{StatementResultset},
-    user_service_handler::io::db::ReadResult,
+    models::Table, treaty_proto::StatementResultset, user_service_handler::io::db::ReadResult,
 };
 
 impl From<ReadResult> for StatementResultset {
@@ -28,7 +26,7 @@ impl From<Table> for StatementResultset {
 
 /*
 
--- may need to break this out of treaty-proto and tell prost not to 
+-- may need to break this out of treaty-proto and tell prost not to
 -- implement the Debug trait for this.
 
 impl fmt::Debug for AuthRequest {

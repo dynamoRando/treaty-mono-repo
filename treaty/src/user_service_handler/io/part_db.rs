@@ -6,7 +6,8 @@ use crate::{
     remote::remote_actions::RemoteActions,
     treaty_proto::ExecuteWriteRequest,
 };
-use tracing::{info, warn};
+use stdext::function_name;
+use tracing::{error, info, trace};
 use treaty_types::enums::*;
 
 #[derive(Debug, Clone)]
@@ -21,7 +22,7 @@ pub async fn handle_delete_write_at_participant<T: DbiActions + Clone, R: Remote
     request: &ExecuteWriteRequest,
     known_host: &CdsHosts,
 ) -> Result<IoResult, TreatyDbError> {
-    let db_type = db.db_type();
+    let db_type = db.db_type().await;
     let db_name = &request.database_name;
     let statement = &request.sql_statement;
     let where_clause = &request.where_clause;
@@ -29,23 +30,27 @@ pub async fn handle_delete_write_at_participant<T: DbiActions + Clone, R: Remote
 
     let delete_behavior = db
         .get_deletes_to_host_behavior(db_name, &table_name)
+        .await
         .unwrap_or(DeletesToHostBehavior::DoNothing);
 
-    let result = db.delete_data_in_partial_db(
-        db_name,
-        &table_name,
-        statement,
-        where_clause,
-        &known_host.host_id,
-    );
+    let result = db
+        .delete_data_in_partial_db(
+            db_name,
+            &table_name,
+            statement,
+            where_clause,
+            &known_host.host_id,
+        )
+        .await;
 
     match result {
         Ok(delete_result) => match delete_behavior {
             DeletesToHostBehavior::Unknown => todo!(),
             DeletesToHostBehavior::SendNotification => {
-                let remote_host = db.get_cds_host_for_part_db(db_name).unwrap().unwrap();
+                let remote_host = db.get_cds_host_for_part_db(db_name).await.unwrap().unwrap();
                 let own_host_info = db
                     .treaty_get_host_info()
+                    .await
                     .expect("no host info is set")
                     .unwrap();
 
@@ -60,7 +65,7 @@ pub async fn handle_delete_write_at_participant<T: DbiActions + Clone, R: Remote
                     .await;
 
                 if !notify_result {
-                    warn!("notify host {remote_host:?} of delete was not successful");
+                    error!("notify host {remote_host:?} of delete was not successful");
                 }
 
                 if delete_result.is_successful && notify_result {
@@ -97,7 +102,7 @@ pub async fn handle_update_write_at_participant<T: DbiActions + Clone, R: Remote
     request: &ExecuteWriteRequest,
     known_host: &CdsHosts,
 ) -> Result<IoResult, TreatyDbError> {
-    let db_type = db.db_type();
+    let db_type = db.db_type().await;
     let db_name = &request.database_name;
     let statement = &request.sql_statement;
     let where_clause = &request.where_clause;
@@ -105,15 +110,25 @@ pub async fn handle_update_write_at_participant<T: DbiActions + Clone, R: Remote
 
     let update_behavior = db
         .get_updates_to_host_behavior(db_name, &table_name)
+        .await
         .unwrap_or(UpdatesToHostBehavior::DoNothing);
 
-    let result = db.update_data_into_partial_db(
-        db_name,
-        &table_name,
-        statement,
-        &known_host.host_id,
-        where_clause,
+    trace!(
+        "[{}]: update_behavior: {update_behavior:?}",
+        function_name!()
     );
+
+    let result = db
+        .update_data_into_partial_db(
+            db_name,
+            &table_name,
+            statement,
+            &known_host.host_id,
+            where_clause,
+        )
+        .await;
+
+    trace!("[{}]: partial_data_result: {result:#?}", function_name!());
 
     match result {
         Ok(data_result) => {
@@ -128,12 +143,15 @@ pub async fn handle_update_write_at_participant<T: DbiActions + Clone, R: Remote
             match update_behavior {
                 UpdatesToHostBehavior::Unknown => todo!(),
                 UpdatesToHostBehavior::SendDataHashChange => {
-                    let result = db.get_cds_host_for_part_db(db_name);
+                    trace!("[{}]: Sending data hash change", function_name!());
+
+                    let result = db.get_cds_host_for_part_db(db_name).await;
 
                     match result {
                         Ok(remote_host) => {
                             let own_host_info = db
                                 .treaty_get_host_info()
+                                .await
                                 .expect("no host info is set")
                                 .unwrap();
 
@@ -160,10 +178,14 @@ pub async fn handle_update_write_at_participant<T: DbiActions + Clone, R: Remote
                         Err(e) => Err(e),
                     }
                 }
-                UpdatesToHostBehavior::DoNothing => Ok(IoResult {
-                    is_successful: true,
-                    rows_affected: 1,
-                }),
+                UpdatesToHostBehavior::DoNothing => {
+                    trace!("[{}]: UpdateToHostBehavior is do nothing", function_name!());
+
+                    Ok(IoResult {
+                        is_successful: true,
+                        rows_affected: 1,
+                    })
+                }
             }
         }
         Err(e) => Err(e),
